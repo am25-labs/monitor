@@ -53,5 +53,11 @@
       "esbuild",
       "workerd"
     ]
+  },
+  "license": "Apache-2.0",
+  "author": "AM25",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/am25-labs/monitor.git"
   }
 }

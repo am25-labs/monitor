@@ -15,6 +15,7 @@ export async function setup() {
   await env.DB.batch(
     [
       "notifications",
+      "app_settings",
       "incidents",
       "results",
       "jobs",

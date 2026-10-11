@@ -1,3 +1,5 @@
+import { notificationConfig } from "./settings";
+import type { NotificationConfig } from "../shared/settings";
 import { first, rows, statement } from "./db";
 import { createElement } from "react";
 import { render } from "react-email";
@@ -99,6 +101,83 @@ export async function mailBody(n: Notification, origin: string) {
     )
   };
 }
+async function sendNotification(
+  env: Env,
+  config: NotificationConfig,
+  n: Notification,
+  fetcher: typeof fetch
+) {
+  if (env.ENVIRONMENT === "local") {
+    console.info(
+      JSON.stringify({
+        event: "notification_intercepted",
+        channel: config.channel,
+        notificationId: n.id
+      })
+    );
+    return;
+  }
+  const content = await mailBody(n, env.APP_ORIGIN);
+  let response: Response;
+  if (config.channel === "email") {
+    if (!config.email.token || !config.email.to || !config.email.from)
+      throw new Error("unconfigured");
+    response = await fetcher("https://api.postmarkapp.com/email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Postmark-Server-Token": config.email.token
+      },
+      body: JSON.stringify({
+        From: config.email.from,
+        To: config.email.to,
+        MessageStream: config.email.stream,
+        ...content,
+        TrackOpens: false,
+        TrackLinks: "None"
+      }),
+      signal: AbortSignal.timeout(10000)
+    });
+  } else {
+    if (
+      !/^\d+:[A-Za-z0-9_-]+$/.test(config.telegram.token) ||
+      !config.telegram.chatId
+    )
+      throw new Error("unconfigured");
+    response = await fetcher(
+      `https://api.telegram.org/bot${config.telegram.token}/sendMessage`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: config.telegram.chatId,
+          text: content.TextBody.slice(0, 4096),
+          link_preview_options: { is_disabled: true }
+        }),
+        signal: AbortSignal.timeout(10000)
+      }
+    );
+  }
+  if (!response.ok) {
+    await response.body?.cancel();
+    throw new Error(
+      response.status >= 400 && response.status < 500 && response.status !== 429
+        ? "permanent"
+        : "temporary"
+    );
+  }
+  const data = (await response.json()) as {
+    ErrorCode?: number;
+    ok?: boolean;
+    error_code?: number;
+  };
+  if (config.channel === "email" ? data.ErrorCode !== 0 : data.ok !== true)
+    throw new Error(
+      data.error_code === 429 || (data.error_code ?? 0) >= 500
+        ? "temporary"
+        : "permanent"
+    );
+}
 export async function deliverNotifications(
   env: Env,
   now: number,
@@ -123,41 +202,8 @@ export async function deliverNotifications(
     );
     if (!claimed) continue;
     try {
-      if (env.ENVIRONMENT !== "local") {
-        if (!env.POSTMARK_TOKEN || !env.OWNER_EMAIL || !env.POSTMARK_FROM)
-          throw new Error("unconfigured");
-        const response = await fetcher("https://api.postmarkapp.com/email", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Postmark-Server-Token": env.POSTMARK_TOKEN
-          },
-          body: JSON.stringify({
-            From: env.POSTMARK_FROM,
-            To: env.OWNER_EMAIL,
-            MessageStream: env.POSTMARK_STREAM,
-            ...(await mailBody(n, env.APP_ORIGIN)),
-            TrackOpens: false,
-            TrackLinks: "None"
-          }),
-          signal: AbortSignal.timeout(10000)
-        });
-        if (!response.ok) {
-          await response.body?.cancel();
-          throw new Error(
-            response.status >= 400 &&
-              response.status < 500 &&
-              response.status !== 429
-              ? "permanent"
-              : "temporary"
-          );
-        }
-        const data = (await response.json()) as { ErrorCode: number };
-        if (data.ErrorCode !== 0) throw new Error("permanent");
-      } else
-        console.info(
-          JSON.stringify({ event: "mail_intercepted", notificationId: n.id })
-        );
+      const { config } = await notificationConfig(env);
+      await sendNotification(env, config, n, fetcher);
       await statement(
         env.DB,
         "UPDATE notifications SET state='sent',delivered_at=?,error=NULL,lease_until=NULL WHERE id=? AND lease_token=?",
@@ -177,7 +223,7 @@ export async function deliverNotifications(
         attempts,
         now + Math.min(3600, 60 * 2 ** attempts),
         final
-          ? "No se pudo entregar el correo."
+          ? "No se pudo entregar la notificación."
           : "Entrega pendiente de reintento.",
         n.id,
         lease

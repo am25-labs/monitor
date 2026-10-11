@@ -1,6 +1,6 @@
 # AM25 Monitor
 
-Monitor personal independiente del VPS: React + Vite, Workers, D1, Queues y Cloudflare Access. Interfaz y correos en español. No usa Gate ni Durable Objects.
+Monitor personal independiente del VPS: React + Vite, Workers, D1, Queues y Cloudflare Access. Interfaz, correos y mensajes de Telegram en español. No usa Gate ni Durable Objects.
 
 ## Desarrollo
 
@@ -12,7 +12,7 @@ pnpm db:local
 pnpm dev
 ```
 
-Abrir `http://localhost:5173/app/`. El script crea `.dev.vars` con valores locales si no existe. D1, colas y autenticación son locales; los correos se interceptan y nunca se envían. Para disparar el cron simulado, usar `curl http://localhost:8787/__scheduled`. No hay cron automático en la configuración local. Los destinos de monitores locales sí reciben comprobaciones: usar servicios de prueba propios.
+Abrir `http://localhost:5173/app/`. El script crea `.dev.vars` con valores locales si no existe. D1, colas y autenticación son locales; las notificaciones se interceptan y nunca se envían. Para disparar el cron simulado, usar `curl http://localhost:8787/__scheduled`. No hay cron automático en la configuración local. Los destinos de monitores locales sí reciben comprobaciones: usar servicios de prueba propios.
 
 Validación: `pnpm check`. No ejecutar compilaciones de producción como validación local rutinaria; GitHub Actions ejecuta `pnpm build`. No usar `wrangler.jsonc` para desarrollo ni aplicar migraciones remotas desde `develop`.
 
@@ -39,13 +39,22 @@ En GitHub → Settings → Secrets and variables → Actions, crear secretos del
 | `CLOUDFLARE_ACCOUNT_ID`  | Cuenta indicada arriba                            |
 | `CLOUDFLARE_API_TOKEN`   | Token limitado a esta cuenta y zona               |
 | `MONITOR_CONFIG_KEY`     | 32 bytes aleatorios en hexadecimal: 64 caracteres |
-| `MONITOR_POSTMARK_TOKEN` | Server API Token de Postmark                      |
 
 El token necesita edición de Workers Scripts, D1 y Queues en la cuenta; edición de Workers Routes y DNS en la zona `am25.app` para el dominio. No necesita administrar Access: la aplicación ya está configurada. Mantener los secretos fuera del repositorio y respaldar la llave de cifrado. No sustituirla sin migrar las configuraciones cifradas existentes.
 
-Los secretos se pasan mediante un archivo temporal con permisos 0600, eliminado al terminar, y se publican junto con la versión del Worker; esto también funciona en el primer despliegue. Los secretos de GitHub se instalan como Workers Secrets `CONFIG_KEY` y `POSTMARK_TOKEN`. El remitente de Postmark debe estar verificado como `noreply@am25.work`, con stream transaccional `outbound`. Todas las alertas se envían únicamente a `support@am25.work`. No hay notificaciones para clientes.
+Los secretos se pasan mediante un archivo temporal con permisos 0600, eliminado al terminar, y se publican junto con la versión del Worker. `MONITOR_CONFIG_KEY` se instala como Worker Secret `CONFIG_KEY`; los tokens de Cloudflare y esta llave nunca se guardan en el dashboard. El despliegue requiere únicamente los tres secretos indicados arriba. Los tokens de notificaciones se configuran exclusivamente desde Ajustes.
 
-No se configuraron secretos de GitHub: la sesión local de `gh` no está autenticada y el token de Postmark debe proporcionarlo el propietario. Después de configurarlos, el propietario promueve y pushea a `main`.
+## Ajustes, licencia y notificaciones
+
+`/app/settings` está protegido por la misma aplicación de Access que el dashboard. La pestaña Acerca de muestra la versión de `package.json`, autoría, copyright y enlace a la licencia Apache 2.0 del repositorio. El texto completo está en `LICENSE` y la atribución del proyecto en `NOTICE`. Las dependencias conservan sus licencias.
+
+En Notificaciones se elige un único canal global: Correo (Postmark) o Telegram. El token de Postmark, destinatario, remitente verificado y stream transaccional se configuran desde el formulario. Telegram usa el token de BotFather y el identificador numérico del chat; el destinatario debe iniciar una conversación con el bot. Guía oficial: https://core.telegram.org/bots/tutorial#obtain-your-bot-token.
+
+La migración `0004_settings.sql` agrega `app_settings`. Su contenido se cifra con AES-GCM y contexto propio usando `CONFIG_KEY`. La API solo devuelve indicadores de token guardado; dejar un token vacío conserva el existente. Los cambios del canal aplican a las siguientes entregas, incluidos los reintentos pendientes. Los errores de entrega son sanitizados, los reintentos son persistentes y no existen destinatarios por proyecto ni avisos a clientes. En desarrollo local se interceptan ambos canales, sin llamadas a los proveedores.
+
+Las notificaciones dependen exclusivamente de la configuración cifrada guardada en el dashboard. Una instalación nueva debe configurar y guardar un canal en `/app/settings` antes de enviar alertas. Mientras no esté configurado, las entregas quedan pendientes y siguen la política habitual de reintentos y fallos definitivos; no se intenta contactar a un proveedor. No se leen credenciales ni destinatarios de variables del entorno.
+
+La aplicación y el correo usan únicamente el nombre AM25 Monitor como encabezado, sin logo. El correo tiene fondo negro y texto blanco.
 
 ## Seguridad y rutas
 

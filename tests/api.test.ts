@@ -1,3 +1,4 @@
+import { saveNotifications } from "../src/worker/settings";
 import { beforeEach, it, expect, vi } from "vitest";
 import { env } from "cloudflare:test";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
@@ -22,11 +23,11 @@ it("redacts credentials in administrative responses and exposes only selected pu
     "project",
     "Project",
     projectId,
-    JSON.stringify([hidden.id])
+    JSON.stringify([hidden.id]),
   ).run();
   const privateResponse = await worker.fetch(
     new Request("http://localhost/api/v1/admin/snapshot"),
-    env
+    env,
   );
   const privateBody = await privateResponse.text();
   expect(privateBody).not.toContain("secret-value");
@@ -35,7 +36,7 @@ it("redacts credentials in administrative responses and exposes only selected pu
   expect(snapshot.pages[0].included_ids).toEqual([visible.id]);
   const response = await worker.fetch(
     new Request("http://localhost/api/v1/public/project"),
-    env
+    env,
   );
   const body = await response.text();
   expect(body).toContain(visible.id);
@@ -49,41 +50,41 @@ it("does not expose unpublished pages or administrative routes through public AP
     (
       await worker.fetch(
         new Request("http://localhost/api/v1/public/no-page"),
-        env
+        env,
       )
-    ).status
+    ).status,
   ).toBe(404);
   expect(
     (
       await worker.fetch(
         new Request("http://localhost/api/v1/public/monitors"),
-        env
+        env,
       )
-    ).status
+    ).status,
   ).toBe(404);
   expect(
     (
       await worker.fetch(
         new Request("http://localhost/api/v1/admin/snapshot"),
-        { ...env, ENVIRONMENT: "production", APP_ORIGIN: "http://localhost" }
+        { ...env, ENVIRONMENT: "production", APP_ORIGIN: "http://localhost" },
       )
-    ).status
+    ).status,
   ).toBe(401);
 });
 it("rejects invalid heartbeat tokens and accepts report tokens independently of Access", async () => {
   const secret = "a".repeat(64),
     m = await createMonitor({
       kind: "heartbeat",
-      heartbeat_hash: await digest(secret)
+      heartbeat_hash: await digest(secret),
     });
   const report = (t: string) =>
     new Request(`http://localhost/api/v1/heartbeats/${m.id}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${t}`,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
       },
-      body: '{"ok":true}'
+      body: '{"ok":true}',
     });
   expect((await worker.fetch(report("b".repeat(64)), env)).status).toBe(401);
   expect((await worker.fetch(report(secret), env)).status).toBe(200);
@@ -91,7 +92,7 @@ it("rejects invalid heartbeat tokens and accepts report tokens independently of 
     env.DB,
     "UPDATE monitors SET heartbeat_hash=? WHERE id=?",
     await digest("c".repeat(64)),
-    m.id
+    m.id,
   ).run();
   expect((await worker.fetch(report(secret), env)).status).toBe(401);
 });
@@ -109,7 +110,7 @@ it("validates Access signature, issuer, audience, expiration and owner identity"
     APP_ORIGIN: "https://monitor.example.com",
     ACCESS_TEAM_DOMAIN: "https://team.cloudflareaccess.com",
     ACCESS_AUDIENCES: "aud",
-    ACCESS_EMAIL: "owner@example.test"
+    ACCESS_EMAIL: "owner@example.test",
   };
   const sign = async (
     claims: {
@@ -117,7 +118,7 @@ it("validates Access signature, issuer, audience, expiration and owner identity"
       issuer?: string;
       email?: string;
       expired?: boolean;
-    } = {}
+    } = {},
   ) =>
     new SignJWT({ email: claims.email ?? "owner@example.test" })
       .setProtectedHeader({ alg: "RS256", kid: "test-key" })
@@ -128,20 +129,20 @@ it("validates Access signature, issuer, audience, expiration and owner identity"
       .sign(keys.privateKey);
   const request = (jwt: string) =>
     new Request("https://monitor.example.com/api/v1/admin/snapshot", {
-      headers: { "Cf-Access-Jwt-Assertion": jwt }
+      headers: { "Cf-Access-Jwt-Assertion": jwt },
     });
   try {
     expect((await worker.fetch(request(await sign()), production)).status).toBe(
-      200
+      200,
     );
     const jwt = await sign();
     for (const path of ["/app", "/app/", "/app/monitors"]) {
       const response = await worker.fetch(
         new Request(`https://monitor.example.com${path}`, {
           redirect: "manual",
-          headers: { Cookie: `CF_Authorization=${jwt}` }
+          headers: { Cookie: `CF_Authorization=${jwt}` },
         }),
-        production
+        production,
       );
       expect(response.status).toBe(200);
       expect(response.headers.get("Location")).toBeNull();
@@ -151,17 +152,17 @@ it("validates Access signature, issuer, audience, expiration and owner identity"
       { aud: "other" },
       { issuer: "https://other.test" },
       { email: "stranger@example.test" },
-      { expired: true }
+      { expired: true },
     ])
       expect(
-        (await worker.fetch(request(await sign(claims)), production)).status
+        (await worker.fetch(request(await sign(claims)), production)).status,
       ).toBe(401);
     expect((await worker.fetch(request("invalid"), production)).status).toBe(
-      401
+      401,
     );
     const forged = new Request(
       "https://alternate.workers.dev/api/v1/admin/snapshot",
-      { headers: { "Cf-Access-Jwt-Assertion": await sign() } }
+      { headers: { "Cf-Access-Jwt-Assertion": await sign() } },
     );
     expect((await worker.fetch(forged, production)).status).toBe(404);
   } finally {
@@ -181,20 +182,23 @@ it("renders event details with local dates, incident duration and escaped monito
     kind: "http",
     opened_at: 1000,
     closed_at: 1900,
-    reason: "timeout"
+    reason: "timeout",
   };
   const recovered = await mailBody(details, "https://monitor.example.com/");
   expect(recovered.HtmlBody).not.toContain('<script>alert("x")</script>');
   expect(recovered.HtmlBody).toContain("&lt;script&gt;");
+  expect(recovered.HtmlBody).not.toContain("#0000f2");
+  expect(recovered.HtmlBody).not.toContain("am25-logo.svg");
+  expect(recovered.HtmlBody).toContain("AM25 Monitor");
   expect(recovered.TextBody).toContain("Duración del incidente: 15 min");
   expect(recovered.TextBody).toContain("El Salvador, UTC−6");
   expect(recovered.TextBody).toContain("El servicio no respondió a tiempo");
   expect(recovered.TextBody).toContain(
-    "https://monitor.example.com/app/monitors/monitor"
+    "https://monitor.example.com/app/monitors/monitor",
   );
   const opened = await mailBody(
     { ...details, event: "opened" },
-    "https://monitor.example.com"
+    "https://monitor.example.com",
   );
   expect(opened.TextBody).not.toContain("Recuperación:");
   expect(opened.TextBody).not.toContain("Duración del incidente:");
@@ -207,33 +211,37 @@ it("delivers only to the owner and retries temporary provider failures", async (
     "incident",
     m.id,
     1000,
-    "timeout"
+    "timeout",
   ).run();
   await statement(
     env.DB,
-    "INSERT INTO notifications(id,incident_id,event,monitor_name,created_at,next_attempt) VALUES('mail','incident','opened','Monitor',1000,1000)"
+    "INSERT INTO notifications(id,incident_id,event,monitor_name,created_at,next_attempt) VALUES('mail','incident','opened','Monitor',1000,1000)",
   ).run();
   const fetcher = vi
     .fn<typeof fetch>()
     .mockResolvedValue(new Response("", { status: 503 }));
-  const production = {
-    ...env,
-    ENVIRONMENT: "production",
-    OWNER_EMAIL: "support@am25.work",
-    POSTMARK_FROM: "noreply@am25.work",
-    POSTMARK_TOKEN: "test-token"
-  };
+  await saveNotifications(env, {
+    channel: "email",
+    email: {
+      to: "support@am25.work",
+      from: "noreply@am25.work",
+      stream: "outbound",
+      token: "test-token",
+    },
+    telegram: { chatId: "", token: "" },
+  });
+  const production = { ...env, ENVIRONMENT: "production" };
   await deliverNotifications(production, 1000, fetcher);
   expect(JSON.parse(String(fetcher.mock.calls[0][1]?.body)).To).toBe(
-    "support@am25.work"
+    "support@am25.work",
   );
   expect(
     (
       await first<{ state: string }>(
         env.DB,
-        "SELECT * FROM notifications WHERE id='mail'"
+        "SELECT * FROM notifications WHERE id='mail'",
       )
-    )?.state
+    )?.state,
   ).toBe("pending");
   fetcher.mockResolvedValue(Response.json({ ErrorCode: 0 }));
   await deliverNotifications(production, 1200, fetcher);
@@ -241,9 +249,9 @@ it("delivers only to the owner and retries temporary provider failures", async (
     (
       await first<{ state: string }>(
         env.DB,
-        "SELECT * FROM notifications WHERE id='mail'"
+        "SELECT * FROM notifications WHERE id='mail'",
       )
-    )?.state
+    )?.state,
   ).toBe("sent");
 });
 
@@ -256,15 +264,15 @@ it("paginates filtered history and exposes permanent notification failures", asy
         "INSERT INTO results(job_id,monitor_id,checked_at,ok,reason,diagnostic) VALUES(?,?,?,1,'ok','Comprobación exitosa')",
         String(i),
         m.id,
-        1000 + i
-      )
-    )
+        1000 + i,
+      ),
+    ),
   );
   const response = await worker.fetch(
     new Request(
-      `http://localhost/api/v1/admin/monitors/${m.id}/results?from=1000&to=1100`
+      `http://localhost/api/v1/admin/monitors/${m.id}/results?from=1000&to=1100`,
     ),
-    env
+    env,
   );
   const page = (await response.json()) as {
     results: unknown[];
@@ -274,37 +282,47 @@ it("paginates filtered history and exposes permanent notification failures", asy
   expect(page.nextCursor).toBeTypeOf("number");
   const next = await worker.fetch(
     new Request(
-      `http://localhost/api/v1/admin/monitors/${m.id}/results?from=1000&to=1100&cursor=${page.nextCursor}`
+      `http://localhost/api/v1/admin/monitors/${m.id}/results?from=1000&to=1100&cursor=${page.nextCursor}`,
     ),
-    env
+    env,
   );
   expect(((await next.json()) as { results: unknown[] }).results).toHaveLength(
-    1
+    1,
   );
   await statement(
     env.DB,
     "INSERT INTO incidents(id,monitor_id,opened_at,reason) VALUES('i',?,1000,'timeout')",
-    m.id
+    m.id,
   ).run();
   await statement(
     env.DB,
-    "INSERT INTO notifications(id,incident_id,event,monitor_name,created_at,next_attempt) VALUES('n','i','opened','Monitor',1000,1000)"
+    "INSERT INTO notifications(id,incident_id,event,monitor_name,created_at,next_attempt) VALUES('n','i','opened','Monitor',1000,1000)",
   ).run();
   const fetcher = vi
     .fn<typeof fetch>()
     .mockResolvedValue(new Response("", { status: 422 }));
+  await saveNotifications(env, {
+    channel: "email",
+    email: {
+      to: "owner@example.test",
+      from: "monitor@example.test",
+      stream: "outbound",
+      token: "test-token",
+    },
+    telegram: { chatId: "", token: "" },
+  });
   await deliverNotifications(
-    { ...env, ENVIRONMENT: "production", POSTMARK_TOKEN: "token" },
+    { ...env, ENVIRONMENT: "production" },
     1000,
-    fetcher
+    fetcher,
   );
   expect(
     (
       await first<{ state: string }>(
         env.DB,
-        "SELECT state FROM notifications WHERE id='n'"
+        "SELECT state FROM notifications WHERE id='n'",
       )
-    )?.state
+    )?.state,
   ).toBe("failed");
 });
 
@@ -312,37 +330,37 @@ it("serves public status HTML without redirecting to the private dashboard", asy
   const production = {
     ...env,
     ENVIRONMENT: "production",
-    APP_ORIGIN: "https://monitor.example.com"
+    APP_ORIGIN: "https://monitor.example.com",
   };
   const response = await worker.fetch(
     new Request("https://monitor.example.com/status/project", {
-      redirect: "manual"
+      redirect: "manual",
     }),
-    production
+    production,
   );
   expect(response.status).toBe(200);
   expect(response.headers.get("Location")).toBeNull();
   expect(await response.text()).toContain("Monitor test shell");
   const privateResponse = await worker.fetch(
     new Request("https://monitor.example.com/app/"),
-    production
+    production,
   );
   expect(privateResponse.status).toBe(401);
 });
 it("reproduces asset canonicalization and preserves the single root redirect", async () => {
   const asset = await env.ASSETS.fetch(
-    new Request("https://monitor.example.com/index.html", { redirect: "manual" })
+    new Request("https://monitor.example.com/index.html", { redirect: "manual" }),
   );
   expect(asset.status).toBe(307);
   expect(asset.headers.get("Location")).toBe("/");
   const production = {
     ...env,
     ENVIRONMENT: "production",
-    APP_ORIGIN: "https://monitor.example.com"
+    APP_ORIGIN: "https://monitor.example.com",
   };
   const root = await worker.fetch(
     new Request("https://monitor.example.com/"),
-    production
+    production,
   );
   expect(root.status).toBe(302);
   expect(root.headers.get("Location")).toBe("https://monitor.example.com/app/");
@@ -355,7 +373,7 @@ it("publishes only explicitly included monitors within the selected groups", asy
     "INSERT INTO groups(id,project_id,name) VALUES(?,?,?)",
     group,
     projectId,
-    "Public"
+    "Public",
   ).run();
   const visible = await createMonitor({ group_id: group });
   const hidden = await createMonitor();
@@ -365,19 +383,19 @@ it("publishes only explicitly included monitors within the selected groups", asy
     project_id: projectId,
     group_ids: [group],
     included_ids: [visible.id],
-    published: true
+    published: true,
   };
   const save = (value: unknown, id = "") =>
     worker.fetch(
       new Request(`http://localhost/api/v1/admin/pages${id ? `/${id}` : ""}`, {
         method: id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(value)
+        body: JSON.stringify(value),
       }),
-      env
+      env,
     );
   expect((await save({ ...payload, included_ids: [hidden.id] })).status).toBe(
-    400
+    400,
   );
   const otherProject = crypto.randomUUID();
   await statement(
@@ -385,12 +403,12 @@ it("publishes only explicitly included monitors within the selected groups", asy
     "INSERT INTO projects(id,name,created_at) VALUES(?,?,?)",
     otherProject,
     "Other",
-    1000
+    1000,
   ).run();
   const foreign = await createMonitor({ project_id: otherProject });
   expect(
     (await save({ ...payload, group_ids: [], included_ids: [foreign.id] }))
-      .status
+      .status,
   ).toBe(400);
   const response = await save(payload);
   expect(response.status).toBe(200);
@@ -400,7 +418,7 @@ it("publishes only explicitly included monitors within the selected groups", asy
     (await (
       await worker.fetch(
         new Request("http://localhost/api/v1/public/selected"),
-        env
+        env,
       )
     ).json()) as {
       monitors: { id: string; hourly: unknown[]; short: unknown[] }[];
@@ -413,7 +431,7 @@ it("publishes only explicitly included monitors within the selected groups", asy
     visible.id,
     hour,
     60,
-    60
+    60,
   ).run();
   const slot = new Date(Math.floor(Date.now() / 300000) * 300000)
     .toISOString()
@@ -424,18 +442,18 @@ it("publishes only explicitly included monitors within the selected groups", asy
     visible.id,
     slot,
     300,
-    240
+    240,
   ).run();
   expect((await read()).monitors[0].short).toEqual([
-    { slot, observed_seconds: 300, up_seconds: 240 }
+    { slot, observed_seconds: 300, up_seconds: 240 },
   ]);
   expect((await read()).monitors[0].hourly).toEqual([
-    { hour, observed_seconds: 60, up_seconds: 60 }
+    { hour, observed_seconds: 60, up_seconds: 60 },
   ]);
   expect(
     pageMonitors([visible, hidden, foreign], projectId, [group]).map(
-      (m) => m.id
-    )
+      (m) => m.id,
+    ),
   ).toEqual([visible.id]);
   expect((await save({ ...payload, included_ids: [] }, id)).status).toBe(200);
   expect((await read()).monitors).toEqual([]);
@@ -443,7 +461,7 @@ it("publishes only explicitly included monitors within the selected groups", asy
   await statement(
     env.DB,
     "UPDATE monitors SET group_id=NULL WHERE id=?",
-    visible.id
+    visible.id,
   ).run();
   expect((await read()).monitors).toEqual([]);
 });

@@ -211,12 +211,24 @@ export function Overview({
           <div className="flex flex-col gap-4">
             <dl className="grid gap-3 sm:grid-cols-2">
               <div>
-                <dt className="text-xs text-muted-foreground">Destinatario</dt>
-                <dd className="break-all">{data.settings.ownerEmail}</dd>
+                <dt className="text-xs text-muted-foreground">
+                  {data.settings.notifications.channel === "email"
+                    ? "Destinatario"
+                    : "Chat de Telegram"}
+                </dt>
+                <dd className="break-all">
+                  {data.settings.notifications.channel === "email"
+                    ? data.settings.notifications.email.to
+                    : data.settings.notifications.telegram.chatId}
+                </dd>
               </div>
               <div>
-                <dt className="text-xs text-muted-foreground">Remitente</dt>
-                <dd className="break-all">{data.settings.from}</dd>
+                <dt className="text-xs text-muted-foreground">Canal</dt>
+                <dd className="break-all">
+                  {data.settings.notifications.channel === "email"
+                    ? "Correo · Postmark"
+                    : "Telegram"}
+                </dd>
               </div>
             </dl>
             {data.notifications.length ? (
@@ -254,7 +266,7 @@ export function Overview({
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                No hay correos pendientes o fallidos.
+                No hay notificaciones pendientes o fallidas.
               </p>
             )}
           </div>

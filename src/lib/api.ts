@@ -1,3 +1,4 @@
+import type { SafeNotificationConfig } from "../shared/settings";
 import { useCallback, useEffect, useState } from "react";
 import type {
   Group,
@@ -31,7 +32,7 @@ export interface Snapshot {
     error: string | null;
   }[];
   backlog: { total: number; oldest: number | null };
-  settings: { ownerEmail: string; from: string; environment: string };
+  settings: { notifications: SafeNotificationConfig; environment: string };
 }
 export async function api<T>(
   path: string,

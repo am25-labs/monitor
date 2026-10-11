@@ -9,8 +9,7 @@
   ],
   "secrets": {
     "required": [
-      "CONFIG_KEY",
-      "POSTMARK_TOKEN"
+      "CONFIG_KEY"
     ]
   },
   "workers_dev": false,
@@ -31,10 +30,7 @@
     "ACCESS_TEAM_DOMAIN": "https://my-team.cloudflareaccess.com",
     "ACCESS_AUDIENCES": "REPLACE_WITH_ACCESS_AUDIENCE",
     "ACCESS_EMAIL": "owner@example.com",
-    "APP_ORIGIN": "https://monitor.example.com",
-    "OWNER_EMAIL": "support@am25.work",
-    "POSTMARK_FROM": "noreply@am25.work",
-    "POSTMARK_STREAM": "outbound"
+    "APP_ORIGIN": "https://monitor.example.com"
   },
   "d1_databases": [
     {

@@ -15,7 +15,6 @@ export default defineConfig({
           TEST_MIGRATIONS: await readD1Migrations("./migrations"),
           CONFIG_KEY:
             "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-          POSTMARK_TOKEN: "intercepted",
         },
       },
     })),

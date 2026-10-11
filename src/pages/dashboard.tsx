@@ -1,3 +1,4 @@
+import { Settings } from "../components/settings";
 import { Overview } from "../components/overview";
 import { ConfirmDialog } from "../components/confirm-dialog";
 import { useState } from "react";
@@ -11,7 +12,8 @@ import {
   Wrench,
   RefreshCw,
   Plus,
-  ArrowLeft
+  ArrowLeft,
+  Settings as SettingsIcon
 } from "lucide-react";
 import { api, date, useRefresh, type Snapshot } from "../lib/api";
 import type { SafeMonitor } from "../shared/types";
@@ -102,14 +104,16 @@ export function Dashboard({
     monitors: "Monitores",
     projects: "Proyectos y grupos",
     pages: "Páginas públicas",
-    maintenance: "Mantenimiento"
+    maintenance: "Mantenimiento",
+    settings: "Ajustes"
   };
   const nav = [
     { to: "overview", label: "Resumen", icon: Activity },
     { to: "monitors", label: "Monitores", icon: Activity },
     { to: "projects", label: "Proyectos y grupos", icon: Folder },
     { to: "pages", label: "Páginas públicas", icon: Globe },
-    { to: "maintenance", label: "Mantenimiento", icon: Wrench }
+    { to: "maintenance", label: "Mantenimiento", icon: Wrench },
+    { to: "settings", label: "Ajustes", icon: SettingsIcon }
   ];
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[240px_1fr]">
@@ -118,7 +122,6 @@ export function Dashboard({
           to="/app/"
           className="flex items-center gap-2 text-lg font-semibold"
         >
-          <Activity className="size-5" />
           AM25 Monitor
         </Link>
         <p className="mt-1 text-xs text-muted-foreground">
@@ -179,7 +182,7 @@ export function Dashboard({
             </div>
             <p className="text-sm text-muted-foreground">
               {data?.settings.environment === "local"
-                ? "Entorno local · correos interceptados"
+                ? "Entorno local · notificaciones interceptadas"
                 : "Actualización automática cada 30 segundos"}
             </p>
           </div>
@@ -231,6 +234,9 @@ export function Dashboard({
                   onCancel={() => setEditor(null)}
                 />
               ))}
+            {section === "settings" && (
+              <Settings data={data} onChange={refresh} />
+            )}
             {section === "overview" && (
               <Overview
                 data={data}

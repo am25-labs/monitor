@@ -25,8 +25,7 @@ if (
   for (const name of [
     "CLOUDFLARE_API_TOKEN",
     "CLOUDFLARE_ACCOUNT_ID",
-    "MONITOR_CONFIG_KEY",
-    "MONITOR_POSTMARK_TOKEN"
+    "MONITOR_CONFIG_KEY"
   ])
     if (!process.env[name])
       throw new Error(`Missing deployment secret: ${name}`);
@@ -39,8 +38,7 @@ if (
       writeFileSync(
         path,
         JSON.stringify({
-          CONFIG_KEY: process.env.MONITOR_CONFIG_KEY,
-          POSTMARK_TOKEN: process.env.MONITOR_POSTMARK_TOKEN
+          CONFIG_KEY: process.env.MONITOR_CONFIG_KEY
         }),
         { mode: 0o600 }
       );

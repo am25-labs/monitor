@@ -18,10 +18,7 @@
     "ACCESS_TEAM_DOMAIN": "https://my-team.cloudflareaccess.com",
     "ACCESS_AUDIENCES": "",
     "ACCESS_EMAIL": "owner@example.test",
-    "APP_ORIGIN": "http://localhost:5173",
-    "OWNER_EMAIL": "owner@example.test",
-    "POSTMARK_FROM": "monitor@example.test",
-    "POSTMARK_STREAM": "outbound"
+    "APP_ORIGIN": "http://localhost:5173"
   },
   "d1_databases": [
     {

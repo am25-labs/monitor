@@ -1,3 +1,4 @@
+import { safeNotifications, saveNotifications } from "./settings";
 import { pageMonitors } from "../shared/page-scope";
 import { z } from "zod";
 import {
@@ -185,11 +186,15 @@ export async function admin(
       backlog,
       stats,
       settings: {
-        ownerEmail: env.OWNER_EMAIL,
-        from: env.POSTMARK_FROM,
+        notifications: await safeNotifications(env),
         environment: env.ENVIRONMENT
       }
     });
+  }
+  if (resource === "settings" && id === "notifications" && !action) {
+    if (method === "GET") return json(await safeNotifications(env));
+    if (method === "PUT")
+      return json(await saveNotifications(env, await body(request)));
   }
   if (resource === "projects") {
     if (method === "POST" && !id) {
