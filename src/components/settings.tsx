@@ -757,9 +757,6 @@ export function Settings({
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-start gap-3">
-          <p className="text-muted-foreground">
-            {t("Creado por")} {product.author}
-          </p>
           <a
             href={product.repository}
             target="_blank"
@@ -798,12 +795,29 @@ export function Settings({
                 )}
               </p>
               <Separator />
-              <p>
-                {t("Autoría:")} {product.author}.
-              </p>
-              <p className="text-muted-foreground">
-                © {new Date().getFullYear()} {product.copyright}
-              </p>
+              <div className="flex flex-col gap-1">
+                <p>
+                  {t("Autor:")}{" "}
+                  <a
+                    href="https://alemartir.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-4"
+                  >
+                    {product.author}
+                  </a>
+                </p>
+                <p>
+                  <a
+                    href="https://am25.work"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-4"
+                  >
+                    © {new Date().getFullYear()} AM25
+                  </a>
+                </p>
+              </div>
             </div>
           </Panel>
           <Panel title={t("Datos y privacidad")}>

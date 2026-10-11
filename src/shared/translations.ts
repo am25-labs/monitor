@@ -320,7 +320,7 @@ export const english: Record<string, string> = {
   "está disponible bajo": "is available under",
   "La licencia permite usar, modificar y distribuir el código bajo sus condiciones. Consulta el texto completo en el repositorio. Las dependencias conservan sus propias licencias.":
     "The license allows use, modification and distribution under its terms. Read the full text in the repository. Dependencies retain their own licenses.",
-  "Autoría:": "Author:",
+  "Autor:": "Author:",
   "Datos y privacidad": "Data and privacy",
   "Cómo esta instalación procesa la información de monitoreo.":
     "How this installation processes monitoring data.",
