@@ -221,8 +221,8 @@ it("delivers only to the owner and retries temporary provider failures", async (
     .fn<typeof fetch>()
     .mockResolvedValue(new Response("", { status: 503 }));
   await saveNotifications(env, {
-    channel: "email",
     email: {
+      enabled: true,
       to: "alerts@example.com",
       from: "monitor@example.com",
       stream: "outbound",
@@ -302,8 +302,8 @@ it("paginates filtered history and exposes permanent notification failures", asy
     .fn<typeof fetch>()
     .mockResolvedValue(new Response("", { status: 422 }));
   await saveNotifications(env, {
-    channel: "email",
     email: {
+      enabled: true,
       to: "owner@example.test",
       from: "monitor@example.test",
       stream: "outbound",

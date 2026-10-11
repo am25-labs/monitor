@@ -14,6 +14,7 @@ export async function setup() {
   await applyD1Migrations(env.DB, env.TEST_MIGRATIONS);
   await env.DB.batch(
     [
+      "notification_deliveries",
       "notifications",
       "app_settings",
       "incidents",

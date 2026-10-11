@@ -23,8 +23,8 @@ it("defaults the dashboard to Spanish and persists its language without altering
     await (await worker.fetch(request("admin/settings/general"), env)).json(),
   ).toEqual({ language: "es" });
   await saveNotifications(env, {
-    channel: "email",
     email: {
+      enabled: true,
       to: "owner@example.test",
       from: "monitor@example.test",
       stream: "outbound",

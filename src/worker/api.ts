@@ -155,7 +155,7 @@ export async function admin(
       first(env.DB, "SELECT * FROM engine WHERE id=1"),
       rows(
         env.DB,
-        "SELECT id,event,monitor_name,created_at,state,attempts,error FROM notifications WHERE state<>'sent' ORDER BY created_at DESC LIMIT 50"
+        "SELECT n.id,n.event,n.monitor_name,n.created_at,COALESCE(d.state,n.state) AS state,COALESCE(d.attempts,n.attempts) AS attempts,COALESCE(d.error,n.error) AS error,d.channel FROM notifications n LEFT JOIN notification_deliveries d ON d.notification_id=n.id WHERE COALESCE(d.state,n.state)<>'sent' ORDER BY n.created_at DESC LIMIT 50"
       ),
       first(
         env.DB,
@@ -539,6 +539,12 @@ export async function admin(
     }
   }
   if (resource === "notifications" && action === "retry" && method === "POST") {
+    await statement(
+      env.DB,
+      "UPDATE notification_deliveries SET state='pending',attempts=0,next_attempt=?,error=NULL WHERE notification_id=? AND state='failed'",
+      now,
+      id
+    ).run();
     await statement(
       env.DB,
       "UPDATE notifications SET state='pending',attempts=0,next_attempt=?,error=NULL WHERE id=? AND state='failed'",

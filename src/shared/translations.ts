@@ -1,4 +1,51 @@
 export const english: Record<string, string> = {
+  "No hay notificaciones pendientes o fallidas.": "No pending or failed notifications.",
+  "Hub de notificaciones": "Notification hub",
+  "Activa uno o varios canales para tus alertas personales de caída y recuperación.":
+    "Enable one or more channels for your personal outage and recovery alerts.",
+  "Configuración guardada. Las alertas usarán todos los canales activos.":
+    "Settings saved. Alerts will use all enabled channels.",
+  Activar: "Enable",
+  "Este canal está desactivado.": "This channel is disabled.",
+  "Valor guardado": "Saved value",
+  "Ingresa el valor": "Enter the value",
+  "Déjalo vacío para conservar el valor guardado. Se almacena cifrado.":
+    "Leave blank to keep the saved value. It is stored encrypted.",
+  "Déjalo vacío para conservar el token existente.":
+    "Leave blank to keep the existing token.",
+  "Instala Pushover en tu teléfono y crea una aplicación para obtener las claves.":
+    "Install Pushover on your phone and register an application to obtain the keys.",
+  "API Token de Pushover": "Pushover API Token",
+  "User Key de Pushover": "Pushover User Key",
+  "Repetir alertas de caída hasta confirmar":
+    "Repeat outage alerts until acknowledged",
+  "Repetir cada (segundos)": "Repeat every (seconds)",
+  "Duración máxima (segundos)": "Maximum duration (seconds)",
+  "Pushover limita cada alerta a 50 repeticiones. La recuperación cancela las pendientes. En iPhone, habilita las alertas críticas en Pushover y en los permisos de iOS.":
+    "Pushover limits each alert to 50 retries. Recovery cancels pending retries. On iPhone, enable critical alerts in Pushover and in iOS permissions.",
+  "Configurar Pushover": "Set up Pushover",
+  "Servidor de ntfy": "ntfy server",
+  "Tema de ntfy": "ntfy topic",
+  "Token de acceso (opcional)": "Access token (optional)",
+  "Suscríbete al mismo tema en la app. En ntfy.sh gratuito, usa un nombre aleatorio: quien lo conozca puede leer y publicar mensajes. Se envía una alerta urgente por caída, sin repetición automática.":
+    "Subscribe to the same topic in the app. On free ntfy.sh, use a random name: anyone who knows it can read and publish messages. An urgent alert is sent for each outage, without automatic repetition.",
+  "Configurar ntfy": "Set up ntfy",
+  "Credenciales cifradas en D1. Entregas y reintentos independientes por canal.":
+    "Credentials encrypted in D1. Independent deliveries and retries per channel.",
+  "Si desactivas todos los canales, los nuevos eventos no enviarán alertas.":
+    "If you disable all channels, new events will not send alerts.",
+  "Sin canales activos": "No enabled channels",
+  "Sin canal": "No channel",
+  "Completa las claves de Pushover y usa una duración igual o mayor al intervalo.":
+    "Enter the Pushover keys and use a duration greater than or equal to the retry interval.",
+  "Completa el tema de ntfy.": "Enter the ntfy topic.",
+  "Usa una URL HTTPS sin rutas ni credenciales.":
+    "Use an HTTPS URL without paths or credentials.",
+  "Usa letras, números, guiones o guiones bajos.":
+    "Use letters, numbers, hyphens or underscores.",
+  "Las alertas comparten los detalles del incidente con los proveedores de los canales activos. El acceso privado se administra mediante Cloudflare Access.":
+    "Alerts share incident details with the providers of enabled channels. Private access is managed through Cloudflare Access.",
+
   "Cerrar sesión": "Sign out",
   "Falló una operación del motor; revisar los logs de Cloudflare.":
     "An engine operation failed; check the Cloudflare logs.",
@@ -111,8 +158,6 @@ export const english: Record<string, string> = {
   Pendiente: "Pending",
   intentos: "attempts",
   Reintentar: "Retry",
-  "No hay notificaciones pendientes o fallidas.":
-    "No pending or failed notifications.",
   "Salud del motor": "Engine health",
   Revisar: "Needs attention",
   Activo: "Active",
@@ -405,5 +450,5 @@ export const english: Record<string, string> = {
   "{observed} de {count} segmentos con registros. Cada segmento representa {duration}.":
     "{observed} of {count} segments with records. Each segment represents {duration}.",
   "La disponibilidad corresponde al tiempo observado durante los últimos {period}. Excluye pausas, mantenimiento y períodos sin datos.":
-    "Availability reflects observed time over the last {period}. Excludes pauses, maintenance and periods without data."
+    "Availability reflects observed time over the last {period}. Excludes pauses, maintenance and periods without data.",
 };

@@ -24,7 +24,7 @@ Before changing resources, ask me for any missing information:
 - Names for the Worker, D1, queue, and Access application, or whether I want to
   reuse existing resources dedicated to this installation.
 - Whether I already have a Zero Trust organization and One-time PIN configured.
-- Notification channel (Postmark or Telegram) and the non-secret details required
+- Notification channels (Postmark, Telegram, Pushover, or ntfy) and the non-secret details required
   to configure it, if I want to enable it during installation.
 
 Use the authenticated Cloudflare plugin or MCP. Check the selected account,
@@ -232,7 +232,7 @@ Keep a secure backup of this key. It encrypts credentials and notification setti
 
 All four values must be in **Repository secrets**, not the Variables tab. The workflow reads `secrets.ACCESS_EMAIL`; a value saved only in Variables will not be received. The email stays outside versioned code and is installed in Cloudflare as Worker Secret `ACCESS_EMAIL`, alongside `CONFIG_KEY`. If missing or incorrectly formatted, deployment stops before running migrations.
 
-Do not configure Postmark or Telegram tokens in GitHub. They are saved through the dashboard, encrypted in D1. Local `.dev.vars` values do not configure production.
+Do not configure notification channel credentials in GitHub. They are saved through the dashboard, encrypted in D1. Local `.dev.vars` values do not configure production.
 
 ## 8. Publish for the first time
 
@@ -244,12 +244,17 @@ Wait for Actions to finish successfully. In Cloudflare, check that your Worker h
 
 ## 9. Enable notifications
 
-Open **Settings → Notifications** and save one global channel:
+Open **Settings → Notifications**. Enable one or more channels and save your changes:
 
 - **Email:** create a server in Postmark, verify the sender or its domain, and copy its **Server API Token**. Configure token, recipient, verified sender, and transactional stream (usually `outbound`). The recipient may differ from the Access email.
 - **Telegram:** create a bot with BotFather, copy its token, and start a conversation with the bot. Obtain your personal chat's numeric ID and configure the token and ID. See the [Telegram tutorial](https://core.telegram.org/bots/tutorial#obtain-your-bot-token).
 
-Alerts are personal and are sent on incident opening and recovery, without client subscriptions. Until a channel is saved, notifications are not delivered; pending attempts follow the retry policy and may ultimately fail. Review their states in the overview.
+- **Pushover:** install the app, create an account at [Pushover](https://pushover.net/), and register an application named AM25 Monitor. Copy its **API Token** and your **User Key** into the dashboard. When repetitions are enabled, confirmed outages use emergency priority: by default, every 60 seconds for 1800 seconds (30 minutes), until acknowledged in the app or the service recovers. Pushover limits each alert to 50 retries and a maximum of three hours. Recovery cancels pending repetitions and is sent as a normal notification. On iPhone, authorize critical alerts in Pushover and in iOS Settings; test the sound with your phone locked and your usual nighttime mode enabled. The app offers a 30-day trial and a one-time purchase per platform, without automatic billing when the trial ends. See its [pricing](https://pushover.net/pricing).
+- **ntfy:** install the app and subscribe to a topic on [ntfy.sh](https://ntfy.sh/) or your own server hosted outside the monitored infrastructure. Configure the server's HTTPS URL, the same topic, and an access token if authentication is required. Free ntfy.sh topics are not private: use a long random name, such as `monitor-` followed by 32 random characters, and avoid known names. Anyone who knows the topic can read and publish messages. The free public service limits sending to 250 messages per day. Monitor sends urgent priority for outages and normal priority for recovery, without automatic repetitions. iOS critical alerts are still listed as unreleased in the [release notes](https://docs.ntfy.sh/releases/); do not rely on ntfy to bypass silent mode or Do Not Disturb on iPhone.
+
+Alerts are personal and are sent to all enabled channels on incident opening and recovery, without client subscriptions. Each channel maintains its own deliveries and retries: a failure in one does not repeat successful sends in another. Review per-channel failures in the overview; Retry retries the failed deliveries for that event. Tokens, the user key, and the topic are stored encrypted and are not returned to the browser; leaving them blank preserves the existing value.
+
+Previous single-channel settings are automatically preserved on upgrade. Until settings are saved, notifications are not delivered; pending attempts may ultimately fail. If you save all channels disabled, new events will not send alerts. Disabling Pushover does not immediately cancel an alarm already sent: you can acknowledge it in the app; Monitor also cancels it when processing recovery. A lost provider response may cause duplicate sends.
 
 In **Settings → General**, choose the dashboard language. Spanish is the default; each public page configures its language separately.
 
@@ -296,6 +301,8 @@ For the original project, each promotion to `main` will carry the version in `pa
 
 For quick recovery, you can select a previous healthy deployment from the Worker's history. This does not revert D1 or automatically restore secrets. Check the version's compatibility with the current schema and encryption key; an older version may require a separate database or data recovery. Consult [D1 Time Travel](https://developers.cloudflare.com/d1/reference/time-travel/) before restoring data.
 
+The hub migration adds a delivery table without removing existing data. After saving multichannel settings, do not roll back to a version before the hub: those versions only understand one channel. Keep a version that supports the hub or adapt the encrypted settings before that kind of recovery.
+
 ## 13. Test locally and troubleshoot
 
 For an isolated local installation:
@@ -305,7 +312,7 @@ pnpm db:local
 pnpm dev
 ```
 
-Open `http://localhost:5173/app/`. `pnpm dev` creates `.dev.vars` from the example if it does not exist. The database, queue, and access are local; email and Telegram are intercepted. HTTP/TCP targets still receive checks: use test services. Sign out is hidden because there is no Access session.
+Open `http://localhost:5173/app/`. `pnpm dev` creates `.dev.vars` from the example if it does not exist. The database, queue, and access are local; all notification channels are intercepted. HTTP/TCP targets still receive checks: use test services. Sign out is hidden because there is no Access session.
 
 The local cron is triggered manually and validation does not require a production build:
 

@@ -220,33 +220,35 @@ export function Overview({
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-4">
-            <dl className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <dt className="text-xs text-muted-foreground">
-                  {data.settings.notifications.channel === "email"
-                    ? t("Destinatario")
-                    : t("Chat de Telegram")}
-                </dt>
-                <dd className="break-all">
-                  {data.settings.notifications.channel === "email"
-                    ? data.settings.notifications.email.to
-                    : data.settings.notifications.telegram.chatId}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted-foreground">{t("Canal")}</dt>
-                <dd className="break-all">
-                  {data.settings.notifications.channel === "email"
-                    ? t("Correo · Postmark")
-                    : "Telegram"}
-                </dd>
-              </div>
-            </dl>
+            <div className="flex flex-wrap items-center gap-2">
+              {(["email", "telegram", "pushover", "ntfy"] as const)
+                .filter(
+                  (channel) => data.settings.notifications[channel].enabled
+                )
+                .map((channel) => (
+                  <Badge key={channel} variant="outline">
+                    {channel === "email"
+                      ? t("Correo · Postmark")
+                      : channel === "telegram"
+                        ? "Telegram"
+                        : channel === "pushover"
+                          ? "Pushover"
+                          : "ntfy"}
+                  </Badge>
+                ))}
+              {!Object.values(data.settings.notifications).some(
+                (value) => typeof value === "object" && value.enabled
+              ) && (
+                <span className="text-sm text-muted-foreground">
+                  {t("Sin canales activos")}
+                </span>
+              )}
+            </div>
             {data.notifications.length ? (
               <div className="flex flex-col gap-3 border-t pt-4">
                 {data.notifications.map((n) => (
                   <div
-                    key={n.id}
+                    key={`${n.id}:${n.channel ?? "unconfigured"}`}
                     className="flex flex-wrap items-center justify-between gap-3"
                   >
                     <div>
@@ -255,7 +257,8 @@ export function Overview({
                         {n.state === "failed"
                           ? t("Entrega fallida")
                           : t("Pendiente")}{" "}
-                        · {n.attempts} {t("intentos")}
+                        · {n.channel ?? t("Sin canal")} · {n.attempts}{" "}
+                        {t("intentos")}
                       </p>
                       {n.error && (
                         <p className="text-xs text-muted-foreground">
@@ -292,7 +295,7 @@ function EngineHealth({ data }: { data: Snapshot }) {
   const { t, date, availability } = useLocale();
   const stale = Boolean(
     data.engine.last_finished &&
-    Date.now() / 1000 - data.engine.last_finished > 180
+      Date.now() / 1000 - data.engine.last_finished > 180
   );
   const unhealthy = stale || Boolean(data.engine.last_error);
   return (

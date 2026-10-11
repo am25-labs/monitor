@@ -30,6 +30,7 @@ export interface Snapshot {
   };
   notifications: {
     id: string;
+    channel: string | null;
     monitor_name: string;
     event: string;
     state: string;

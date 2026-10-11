@@ -24,7 +24,7 @@ Antes de cambiar recursos, pídeme los datos que falten:
 - Nombres para el Worker, D1, cola y aplicación de Access, o si quiero reutilizar
   recursos existentes dedicados a esta instalación.
 - Si ya tengo organización de Zero Trust y One-time PIN configurados.
-- Canal de notificaciones (Postmark o Telegram) y los datos no secretos necesarios
+- Canales de notificaciones (Postmark, Telegram, Pushover o ntfy) y los datos no secretos necesarios
   para configurarlo, si quiero activarlo durante la instalación.
 
 Usa el plugin o MCP de Cloudflare autenticado. Comprueba la cuenta seleccionada,
@@ -232,7 +232,7 @@ Guarda una copia segura de esta llave. Cifra credenciales y configuración de no
 
 Los cuatro valores deben estar en **Repository secrets**, no en la pestaña Variables. El workflow lee `secrets.ACCESS_EMAIL`; un valor guardado solamente en Variables no se recibirá. El correo queda fuera del código versionado y se instala en Cloudflare como Worker Secret `ACCESS_EMAIL`, junto con `CONFIG_KEY`. Si falta o no tiene formato válido, el despliegue se detiene antes de ejecutar migraciones.
 
-No configures tokens de Postmark o Telegram en GitHub. Se guardan desde el dashboard, cifrados en D1. Los datos locales de `.dev.vars` no configuran producción.
+No configures credenciales de los canales de notificaciones en GitHub. Se guardan desde el dashboard, cifrados en D1. Los datos locales de `.dev.vars` no configuran producción.
 
 ## 8. Publicar por primera vez
 
@@ -244,12 +244,17 @@ Espera a que Actions termine correctamente. En Cloudflare, comprueba que tu Work
 
 ## 9. Activar las notificaciones
 
-Abre **Ajustes → Notificaciones** y guarda un canal global:
+Abre **Ajustes → Notificaciones**. Activa uno o varios canales y guarda los cambios:
 
 - **Correo:** crea un servidor en Postmark, verifica el remitente o su dominio y copia su **Server API Token**. Configura token, destinatario, remitente verificado y stream transaccional (habitualmente `outbound`). El destinatario puede ser diferente del correo de Access.
 - **Telegram:** crea un bot con BotFather, copia su token e inicia una conversación con el bot. Obtén el ID numérico de tu chat personal y configura token e ID. Consulta el [tutorial de Telegram](https://core.telegram.org/bots/tutorial#obtain-your-bot-token).
 
-Las alertas son personales y se envían por apertura y recuperación, sin suscripciones de clientes. Hasta guardar un canal, no se entregan notificaciones; los intentos pendientes siguen la política de reintentos y pueden terminar en fallo. Revisa sus estados en el overview.
+- **Pushover:** instala la app, crea tu cuenta en [Pushover](https://pushover.net/) y registra una aplicación con el nombre AM25 Monitor. Copia su **API Token** y tu **User Key** en el dashboard. Si habilitas las repeticiones, las caídas confirmadas usan prioridad de emergencia: por defecto, cada 60 segundos durante 1800 segundos (30 minutos), hasta confirmar en la app o recuperarse el servicio. Pushover limita cada alerta a 50 repeticiones y tres horas como máximo. La recuperación cancela las repeticiones pendientes y se envía como notificación normal. En iPhone, autoriza las alertas críticas en Pushover y en Ajustes de iOS; prueba el sonido con el teléfono bloqueado y en tu modo nocturno habitual. La app ofrece 30 días de prueba y una compra única por plataforma, sin cobro automático al finalizar la prueba. Consulta sus [precios](https://pushover.net/pricing).
+- **ntfy:** instala la app y suscríbete a un tema en [ntfy.sh](https://ntfy.sh/) o en un servidor propio que viva fuera de la infraestructura vigilada. Configura la URL HTTPS del servidor, el mismo tema y, si requiere autenticación, un token de acceso. En ntfy.sh gratuito los temas no son privados: usa un nombre largo y aleatorio, como `monitor-` seguido de 32 caracteres aleatorios, y evita nombres conocidos. Quien conozca el tema puede leer y publicar mensajes. El servicio público gratuito limita los envíos a 250 mensajes diarios. Monitor envía prioridad urgente para una caída y normal para una recuperación, sin repetición automática. Las alertas críticas de iOS figuran todavía como no publicadas en las [notas de versiones](https://docs.ntfy.sh/releases/); no dependas de ntfy para saltarte silencio o No molestar en iPhone.
+
+Las alertas son personales y se envían a todos los canales activos por apertura y recuperación, sin suscripciones de clientes. Cada canal mantiene sus propias entregas y reintentos: el fallo de uno no repite los envíos exitosos de otro. Revisa los fallos por canal en el overview; Reintentar vuelve a intentar las entregas fallidas de ese evento. Los tokens, la clave de usuario y el tema se guardan cifrados y no se devuelven al navegador; dejarlos vacíos conserva el valor existente.
+
+La configuración anterior de un solo canal se conserva automáticamente al actualizar. Hasta guardar la configuración, no se entregan notificaciones; los intentos pendientes pueden terminar en fallo. Si guardas todos los canales desactivados, los nuevos eventos no enviarán alertas. Desactivar Pushover no cancela inmediatamente una alarma ya enviada: puedes confirmarla en la app; Monitor también la cancela cuando procesa la recuperación. Si una respuesta del proveedor se pierde, puede haber envíos duplicados.
 
 En **Ajustes → General**, elige el idioma del dashboard. Español es el valor predeterminado; cada página pública configura su idioma por separado.
 
@@ -296,6 +301,8 @@ Para el proyecto original, cada promoción a `main` llevará la versión de `pac
 
 Para una recuperación rápida, puedes seleccionar un despliegue anterior sano desde el historial del Worker. Esto no revierte D1 ni restaura automáticamente los secretos. Comprueba la compatibilidad de la versión con el esquema actual y la llave de cifrado; una versión antigua puede necesitar una base independiente o una recuperación de datos. Consulta [D1 Time Travel](https://developers.cloudflare.com/d1/reference/time-travel/) antes de restaurar datos.
 
+La migración del hub añade una tabla de entregas sin eliminar datos existentes. Después de guardar una configuración multicanal, no regreses a una versión anterior al hub: esas versiones solo interpretan un canal. Conserva la versión que soporta el hub o adapta la configuración cifrada antes de una recuperación de ese tipo.
+
 ## 13. Probar localmente y resolver problemas
 
 Para una instalación local aislada:
@@ -305,7 +312,7 @@ pnpm db:local
 pnpm dev
 ```
 
-Abre `http://localhost:5173/app/`. `pnpm dev` crea `.dev.vars` desde el ejemplo si no existe. La base, la cola y el acceso son locales; los correos y Telegram se interceptan. Los destinos HTTP/TCP sí reciben comprobaciones: usa servicios de prueba. El logout no aparece porque no hay sesión de Access.
+Abre `http://localhost:5173/app/`. `pnpm dev` crea `.dev.vars` desde el ejemplo si no existe. La base, la cola y el acceso son locales; todos los canales de notificaciones se interceptan. Los destinos HTTP/TCP sí reciben comprobaciones: usa servicios de prueba. El logout no aparece porque no hay sesión de Access.
 
 El cron local se activa manualmente y la validación no requiere un build de producción:
 

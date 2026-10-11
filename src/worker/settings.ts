@@ -2,6 +2,8 @@ import { first, statement, nowSeconds } from "./db";
 import { seal, unseal } from "./crypto";
 import {
   notificationInput,
+  defaultNotifications,
+  channels,
   generalInput,
   type GeneralSettings,
   type NotificationConfig,
@@ -34,80 +36,86 @@ export async function notificationConfig(env: Env): Promise<{
     env.DB,
     "SELECT value FROM app_settings WHERE id='notifications'",
   );
-  if (stored)
+  if (stored) {
+    const saved = await unseal<
+      NotificationConfig & { channel?: "email" | "telegram" }
+    >(stored.value, env.CONFIG_KEY, context);
     return {
-      config: await unseal<NotificationConfig>(
-        stored.value,
-        env.CONFIG_KEY,
-        context,
-      ),
+      config: notificationInput.parse({
+        ...saved,
+        email: {
+          ...saved.email,
+          enabled: saved.email.enabled ?? saved.channel === "email",
+        },
+        telegram: {
+          ...saved.telegram,
+          enabled: saved.telegram.enabled ?? saved.channel === "telegram",
+        },
+      }),
       configured: true,
     };
-  return {
-    configured: false,
-    config: {
-      channel: "email",
-      email: {
-        to: "",
-        from: "",
-        stream: "outbound",
-        token: "",
-      },
-      telegram: { chatId: "", token: "" },
-    },
-  };
+  }
+  return { configured: false, config: defaultNotifications() };
 }
 export async function safeNotifications(
   env: Env,
 ): Promise<SafeNotificationConfig> {
   const { config, configured } = await notificationConfig(env);
+  const { token: emailToken, ...email } = config.email;
+  const { token: telegramToken, ...telegram } = config.telegram;
+  const { token: pushoverToken, userKey, ...pushover } = config.pushover;
+  const { token: ntfyToken, topic, ...ntfy } = config.ntfy;
   return {
-    channel: config.channel,
     configured,
-    email: {
-      to: config.email.to,
-      from: config.email.from,
-      stream: config.email.stream,
-      hasToken: Boolean(config.email.token),
+    email: { ...email, hasToken: Boolean(emailToken) },
+    telegram: { ...telegram, hasToken: Boolean(telegramToken) },
+    pushover: {
+      ...pushover,
+      hasToken: Boolean(pushoverToken),
+      hasUserKey: Boolean(userKey),
     },
-    telegram: {
-      chatId: config.telegram.chatId,
-      hasToken: Boolean(config.telegram.token),
-    },
+    ntfy: { ...ntfy, hasToken: Boolean(ntfyToken), hasTopic: Boolean(topic) },
   };
 }
 export async function saveNotifications(env: Env, input: unknown) {
   const value = notificationInput.parse(input);
   const { config: old } = await notificationConfig(env);
-  const config: NotificationConfig = {
-    channel: value.channel,
-    email: { ...value.email, token: value.email.token || old.email.token },
-    telegram: {
-      ...value.telegram,
-      token: value.telegram.token || old.telegram.token,
-    },
-  };
+  for (const channel of channels) value[channel].token ||= old[channel].token;
+  value.pushover.userKey ||= old.pushover.userKey;
+  value.ntfy.topic ||= old.ntfy.topic;
   if (
-    config.channel === "email" &&
-    (!config.email.to || !config.email.from || !config.email.token)
+    value.email.enabled &&
+    (!value.email.to || !value.email.from || !value.email.token)
   )
     throw new Response(
       "Completa destinatario, remitente y token de Postmark.",
       { status: 400 },
     );
   if (
-    config.channel === "telegram" &&
-    (!config.telegram.chatId ||
-      !/^\d+:[A-Za-z0-9_-]+$/.test(config.telegram.token))
+    value.telegram.enabled &&
+    (!value.telegram.chatId ||
+      !/^\d+:[A-Za-z0-9_-]+$/.test(value.telegram.token))
   )
     throw new Response(
       "Completa el identificador de chat y un token válido del bot de Telegram.",
       { status: 400 },
     );
+  if (
+    value.pushover.enabled &&
+    (!/^[A-Za-z0-9]{30}$/.test(value.pushover.token) ||
+      !/^[A-Za-z0-9]{30}$/.test(value.pushover.userKey) ||
+      value.pushover.expireSeconds < value.pushover.retrySeconds)
+  )
+    throw new Response(
+      "Completa las claves de Pushover y usa una duración igual o mayor al intervalo.",
+      { status: 400 },
+    );
+  if (value.ntfy.enabled && !value.ntfy.topic)
+    throw new Response("Completa el tema de ntfy.", { status: 400 });
   await statement(
     env.DB,
     "INSERT INTO app_settings(id,value,updated_at) VALUES('notifications',?,?) ON CONFLICT(id) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at",
-    await seal(config, env.CONFIG_KEY, context),
+    await seal(value, env.CONFIG_KEY, context),
     nowSeconds(),
   ).run();
   return safeNotifications(env);

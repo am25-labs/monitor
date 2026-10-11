@@ -12,7 +12,7 @@ AM25 Monitor te permite supervisar tus sitios, APIs y procesos en segundo plano 
 - Proyectos y grupos, incidentes, pausas y ventanas de mantenimiento.
 - Hasta 100 monitores, con intervalos desde un minuto.
 - Comprobaciones individuales durante seis meses calendario; agregados diarios e incidentes cerrados durante 365 días.
-- Notificaciones personales por correo mediante Postmark o por Telegram.
+- Hub multicanal de alertas personales con Postmark, Telegram, Pushover y ntfy.
 - Páginas públicas con selección de servicios e historial de 24 horas, 7 días o 90 días.
 - Dashboard y páginas públicas en español o inglés, con tema claro y oscuro.
 
@@ -50,7 +50,7 @@ AM25 Monitor lets you monitor websites, APIs, and background processes from Clou
 - Projects and groups, incidents, pauses, and maintenance windows.
 - Up to 100 monitors, with intervals starting at one minute.
 - Individual checks retained for six calendar months; daily aggregates and closed incidents retained for 365 days.
-- Personal notifications by email through Postmark or through Telegram.
+- Multichannel personal alert hub with Postmark, Telegram, Pushover, and ntfy.
 - Public pages with selected services and 24-hour, 7-day, or 90-day history.
 - Dashboard and public pages in Spanish or English, with light and dark themes.
 

@@ -12,9 +12,12 @@ import type {
   SafeNotificationConfig,
   NotificationConfig,
   GeneralSettings,
+  NotificationChannel,
 } from "../shared/settings";
 import { ChoiceSelect } from "./choice-select";
 import { FormField, Notice, Panel } from "./common";
+import { Checkbox } from "./ui/checkbox";
+import { Label } from "./ui/label";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { FieldDescription, FieldGroup } from "./ui/field";
@@ -119,7 +122,7 @@ function EmailFields({
         />
         <FieldDescription>
           {hasToken
-            ? t("Dejalo vacío para conservar el token existente.")
+            ? t("Déjalo vacío para conservar el token existente.")
             : t("El token se guardará cifrado y no se volverá a mostrar.")}
         </FieldDescription>
       </FormField>
@@ -179,7 +182,7 @@ function TelegramFields({
         />
         <FieldDescription>
           {hasToken
-            ? t("Dejalo vacío para conservar el token existente.")
+            ? t("Déjalo vacío para conservar el token existente.")
             : t("El token se guardará cifrado y no se volverá a mostrar.")}
         </FieldDescription>
       </FormField>
@@ -194,6 +197,178 @@ function TelegramFields({
     </>
   );
 }
+type SecretRenderer = (
+  id: string,
+  label: string,
+  value: string,
+  hasValue: boolean,
+  update: (value: string) => void,
+  required?: boolean,
+) => React.ReactNode;
+function PushoverFields({
+  value: pushover,
+  setValue: setPushover,
+  busy,
+  saved,
+  secret,
+}: ChannelFields<NotificationConfig["pushover"]> & {
+  saved: SafeNotificationConfig["pushover"];
+  secret: SecretRenderer;
+}) {
+  const { t } = useLocale();
+  return (
+    <>
+      <FieldDescription>
+        {t(
+          "Instala Pushover en tu teléfono y crea una aplicación para obtener las claves.",
+        )}
+      </FieldDescription>
+      {secret(
+        "pushover-token",
+        "API Token de Pushover",
+        pushover.token,
+        saved.hasToken,
+        (token) => setPushover((value) => ({ ...value, token })),
+      )}
+      {secret(
+        "pushover-user",
+        "User Key de Pushover",
+        pushover.userKey,
+        saved.hasUserKey,
+        (userKey) => setPushover((value) => ({ ...value, userKey })),
+      )}
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id="pushover-emergency"
+          checked={pushover.emergency}
+          disabled={busy}
+          onCheckedChange={(checked) =>
+            setPushover((value) => ({
+              ...value,
+              emergency: checked === true,
+            }))
+          }
+        />
+        <Label htmlFor="pushover-emergency">
+          {t("Repetir alertas de caída hasta confirmar")}
+        </Label>
+      </div>
+      {pushover.emergency && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField id="pushover-retry" label={t("Repetir cada (segundos)")}>
+            <Input
+              id="pushover-retry"
+              type="number"
+              min={30}
+              max={3600}
+              required
+              disabled={busy}
+              value={pushover.retrySeconds}
+              onChange={(event) =>
+                setPushover((value) => ({
+                  ...value,
+                  retrySeconds: Number(event.target.value),
+                }))
+              }
+            />
+          </FormField>
+          <FormField
+            id="pushover-expire"
+            label={t("Duración máxima (segundos)")}
+          >
+            <Input
+              id="pushover-expire"
+              type="number"
+              min={60}
+              max={10800}
+              required
+              disabled={busy}
+              value={pushover.expireSeconds}
+              onChange={(event) =>
+                setPushover((value) => ({
+                  ...value,
+                  expireSeconds: Number(event.target.value),
+                }))
+              }
+            />
+          </FormField>
+        </div>
+      )}
+      <FieldDescription>
+        {t(
+          "Pushover limita cada alerta a 50 repeticiones. La recuperación cancela las pendientes. En iPhone, habilita las alertas críticas en Pushover y en los permisos de iOS.",
+        )}
+      </FieldDescription>
+      <a
+        className="text-sm underline underline-offset-4"
+        href="https://pushover.net/"
+        target="_blank"
+        rel="noreferrer"
+      >
+        {t("Configurar Pushover")}
+      </a>
+    </>
+  );
+}
+function NtfyFields({
+  value: ntfy,
+  setValue: setNtfy,
+  busy,
+  saved,
+  secret,
+}: ChannelFields<NotificationConfig["ntfy"]> & {
+  saved: SafeNotificationConfig["ntfy"];
+  secret: SecretRenderer;
+}) {
+  const { t } = useLocale();
+  return (
+    <>
+      <FormField id="ntfy-server" label={t("Servidor de ntfy")}>
+        <Input
+          id="ntfy-server"
+          type="url"
+          required
+          disabled={busy}
+          value={ntfy.server}
+          onChange={(event) =>
+            setNtfy((value) => ({
+              ...value,
+              server: event.target.value,
+            }))
+          }
+        />
+      </FormField>
+      {secret(
+        "ntfy-topic",
+        "Tema de ntfy",
+        ntfy.topic,
+        saved.hasTopic,
+        (topic) => setNtfy((value) => ({ ...value, topic })),
+      )}
+      {secret(
+        "ntfy-token",
+        "Token de acceso (opcional)",
+        ntfy.token,
+        saved.hasToken,
+        (token) => setNtfy((value) => ({ ...value, token })),
+        false,
+      )}
+      <FieldDescription>
+        {t(
+          "Suscríbete al mismo tema en la app. En ntfy.sh gratuito, usa un nombre aleatorio: quien lo conozca puede leer y publicar mensajes. Se envía una alerta urgente por caída, sin repetición automática.",
+        )}
+      </FieldDescription>
+      <a
+        className="text-sm underline underline-offset-4"
+        href="https://docs.ntfy.sh/subscribe/phone/"
+        target="_blank"
+        rel="noreferrer"
+      >
+        {t("Configurar ntfy")}
+      </a>
+    </>
+  );
+}
 function Notifications({
   initial,
   onChange,
@@ -203,20 +378,34 @@ function Notifications({
 }) {
   const { t } = useLocale();
   const [saved, setSaved] = useState(initial);
-  const [channel, setChannel] = useState(initial.channel);
-  const [email, setEmail] = useState({
-    to: initial.email.to,
-    from: initial.email.from,
-    stream: initial.email.stream,
+  const [email, setEmail] = useState<NotificationConfig["email"]>({
+    ...initial.email,
     token: "",
   });
-  const [telegram, setTelegram] = useState({
-    chatId: initial.telegram.chatId,
+  const [telegram, setTelegram] = useState<NotificationConfig["telegram"]>({
+    ...initial.telegram,
     token: "",
+  });
+  const [pushover, setPushover] = useState<NotificationConfig["pushover"]>({
+    ...initial.pushover,
+    token: "",
+    userKey: "",
+  });
+  const [ntfy, setNtfy] = useState<NotificationConfig["ntfy"]>({
+    ...initial.ntfy,
+    token: "",
+    topic: "",
   });
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
+  const values = { email, telegram, pushover, ntfy };
+  function toggle(channel: NotificationChannel, enabled: boolean) {
+    if (channel === "email") setEmail((value) => ({ ...value, enabled }));
+    if (channel === "telegram") setTelegram((value) => ({ ...value, enabled }));
+    if (channel === "pushover") setPushover((value) => ({ ...value, enabled }));
+    if (channel === "ntfy") setNtfy((value) => ({ ...value, enabled }));
+  }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
@@ -226,13 +415,17 @@ function Notifications({
       const result = await api<SafeNotificationConfig>(
         "admin/settings/notifications",
         "PUT",
-        { channel, email, telegram },
+        values,
       );
       setSaved(result);
-      setEmail((current) => ({ ...current, token: "" }));
-      setTelegram((current) => ({ ...current, token: "" }));
+      setEmail((value) => ({ ...value, token: "" }));
+      setTelegram((value) => ({ ...value, token: "" }));
+      setPushover((value) => ({ ...value, token: "", userKey: "" }));
+      setNtfy((value) => ({ ...value, token: "", topic: "" }));
       setNotice(
-        t("Configuración guardada. Las alertas usarán el canal seleccionado."),
+        t(
+          "Configuración guardada. Las alertas usarán todos los canales activos.",
+        ),
       );
       await onChange();
     } catch (error) {
@@ -245,67 +438,138 @@ function Notifications({
       setBusy(false);
     }
   }
+  function secret(
+    id: string,
+    label: string,
+    value: string,
+    hasValue: boolean,
+    update: (value: string) => void,
+    required = true,
+  ) {
+    return (
+      <FormField id={id} label={t(label)}>
+        <Input
+          id={id}
+          type="password"
+          autoComplete="new-password"
+          disabled={busy}
+          required={required && !hasValue}
+          value={value}
+          onChange={(event) => update(event.target.value)}
+          placeholder={hasValue ? t("Valor guardado") : t("Ingresa el valor")}
+        />
+        <FieldDescription>
+          {t(
+            "Déjalo vacío para conservar el valor guardado. Se almacena cifrado.",
+          )}
+        </FieldDescription>
+      </FormField>
+    );
+  }
+  const names = {
+    email: t("Correo · Postmark"),
+    telegram: "Telegram",
+    pushover: "Pushover",
+    ntfy: "ntfy",
+  };
   return (
     <Panel
-      title={t("Notificaciones")}
+      title={t("Hub de notificaciones")}
       description={t(
-        "Un canal para tus alertas personales de caída y recuperación.",
+        "Activa uno o varios canales para tus alertas personales de caída y recuperación.",
       )}
     >
       <form onSubmit={submit} className="flex flex-col gap-6">
         <Notice message={error} destructive />
         <Notice message={notice} />
-        <FieldGroup>
-          <FormField
-            id="notification-channel"
-            label={t("Canal de notificaciones")}
-          >
-            <ChoiceSelect
-              id="notification-channel"
-              value={channel}
-              disabled={busy}
-              onValueChange={(value) => setChannel(value as typeof channel)}
-              options={[
-                { value: "email", label: t("Correo · Postmark") },
-                { value: "telegram", label: "Telegram" },
-              ]}
-            />
-            <FieldDescription>
-              {t(
-                "Las alertas se envían únicamente al destinatario configurado aquí.",
-              )}
-            </FieldDescription>
-          </FormField>
-          {channel === "email" ? (
-            <EmailFields
-              value={email}
-              setValue={setEmail}
-              busy={busy}
-              hasToken={saved.email.hasToken}
-            />
-          ) : (
-            <TelegramFields
-              value={telegram}
-              setValue={setTelegram}
-              busy={busy}
-              hasToken={saved.telegram.hasToken}
-            />
+        <div className="grid items-start gap-4 lg:grid-cols-2">
+          {(["email", "telegram", "pushover", "ntfy"] as const).map(
+            (channel) => (
+              <Card key={channel}>
+                <CardHeader>
+                  <div className="flex items-center justify-between gap-4">
+                    <CardTitle>{names[channel]}</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id={`enable-${channel}`}
+                        checked={values[channel].enabled}
+                        disabled={busy}
+                        onCheckedChange={(checked) =>
+                          toggle(channel, checked === true)
+                        }
+                      />
+                      <Label htmlFor={`enable-${channel}`}>
+                        {t("Activar")}
+                      </Label>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {!values[channel].enabled ? (
+                    <p className="text-sm text-muted-foreground">
+                      {t("Este canal está desactivado.")}
+                    </p>
+                  ) : (
+                    <FieldGroup>
+                      {channel === "email" && (
+                        <EmailFields
+                          value={email}
+                          setValue={setEmail}
+                          busy={busy}
+                          hasToken={saved.email.hasToken}
+                        />
+                      )}
+                      {channel === "telegram" && (
+                        <TelegramFields
+                          value={telegram}
+                          setValue={setTelegram}
+                          busy={busy}
+                          hasToken={saved.telegram.hasToken}
+                        />
+                      )}
+                      {channel === "pushover" && (
+                        <PushoverFields
+                          value={pushover}
+                          setValue={setPushover}
+                          busy={busy}
+                          hasToken={saved.pushover.hasToken}
+                          saved={saved.pushover}
+                          secret={secret}
+                        />
+                      )}
+                      {channel === "ntfy" && (
+                        <NtfyFields
+                          value={ntfy}
+                          setValue={setNtfy}
+                          busy={busy}
+                          hasToken={saved.ntfy.hasToken}
+                          saved={saved.ntfy}
+                          secret={secret}
+                        />
+                      )}
+                    </FieldGroup>
+                  )}
+                </CardContent>
+              </Card>
+            ),
           )}
-        </FieldGroup>
+        </div>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <ShieldCheck className="size-4" />
-            {t("Tokens cifrados en D1.")}
+            {t(
+              "Credenciales cifradas en D1. Entregas y reintentos independientes por canal.",
+            )}
           </p>
           <Button type="submit" disabled={busy}>
             {busy ? t("Guardando…") : t("Guardar cambios")}
           </Button>
         </div>
-        {!saved.configured && (
-          <p className="text-sm text-muted-foreground">
-            {t("Configura y guarda un canal para comenzar a recibir alertas.")}
-          </p>
-        )}
+        <FieldDescription>
+          {t(
+            "Si desactivas todos los canales, los nuevos eventos no enviarán alertas.",
+          )}
+        </FieldDescription>
       </form>
     </Panel>
   );
@@ -455,7 +719,7 @@ export function Settings({
               </p>
               <p>
                 {t(
-                  "Las alertas comparten los detalles del incidente con Postmark o Telegram, según el canal que configures. El acceso privado se administra mediante Cloudflare Access.",
+                  "Las alertas comparten los detalles del incidente con los proveedores de los canales activos. El acceso privado se administra mediante Cloudflare Access.",
                 )}
               </p>
             </div>
