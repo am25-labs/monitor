@@ -124,8 +124,20 @@ export function Dashboard({
         <p className="mt-1 text-xs text-muted-foreground">
           Tu infraestructura, en observación
         </p>
+        <div className="mt-4 lg:hidden">
+          <ChoiceSelect
+            aria-label="Navegación principal"
+            value={section}
+            options={nav.map((item) => ({ value: item.to, label: item.label }))}
+            onValueChange={(value) => {
+              setEditor(null);
+              setNotice("");
+              navigate(`/app/${value}`);
+            }}
+          />
+        </div>
         <nav
-          className="mt-6 flex flex-wrap gap-1 lg:flex-col"
+          className="mt-6 hidden flex-col gap-1 lg:flex"
           aria-label="Navegación principal"
         >
           {nav.map((n) => (
@@ -150,11 +162,11 @@ export function Dashboard({
             </NavLink>
           ))}
         </nav>
-        <p className="mt-8 text-xs text-muted-foreground">
+        <p className="mt-8 hidden text-xs text-muted-foreground lg:block">
           Historial completo · 6 meses
         </p>
       </aside>
-      <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-5 md:p-8">
+      <main className="mx-auto flex w-full min-w-0 max-w-7xl flex-col gap-6 p-5 md:p-8">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="flex min-w-0 flex-wrap items-center gap-3">
@@ -317,41 +329,44 @@ export function Dashboard({
             )}
             {section === "monitors" && !id && (
               <>
-                <div className="flex flex-wrap gap-3">
-                  <Input
-                    aria-label="Buscar monitores"
-                    placeholder="Buscar monitores…"
-                    className="max-w-xs"
-                    value={filter}
-                    onChange={(e) => setFilter(e.target.value)}
-                  />
-                  <ChoiceSelect
-                    aria-label="Filtrar por proyecto"
-                    value={project}
-                    onValueChange={(value) => {
-                      setProject(value);
-                      setGroup("");
-                    }}
-                    options={[
-                      { value: "", label: "Todos los proyectos" },
-                      ...data.projects.map((p) => ({
-                        value: p.id,
-                        label: p.name
-                      }))
-                    ]}
-                  />
-                  <ChoiceSelect
-                    aria-label="Filtrar por grupo"
-                    value={group}
-                    onValueChange={(value) => setGroup(value)}
-                    options={[
-                      { value: "", label: "Todos los grupos" },
-                      ...data.groups
-                        .filter((g) => !project || g.project_id === project)
-                        .map((g) => ({ value: g.id, label: g.name }))
-                    ]}
-                  />
+                <div className="flex min-w-0 flex-col gap-3">
+                  <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-3">
+                    <Input
+                      aria-label="Buscar monitores"
+                      placeholder="Buscar monitores…"
+                      className="w-full min-w-0"
+                      value={filter}
+                      onChange={(e) => setFilter(e.target.value)}
+                    />
+                    <ChoiceSelect
+                      aria-label="Filtrar por proyecto"
+                      value={project}
+                      onValueChange={(value) => {
+                        setProject(value);
+                        setGroup("");
+                      }}
+                      options={[
+                        { value: "", label: "Todos los proyectos" },
+                        ...data.projects.map((p) => ({
+                          value: p.id,
+                          label: p.name
+                        }))
+                      ]}
+                    />
+                    <ChoiceSelect
+                      aria-label="Filtrar por grupo"
+                      value={group}
+                      onValueChange={(value) => setGroup(value)}
+                      options={[
+                        { value: "", label: "Todos los grupos" },
+                        ...data.groups
+                          .filter((g) => !project || g.project_id === project)
+                          .map((g) => ({ value: g.id, label: g.name }))
+                      ]}
+                    />
+                  </div>
                   <Button
+                    className="self-start"
                     disabled={
                       !data.projects.length || data.monitors.length >= 100
                     }
@@ -432,7 +447,7 @@ export function Dashboard({
             )}
             {section === "projects" && (
               <>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button onClick={() => setEditor({ resource: "projects" })}>
                     Crear proyecto
                   </Button>
@@ -452,7 +467,7 @@ export function Dashboard({
                       description={p.description}
                     >
                       <div className="flex flex-col gap-3">
-                        <div className="flex gap-2">
+                        <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
                           <Button
                             variant="outline"
                             onClick={() =>
@@ -486,7 +501,7 @@ export function Dashboard({
                           .map((g) => (
                             <div
                               key={g.id}
-                              className="flex flex-wrap items-center justify-between gap-2 border-t pt-3"
+                              className="flex flex-col gap-3 border-t pt-3 sm:flex-row sm:items-center sm:justify-between"
                             >
                               <span>
                                 {g.name} ·{" "}
@@ -497,7 +512,7 @@ export function Dashboard({
                                 }{" "}
                                 monitores
                               </span>
-                              <div className="flex gap-2">
+                              <div className="grid grid-cols-2 gap-2 sm:flex">
                                 <Button
                                   variant="ghost"
                                   onClick={() =>
