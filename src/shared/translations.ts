@@ -1,4 +1,5 @@
 export const english: Record<string, string> = {
+  "Cerrar sesión": "Sign out",
   "Falló una operación del motor; revisar los logs de Cloudflare.":
     "An engine operation failed; check the Cloudflare logs.",
   "Quita el monitor de la página pública antes de moverlo.":

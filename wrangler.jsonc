@@ -9,7 +9,8 @@
   ],
   "secrets": {
     "required": [
-      "CONFIG_KEY"
+      "CONFIG_KEY",
+      "ACCESS_EMAIL"
     ]
   },
   "workers_dev": false,
@@ -29,7 +30,6 @@
     "ENVIRONMENT": "production",
     "ACCESS_TEAM_DOMAIN": "https://my-team.cloudflareaccess.com",
     "ACCESS_AUDIENCES": "REPLACE_WITH_ACCESS_AUDIENCE",
-    "ACCESS_EMAIL": "owner@example.com",
     "APP_ORIGIN": "https://monitor.example.com"
   },
   "d1_databases": [

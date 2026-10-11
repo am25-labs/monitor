@@ -223,8 +223,8 @@ it("delivers only to the owner and retries temporary provider failures", async (
   await saveNotifications(env, {
     channel: "email",
     email: {
-      to: "support@am25.work",
-      from: "noreply@am25.work",
+      to: "alerts@example.com",
+      from: "monitor@example.com",
       stream: "outbound",
       token: "test-token",
     },
@@ -233,7 +233,7 @@ it("delivers only to the owner and retries temporary provider failures", async (
   const production = { ...env, ENVIRONMENT: "production" };
   await deliverNotifications(production, 1000, fetcher);
   expect(JSON.parse(String(fetcher.mock.calls[0][1]?.body)).To).toBe(
-    "support@am25.work",
+    "alerts@example.com",
   );
   expect(
     (

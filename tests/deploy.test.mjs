@@ -1,7 +1,34 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { allowed, deploySteps } from "../scripts/pipeline.mjs";
+
+test("missing or invalid access email stops deployment before remote commands", () => {
+  for (const email of [undefined, " ", "invalid"]) {
+    const env = {
+      GITHUB_ACTIONS: "true",
+      GITHUB_REF: "refs/heads/main",
+      GITHUB_EVENT_NAME: "push",
+      CLOUDFLARE_API_TOKEN: "test-token",
+      CLOUDFLARE_ACCOUNT_ID: "test-account",
+      MONITOR_CONFIG_KEY: "a".repeat(64),
+      ...(email === undefined ? {} : { ACCESS_EMAIL: email })
+    };
+    const result = spawnSync(process.execPath, ["scripts/deploy.mjs"], {
+      env,
+      encoding: "utf8"
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(
+      result.stderr,
+      email === undefined
+        ? /Missing deployment setting: ACCESS_EMAIL/
+        : /Invalid access email/
+    );
+    assert.doesNotMatch(result.stderr, /Deployment step failed/);
+  }
+});
 
 test("only a push on main can deploy", () => {
   const env = {

@@ -13,6 +13,7 @@ import {
   Sun,
   Wrench,
   RefreshCw,
+  LogOut,
   Plus,
   ArrowLeft,
   Settings as SettingsIcon
@@ -228,6 +229,15 @@ function DashboardView({
             >
               {theme === "dark" ? <Sun /> : <Moon />}
             </Button>
+            {data?.settings.environment !== "local" && (
+              <a
+                href="/cdn-cgi/access/logout"
+                className={buttonVariants({ variant: "outline" })}
+              >
+                <LogOut />
+                {t("Cerrar sesión")}
+              </a>
+            )}
           </div>
         </header>
         <Notice message={error} destructive />

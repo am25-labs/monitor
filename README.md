@@ -1,103 +1,79 @@
 # AM25 Monitor
 
-Monitor personal independiente del VPS: React + Vite, Workers, D1, Queues y Cloudflare Access. Interfaz, correos y mensajes de Telegram en español. No usa Gate ni Durable Objects.
+[Español](#español) · [English](#english)
 
-## Desarrollo
+## Español
 
-Trabajar en `develop`. Solo el propietario hace commits, pushes y promociones a `main`.
+AM25 Monitor te permite supervisar tus sitios, APIs y procesos en segundo plano desde Cloudflare, independientemente del servidor que estás vigilando. Incluye un dashboard privado y páginas públicas para comunicar el estado de tus servicios.
 
-```sh
-pnpm install --frozen-lockfile
-pnpm db:local
-pnpm dev
-```
+### Qué incluye
 
-Abrir `http://localhost:5173/app/`. El script crea `.dev.vars` con valores locales si no existe. D1, colas y autenticación son locales; las notificaciones se interceptan y nunca se envían. Para disparar el cron simulado, usar `curl http://localhost:8787/__scheduled`. No hay cron automático en la configuración local. Los destinos de monitores locales sí reciben comprobaciones: usar servicios de prueba propios.
+- Monitores HTTP/HTTPS, conexiones TCP y heartbeats para procesos sin dominio.
+- Proyectos y grupos, incidentes, pausas y ventanas de mantenimiento.
+- Hasta 100 monitores, con intervalos desde un minuto.
+- Comprobaciones individuales durante seis meses calendario; agregados diarios e incidentes cerrados durante 365 días.
+- Notificaciones personales por correo mediante Postmark o por Telegram.
+- Páginas públicas con selección de servicios e historial de 24 horas, 7 días o 90 días.
+- Dashboard y páginas públicas en español o inglés, con tema claro y oscuro.
 
-Validación: `pnpm check`. No ejecutar compilaciones de producción como validación local rutinaria; GitHub Actions ejecuta `pnpm build`. No usar `wrangler.jsonc` para desarrollo ni aplicar migraciones remotas desde `develop`.
+React, Vite, TypeScript y shadcn/ui forman la interfaz. Cloudflare Workers ejecuta la aplicación; D1 almacena los datos; Queues distribuye las comprobaciones; Access protege el dashboard. No necesitas alojarlo en tu VPS ni configurar R2 o Durable Objects.
 
-## Producción y repositorio privado
+### Instalar
 
-GitHub Actions sustituye Workers Builds. No conectar un segundo pipeline de Cloudflare. La validación de desarrollo se ejecuta localmente con `pnpm check`. `.github/workflows/deploy.yml` valida y publica únicamente tras un push a `main`; los pushes a `develop` y los pull requests no ejecutan workflows. El checkout usa el token del repositorio privado y no necesita hacerlo público.
+Sigue la [guía de configuración en español](docs/setup/es.md). Explica cómo preparar tu repositorio, crear los recursos de Cloudflare, proteger el acceso, conectar tu dominio y activar las notificaciones. Cada instalación utiliza sus propias cuentas, recursos y credenciales.
 
-Secuencia: instalación con lockfile → TypeScript → pruebas → frontend → migraciones D1 → secretos → Worker y assets. Cualquier error detiene los pasos posteriores. Los despliegues se serializan y no se cancelan a mitad de una migración. El script de publicación exige un evento push de GitHub Actions en `main`.
+El despliegue utiliza GitHub Actions y se activa únicamente con cambios en `main`. Funciona con repositorios públicos o privados. El consumo y los límites dependen de tu plan de Cloudflare; la retención de seis meses no implica que toda instalación quepa en el plan gratuito.
 
-Recursos creados y registrados en `wrangler.jsonc`:
+### Versiones y Releases
 
-- Cuenta AM25: `00000000000000000000000000000000`.
-- D1 `am25-monitor`: `00000000-0000-0000-0000-000000000000`.
-- Cola `am25-monitor-checks`: `c7ebb04c99da4be8a716695deb0762a7`.
-- Aplicación Access `AM25 Monitor`: `b49a40db-8e0c-402e-8ca1-6f677f9bc7ec`.
-- Acceso mediante código al correo, autorizado únicamente para `owner@example.com`.
+Al publicar el proyecto, cada promoción a `main` se identificará con una versión y un GitHub Release. La versión de `package.json`, la etiqueta `vX.Y.Z` y el Release deben corresponder al mismo estado del código; la versión de la aplicación se muestra en Ajustes.
 
-El primer despliegue crea/actualiza el Worker `am25-monitor` y conecta su Custom Domain `monitor.example.com` en la zona activa de Cloudflare. `workers.dev` y URLs de preview están deshabilitados. No se publicó una aplicación de producción durante el desarrollo.
+Se usará versionado semántico: `MAJOR.MINOR.PATCH`. Los cambios incompatibles incrementan la versión mayor, las funciones compatibles la menor y las correcciones la revisión. Durante `0.x`, las versiones menores pueden introducir cambios incompatibles, que se indicarán en las notas del Release.
 
-En GitHub → Settings → Secrets and variables → Actions, crear secretos del repositorio:
+Los Releases incluirán los cambios, requisitos de configuración y migraciones relevantes. Para instalar una versión concreta, utiliza su etiqueta o su archivo de código fuente en [Releases](https://github.com/am25-labs/monitor/releases), en lugar del estado más reciente de `main`. Conserva la configuración de tu instalación cuando actualices.
 
-| Secreto                  | Valor                                             |
-| ------------------------ | ------------------------------------------------- |
-| `CLOUDFLARE_ACCOUNT_ID`  | Cuenta indicada arriba                            |
-| `CLOUDFLARE_API_TOKEN`   | Token limitado a esta cuenta y zona               |
-| `MONITOR_CONFIG_KEY`     | 32 bytes aleatorios en hexadecimal: 64 caracteres |
+Crear un Release o una etiqueta no despliega: el workflow actual se activa por un push a `main`. Los Releases identifican las versiones publicadas; no existe un actualizador automático. Volver a código anterior tampoco revierte la base de datos: consulta la guía antes de recuperar una versión.
 
-El token necesita edición de Workers Scripts, D1 y Queues en la cuenta; edición de Workers Routes y DNS en la zona `am25.app` para el dominio. No necesita administrar Access: la aplicación ya está configurada. Mantener los secretos fuera del repositorio y respaldar la llave de cifrado. No sustituirla sin migrar las configuraciones cifradas existentes.
+### Autoría y licencia
 
-Los secretos se pasan mediante un archivo temporal con permisos 0600, eliminado al terminar, y se publican junto con la versión del Worker. `MONITOR_CONFIG_KEY` se instala como Worker Secret `CONFIG_KEY`; los tokens de Cloudflare y esta llave nunca se guardan en el dashboard. El despliegue requiere únicamente los tres secretos indicados arriba. Los tokens de notificaciones se configuran exclusivamente desde Ajustes.
+Creado por Alejandro Mártir. Copyright 2026 AM25, S.A.S. DE C.V.
 
-## Ajustes, licencia y notificaciones
+Disponible bajo [Apache License 2.0](LICENSE). Consulta [NOTICE](NOTICE) para la atribución del proyecto. Las dependencias conservan sus propias licencias.
 
-`/app/settings` está protegido por la misma aplicación de Access que el dashboard. El encabezado muestra la versión de `package.json` en un chip y la autoría de Alejandro Mártir. La pestaña Acerca de incluye el enlace a la licencia Apache 2.0 del repositorio. El texto completo está en `LICENSE` y la atribución del proyecto en `NOTICE`. Las dependencias conservan sus licencias.
+## English
 
-La pestaña General permite guardar el idioma del dashboard (español o inglés) para esta instalación. Cada página pública tiene un selector independiente de idioma en su formulario. El idioma predeterminado siempre es español; no depende del idioma del navegador ni del dashboard. Se traducen etiquetas, controles, estados y fechas; los nombres, títulos y descripciones escritos por el administrador conservan su contenido. Los correos mantienen su idioma actual.
+AM25 Monitor lets you monitor websites, APIs, and background processes from Cloudflare, independently of the server you are watching. It includes a private dashboard and public pages to communicate the status of your services.
 
-La migración `0005_languages.sql` agrega el idioma de las páginas existentes con valor `es` y amplía los identificadores permitidos en `app_settings` para guardar preferencias generales. Conserva intacta la configuración cifrada de notificaciones. Las preferencias de idioma no contienen secretos y se guardan como JSON.
+### Features
 
-En Notificaciones se elige un único canal global: Correo (Postmark) o Telegram. El token de Postmark, destinatario, remitente verificado y stream transaccional se configuran desde el formulario. Telegram usa el token de BotFather y el identificador numérico del chat; el destinatario debe iniciar una conversación con el bot. Guía oficial: https://core.telegram.org/bots/tutorial#obtain-your-bot-token.
+- HTTP/HTTPS monitors, TCP connections, and heartbeats for processes without a domain.
+- Projects and groups, incidents, pauses, and maintenance windows.
+- Up to 100 monitors, with intervals starting at one minute.
+- Individual checks retained for six calendar months; daily aggregates and closed incidents retained for 365 days.
+- Personal notifications by email through Postmark or through Telegram.
+- Public pages with selected services and 24-hour, 7-day, or 90-day history.
+- Dashboard and public pages in Spanish or English, with light and dark themes.
 
-La migración `0004_settings.sql` agrega `app_settings`. La configuración de notificaciones se cifra con AES-GCM y contexto propio usando `CONFIG_KEY`. La API solo devuelve indicadores de token guardado; dejar un token vacío conserva el existente. Los cambios del canal aplican a las siguientes entregas, incluidos los reintentos pendientes. Los errores de entrega son sanitizados, los reintentos son persistentes y no existen destinatarios por proyecto ni avisos a clientes. En desarrollo local se interceptan ambos canales, sin llamadas a los proveedores.
+React, Vite, TypeScript, and shadcn/ui power the interface. Cloudflare Workers runs the application; D1 stores data; Queues distributes checks; Access protects the dashboard. You do not need to host it on your VPS or configure R2 or Durable Objects.
 
-Las notificaciones dependen exclusivamente de la configuración cifrada guardada en el dashboard. Una instalación nueva debe configurar y guardar un canal en `/app/settings` antes de enviar alertas. Mientras no esté configurado, las entregas quedan pendientes y siguen la política habitual de reintentos y fallos definitivos; no se intenta contactar a un proveedor. No se leen credenciales ni destinatarios de variables del entorno.
+### Install
 
-La aplicación y el correo usan únicamente el nombre AM25 Monitor como encabezado, sin logo. El correo tiene fondo negro y texto blanco.
+Follow the [English setup guide](docs/setup/en.md). It explains how to prepare your repository, create Cloudflare resources, secure access, connect your domain, and enable notifications. Each installation uses its own accounts, resources, and credentials.
 
-## Seguridad y rutas
+Deployment uses GitHub Actions and runs only on changes to `main`. It works with public or private repositories. Usage and limits depend on your Cloudflare plan; six-month retention does not mean every installation fits within the free plan.
 
-`/` redirige a `/app/`. Access protege `/app`, `/app/*`, `/api/v1/admin` y `/api/v1/admin/*`. El Worker verifica JWT RS256, emisor, audiencia, expiración e identidad antes de servir assets privados. Las escrituras administrativas validan el origen.
+### Versions and Releases
 
-`/status/:slug` y `/api/v1/public/:slug` son públicos y de lectura. Solo muestran monitores seleccionados, disponibilidad e incidentes sanitizados; no publican destinos, credenciales, respuestas ni diagnósticos. `/api/v1/heartbeats/:id` acepta POST con `Authorization: Bearer TOKEN` y JSON `{"ok":true}` o `{"ok":false}`, sin sesión de Access. El token se muestra al crearlo/regenerarlo y se guarda únicamente su hash.
+Once the project is public, each promotion to `main` will have a version and a GitHub Release. The version in `package.json`, the `vX.Y.Z` tag, and the Release must correspond to the same code state; the application version appears in Settings.
 
-Las configuraciones se cifran con AES-GCM y contexto por monitor. La API administrativa redacta headers; editar sin reemplazar credenciales conserva los existentes. Los errores guardados usan mensajes sanitizados, nunca cuerpos de respuesta.
+Semantic versioning will use `MAJOR.MINOR.PATCH`. Breaking changes increase the major version, compatible features the minor version, and fixes the patch version. During `0.x`, minor versions may introduce breaking changes, which will be stated in the Release notes.
 
-## Motor, historial y operación
+Releases will describe changes, configuration requirements, and relevant migrations. To install a specific version, use its tag or source archive from [Releases](https://github.com/am25-labs/monitor/releases), rather than the latest state of `main`. Preserve your installation configuration when updating.
 
-Hasta 100 monitores con intervalo mínimo de 60 segundos. Cron cada minuto, lotes de cinco mensajes y máximo cinco consumidores. Reservas de 90 segundos, identidad por monitor/configuración/período y transacciones D1 evitan duplicados y resultados de versiones anteriores. Los trabajos atrasados o errores del motor dejan ausencia de datos; no producen fallos falsos del destino.
+Creating a Release or a tag does not deploy: the current workflow runs on a push to `main`. Releases identify published versions; there is no automatic updater. Reverting code does not revert the database either: consult the guide before recovering a version.
 
-HTTP usa GET, 2xx, sin redirecciones y timeout de 10 segundos por defecto. Admite HEAD, headers, códigos/rangos, texto y JSON Pointer; lectura máxima 256 KiB. TCP comprueba exclusivamente conexión a host/puerto accesible desde Workers. Heartbeats tienen tolerancia inicial de un minuto y una muestra por período; reportes repetidos refrescan la recepción.
+### Author and license
 
-Incidentes tras dos fallos y recuperación con un éxito, ambos configurables. Pausas excluyen observación. Durante mantenimiento siguen las comprobaciones, se suspenden transiciones/alertas y se reinician contadores al terminar. La disponibilidad usa segundos observados, excluyendo mantenimiento y ausencia de datos.
+Created by Alejandro Mártir. Copyright 2026 AM25, S.A.S. DE C.V.
 
-Se conservan resultados individuales seis meses calendario; agregados diarios e incidentes cerrados, 365 días. Limpieza por lotes de hasta 1000 filas por tabla en cada cron. Los incidentes abiertos se conservan. Los agregados diarios usan UTC. El detalle permite filtrar fechas y paginar resultados. Pruebas manuales de un monitor no alteran estadísticas.
-
-Las páginas públicas muestran únicamente los monitores seleccionados explícitamente, dentro del proyecto y los grupos elegidos. Elegir grupos filtra las opciones; no seleccionar grupos permite elegir monitores de todo el proyecto. Los monitores nuevos requieren selección manual. La migración convierte las páginas existentes a selección explícita y conserva los monitores que ya mostraban. El visitante puede elegir 90 días, 7 días (predeterminado) o 24 horas de historial. Los segmentos diarios y horarios usan UTC y excluyen pausas, mantenimiento y períodos sin datos. Los agregados horarios comienzan a generarse tras desplegar la migración `0002_public_history.sql`, sin reconstruir registros anteriores; se conservan 8 días. La vista de 7 días usa 168 segmentos horarios; la de 24 horas usa 288 segmentos de 5 minutos. Estas vistas muestran una sola fila de segmentos con color sólido: verde sin interrupciones, rojo ante cualquier interrupción sin importar su duración y gris sin registros. En pantallas estrechas permiten desplazamiento horizontal. Los agregados de 5 minutos comienzan tras desplegar `0003_detailed_history.sql` y se conservan 48 horas, sin inventar detalle para los registros anteriores. Los agregados diarios mantienen su retención de 365 días. Las respuestas públicas nunca incluyen destinos, credenciales ni diagnósticos privados.
-
-Las notificaciones persisten y tienen reservas, espera creciente y hasta ocho intentos; fallos definitivos visibles en overview. Una respuesta perdida de Postmark puede repetir un correo. El entorno local marca los envíos interceptados sin llamar a Postmark.
-
-La medición local de SQLite con 100000 filas, diagnósticos sanitizados e índices resultó en aproximadamente 339 bytes por resultado y una proyección de 8.36 GiB para 184 días. Es una estimación: no incluye variaciones de ocupación, agregados y espacio temporal de operación de D1.
-
-100 monitores/minuto generan 144000 resultados/día y aproximadamente 26 millones en seis meses, además de índices. Revisar almacenamiento real de D1 y cuotas/costos de Workers, Queues y D1; la simulación valida programación y persistencia, no equivale a una prueba de carga de producción ni garantiza consumo bajo cuotas gratuitas.
-
-## Migraciones y recuperación
-
-Agregar migraciones numeradas nuevas; no editar migraciones ya aplicadas. Deben seguir siendo compatibles con el Worker todavía activo: agregar tablas/columnas antes de usarlas y posponer eliminaciones hasta que todas las versiones anteriores dejen de necesitarlas. Un fallo de migración impide publicar; las migraciones anteriores ya aplicadas pueden permanecer.
-
-Para recuperar una versión anterior, usar el historial de versiones/despliegues de Workers en Cloudflare y seleccionar una versión previamente sana. Un rollback del Worker no revierte D1 ni secretos. Verificar compatibilidad del esquema y la llave antes de restaurar. Ante una modificación destructiva, recuperar D1 con Time Travel dentro de su ventana disponible y evaluar pérdida de datos posteriores; no ejecutar restauraciones durante incidentes sin revisar el punto elegido.
-
-## Verificación posterior al primer despliegue
-
-1. Confirmar dominio y TLS, redirección de raíz, OTP del propietario y rechazo de otros correos. Verificar que público y heartbeat funcionan sin Access y que los endpoints administrativos permanecen protegidos.
-2. Crear un monitor de prueba y observar cron reciente, cola sin atraso y resultados. Simular dos fallos y un éxito; confirmar incidente y recuperación y correos reales solo al propietario.
-3. Crear heartbeat, reportar éxito, dejar vencer intervalo/tolerancia, verificar ausencia y recuperar con otro reporte. Regenerar token y confirmar rechazo del anterior.
-4. Comprobar pausa, mantenimiento, exclusiones públicas, credenciales redactadas y filtros/paginación. Revisar fallos de notificación y almacenamiento en Cloudflare.
-5. Confirmar que un push a `develop` no ejecuta workflows y que producción valida y publica únicamente desde `main`. Revisar logs de Actions: validaciones y migraciones deben preceder a publicación.
-
-Estas verificaciones externas quedan pendientes del primer despliegue. No se hicieron correos reales ni pruebas contra infraestructura de producción.
+Available under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE) for project attribution. Dependencies retain their own licenses.

@@ -25,12 +25,15 @@ if (
   for (const name of [
     "CLOUDFLARE_API_TOKEN",
     "CLOUDFLARE_ACCOUNT_ID",
-    "MONITOR_CONFIG_KEY"
+    "MONITOR_CONFIG_KEY",
+    "ACCESS_EMAIL"
   ])
     if (!process.env[name])
-      throw new Error(`Missing deployment secret: ${name}`);
+      throw new Error(`Missing deployment setting: ${name}`);
   if (!/^[a-f\d]{64}$/i.test(process.env.MONITOR_CONFIG_KEY))
     throw new Error("Invalid encryption key.");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(process.env.ACCESS_EMAIL.trim()))
+    throw new Error("Invalid access email.");
   const directory = mkdtempSync(join(tmpdir(), "monitor-secrets-"));
   try {
     deploySteps(run, () => {
@@ -38,7 +41,8 @@ if (
       writeFileSync(
         path,
         JSON.stringify({
-          CONFIG_KEY: process.env.MONITOR_CONFIG_KEY
+          CONFIG_KEY: process.env.MONITOR_CONFIG_KEY,
+          ACCESS_EMAIL: process.env.ACCESS_EMAIL.trim()
         }),
         { mode: 0o600 }
       );
