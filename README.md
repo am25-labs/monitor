@@ -18,7 +18,7 @@ Validación: `pnpm check`. No ejecutar compilaciones de producción como validac
 
 ## Producción y repositorio privado
 
-GitHub Actions sustituye Workers Builds. No conectar un segundo pipeline de Cloudflare. `.github/workflows/ci.yml` valida `develop` y pull requests; `deploy.yml` solo publica tras un push a `main`. El checkout usa el token del repositorio privado y no necesita hacerlo público.
+GitHub Actions sustituye Workers Builds. No conectar un segundo pipeline de Cloudflare. La validación de desarrollo se ejecuta localmente con `pnpm check`. `.github/workflows/deploy.yml` valida y publica únicamente tras un push a `main`; los pushes a `develop` y los pull requests no ejecutan workflows. El checkout usa el token del repositorio privado y no necesita hacerlo público.
 
 Secuencia: instalación con lockfile → TypeScript → pruebas → frontend → migraciones D1 → secretos → Worker y assets. Cualquier error detiene los pasos posteriores. Los despliegues se serializan y no se cancelan a mitad de una migración. El script de publicación exige un evento push de GitHub Actions en `main`.
 
@@ -85,6 +85,6 @@ Para recuperar una versión anterior, usar el historial de versiones/despliegues
 2. Crear un monitor de prueba y observar cron reciente, cola sin atraso y resultados. Simular dos fallos y un éxito; confirmar incidente y recuperación y correos reales solo al propietario.
 3. Crear heartbeat, reportar éxito, dejar vencer intervalo/tolerancia, verificar ausencia y recuperar con otro reporte. Regenerar token y confirmar rechazo del anterior.
 4. Comprobar pausa, mantenimiento, exclusiones públicas, credenciales redactadas y filtros/paginación. Revisar fallos de notificación y almacenamiento en Cloudflare.
-5. Confirmar que un push a `develop` solo valida y que producción corre únicamente desde `main`. Revisar logs de Actions: validaciones y migraciones deben preceder a publicación.
+5. Confirmar que un push a `develop` no ejecuta workflows y que producción valida y publica únicamente desde `main`. Revisar logs de Actions: validaciones y migraciones deben preceder a publicación.
 
 Estas verificaciones externas quedan pendientes del primer despliegue. No se hicieron correos reales ni pruebas contra infraestructura de producción.
