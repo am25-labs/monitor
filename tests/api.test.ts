@@ -5,7 +5,7 @@ import worker from "../src/worker/index";
 import { setup, createProject, createMonitor, projectId } from "./setup";
 import { digest } from "../src/worker/crypto";
 import { statement, first } from "../src/worker/db";
-import { deliverNotifications } from "../src/worker/mail";
+import { deliverNotifications, mailBody } from "../src/worker/mail";
 
 beforeEach(async () => {
   await setup();
@@ -164,6 +164,37 @@ it("validates Access signature, issuer, audience, expiration and owner identity"
   } finally {
     fetchMock.mockRestore();
   }
+});
+it("renders event details with local dates, incident duration and escaped monitor names", async () => {
+  const details = {
+    id: "mail",
+    event: "recovered",
+    monitor_name: '<script>alert("x")</script>',
+    attempts: 0,
+    created_at: 2000,
+    monitor_id: "monitor",
+    project_name: "AM25",
+    group_name: null,
+    kind: "http",
+    opened_at: 1000,
+    closed_at: 1900,
+    reason: "timeout"
+  };
+  const recovered = await mailBody(details, "https://monitor.example.com/");
+  expect(recovered.HtmlBody).not.toContain('<script>alert("x")</script>');
+  expect(recovered.HtmlBody).toContain("&lt;script&gt;");
+  expect(recovered.TextBody).toContain("Duración del incidente: 15 min");
+  expect(recovered.TextBody).toContain("El Salvador, UTC−6");
+  expect(recovered.TextBody).toContain("El servicio no respondió a tiempo");
+  expect(recovered.TextBody).toContain(
+    "https://monitor.example.com/app/monitors/monitor"
+  );
+  const opened = await mailBody(
+    { ...details, event: "opened" },
+    "https://monitor.example.com"
+  );
+  expect(opened.TextBody).not.toContain("Recuperación:");
+  expect(opened.TextBody).not.toContain("Duración del incidente:");
 });
 it("delivers only to the owner and retries temporary provider failures", async () => {
   const m = await createMonitor();
