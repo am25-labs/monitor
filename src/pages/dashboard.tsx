@@ -602,36 +602,38 @@ function DashboardView({
                       title={p.title}
                       description={p.description}
                     >
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex flex-col gap-3">
                         <span className="text-muted-foreground">
                           {p.published ? t("Publicada") : t("Borrador")} ·
                           /status/
                           {p.slug}
                         </span>
-                        {p.published && (
-                          <a
-                            className={buttonVariants({ variant: "outline" })}
-                            href={`/status/${p.slug}`}
-                            target="_blank"
-                            rel="noreferrer"
+                        <div className="flex flex-wrap items-center gap-2">
+                          {p.published && (
+                            <a
+                              className={buttonVariants({ variant: "outline" })}
+                              href={`/status/${p.slug}`}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              {t("Abrir")}
+                            </a>
+                          )}
+                          <Button
+                            variant="outline"
+                            onClick={() =>
+                              setEditor({ resource: "pages", value: { ...p } })
+                            }
                           >
-                            {t("Abrir")}
-                          </a>
-                        )}
-                        <Button
-                          variant="outline"
-                          onClick={() =>
-                            setEditor({ resource: "pages", value: { ...p } })
-                          }
-                        >
-                          {t("Editar")}
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          onClick={() => remove("pages", p.id)}
-                        >
-                          {t("Eliminar")}
-                        </Button>
+                            {t("Editar")}
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            onClick={() => remove("pages", p.id)}
+                          >
+                            {t("Eliminar")}
+                          </Button>
+                        </div>
                       </div>
                     </Panel>
                   ))
