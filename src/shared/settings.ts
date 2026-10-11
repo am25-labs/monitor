@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+export const languageInput = z.enum(["es", "en"]);
+export type Language = z.infer<typeof languageInput>;
+export const generalInput = z.object({ language: languageInput.default("es") });
+export type GeneralSettings = z.infer<typeof generalInput>;
+
 const token = z.string().trim().max(512).optional();
 export const notificationInput = z.object({
   channel: z.enum(["email", "telegram"]),

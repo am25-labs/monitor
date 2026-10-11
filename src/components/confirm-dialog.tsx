@@ -1,3 +1,4 @@
+import { useLocale } from "../lib/locale";
 import { useState } from "react";
 import {
   AlertDialog,
@@ -26,6 +27,7 @@ export function ConfirmDialog({
   onConfirm: () => Promise<void>;
   destructive?: boolean;
 }) {
+  const { t } = useLocale();
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   function change(value: boolean) {
@@ -44,7 +46,7 @@ export function ConfirmDialog({
       setError(
         e instanceof Error
           ? e.message
-          : "No fue posible completar la operación."
+          : t("No fue posible completar la operación.")
       );
     } finally {
       setBusy(false);
@@ -64,14 +66,14 @@ export function ConfirmDialog({
             disabled={busy}
             onClick={() => change(false)}
           >
-            Cancelar
+            {t("Cancelar")}
           </Button>
           <Button
             variant={destructive ? "destructive" : "default"}
             disabled={busy}
             onClick={() => void confirm()}
           >
-            {busy ? "Procesando…" : action}
+            {busy ? t("Procesando…") : action}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

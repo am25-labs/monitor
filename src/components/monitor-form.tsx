@@ -1,3 +1,4 @@
+import { useLocale } from "../lib/locale";
 import { useState, type FormEvent } from "react";
 import type { HttpConfig, SafeMonitor, TcpConfig } from "../shared/types";
 import type { Snapshot } from "../lib/api";
@@ -19,6 +20,7 @@ export function MonitorForm({
   onSave: (v: unknown, id?: string) => Promise<void>;
   onCancel: () => void;
 }) {
+  const { t } = useLocale();
   const http =
       monitor?.kind === "http" ? (monitor.config as HttpConfig) : undefined,
     tcp = monitor?.kind === "tcp" ? (monitor.config as TcpConfig) : undefined;
@@ -76,16 +78,16 @@ export function MonitorForm({
         monitor?.id
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Revisá los datos.");
+      setError(e instanceof Error ? e.message : t("Revisá los datos."));
     } finally {
       setBusy(false);
     }
   }
   return (
-    <Panel title={monitor ? "Editar monitor" : "Nuevo monitor"}>
+    <Panel title={monitor ? t("Editar monitor") : t("Nuevo monitor")}>
       <form onSubmit={submit}>
         <FieldGroup>
-          <FormField label="Nombre" id="name">
+          <FormField label={t("Nombre")} id="name">
             <Input
               id="name"
               name="name"
@@ -95,7 +97,7 @@ export function MonitorForm({
             />
           </FormField>
           <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label="Proyecto" id="project">
+            <FormField label={t("Proyecto")} id="project">
               <ChoiceSelect
                 id="project"
                 value={project}
@@ -109,13 +111,13 @@ export function MonitorForm({
                 ]}
               />
             </FormField>
-            <FormField label="Grupo" id="group">
+            <FormField label={t("Grupo")} id="group">
               <ChoiceSelect
                 id="group"
                 value={group}
                 onValueChange={(value) => setGroup(value)}
                 options={[
-                  { value: "", label: "Sin grupo" },
+                  { value: "", label: t("Sin grupo") },
                   ...data.groups
                     .filter((g) => g.project_id === project)
                     .map((g) => ({ value: g.id, label: g.name }))
@@ -123,14 +125,14 @@ export function MonitorForm({
               />
             </FormField>
           </div>
-          <FormField label="Tipo de monitor" id="kind">
+          <FormField label={t("Tipo de monitor")} id="kind">
             <ChoiceSelect
               id="kind"
               value={kind}
               onValueChange={(value) => setKind(value as typeof kind)}
               options={[
                 { value: "http", label: "HTTP / HTTPS" },
-                { value: "tcp", label: "Conexión TCP" },
+                { value: "tcp", label: t("Conexión TCP") },
                 { value: "heartbeat", label: "Heartbeat" }
               ]}
             />
@@ -148,7 +150,7 @@ export function MonitorForm({
                 />
               </FormField>
               <div className="grid gap-4 sm:grid-cols-2">
-                <FormField label="Método" id="method">
+                <FormField label={t("Método")} id="method">
                   <ChoiceSelect
                     id="method"
                     name="method"
@@ -159,7 +161,7 @@ export function MonitorForm({
                     ]}
                   />
                 </FormField>
-                <FormField label="Códigos aceptados" id="codes">
+                <FormField label={t("Códigos aceptados")} id="codes">
                   <Input
                     id="codes"
                     name="codes"
@@ -169,18 +171,21 @@ export function MonitorForm({
                   />
                 </FormField>
               </div>
-              <FormField label="Seguir redirecciones" id="follow">
+              <FormField label={t("Seguir redirecciones")} id="follow">
                 <ChoiceSelect
                   id="follow"
                   name="follow"
                   defaultValue={String(http?.followRedirects ?? false)}
                   options={[
-                    { value: "false", label: "No" },
-                    { value: "true", label: "Sí" }
+                    { value: "false", label: t("No") },
+                    { value: "true", label: t("Sí") }
                   ]}
                 />
               </FormField>
-              <FormField label="Headers de la comprobación (JSON)" id="headers">
+              <FormField
+                label={t("Headers de la comprobación (JSON)")}
+                id="headers"
+              >
                 <Textarea
                   id="headers"
                   name="headers"
@@ -188,11 +193,11 @@ export function MonitorForm({
                   placeholder={'{"Authorization":"Bearer …"}'}
                 />
                 <FieldDescription>
-                  Los valores se cifran y no se vuelven a mostrar.
+                  {t("Los valores se cifran y no se vuelven a mostrar.")}
                 </FieldDescription>
               </FormField>
               {monitor?.hasCredentials && (
-                <FormField label="Headers existentes" id="keep">
+                <FormField label={t("Headers existentes")} id="keep">
                   <ChoiceSelect
                     id="keep"
                     name="keep"
@@ -200,17 +205,17 @@ export function MonitorForm({
                     options={[
                       {
                         value: "true",
-                        label: "Conservar y combinar con los nuevos"
+                        label: t("Conservar y combinar con los nuevos")
                       },
                       {
                         value: "false",
-                        label: "Reemplazar por los indicados arriba"
+                        label: t("Reemplazar por los indicados arriba")
                       }
                     ]}
                   />
                 </FormField>
               )}
-              <FormField label="Validación del contenido" id="assertion">
+              <FormField label={t("Validación del contenido")} id="assertion">
                 <ChoiceSelect
                   id="assertion"
                   value={assertion}
@@ -218,14 +223,14 @@ export function MonitorForm({
                     setAssertion(value as typeof assertion)
                   }
                   options={[
-                    { value: "none", label: "Solo código HTTP" },
-                    { value: "text", label: "Contiene un texto" },
-                    { value: "json", label: "Valor JSON esperado" }
+                    { value: "none", label: t("Solo código HTTP") },
+                    { value: "text", label: t("Contiene un texto") },
+                    { value: "json", label: t("Valor JSON esperado") }
                   ]}
                 />
               </FormField>
               {assertion === "text" && (
-                <FormField label="Texto esperado" id="text">
+                <FormField label={t("Texto esperado")} id="text">
                   <Input
                     id="text"
                     name="text"
@@ -244,7 +249,7 @@ export function MonitorForm({
                       placeholder="/dependencies/database/healthy"
                     />
                   </FormField>
-                  <FormField label="Valor esperado (JSON)" id="expected">
+                  <FormField label={t("Valor esperado (JSON)")} id="expected">
                     <Input
                       id="expected"
                       name="expected"
@@ -266,11 +271,12 @@ export function MonitorForm({
                   defaultValue={tcp?.host}
                 />
                 <FieldDescription>
-                  Debe ser accesible desde Workers. Las conexiones a IP privadas
-                  o de Cloudflare están restringidas.
+                  {t(
+                    "Debe ser accesible desde Workers. Las conexiones a IP privadas o de Cloudflare están restringidas."
+                  )}
                 </FieldDescription>
               </FormField>
-              <FormField label="Puerto" id="port">
+              <FormField label={t("Puerto")} id="port">
                 <Input
                   id="port"
                   name="port"
@@ -284,7 +290,7 @@ export function MonitorForm({
             </>
           )}
           {kind !== "heartbeat" && (
-            <FormField label="Timeout (segundos)" id="timeout">
+            <FormField label={t("Timeout (segundos)")} id="timeout">
               <Input
                 id="timeout"
                 name="timeout"
@@ -299,8 +305,8 @@ export function MonitorForm({
             <FormField
               label={
                 kind === "heartbeat"
-                  ? "Intervalo esperado (minutos)"
-                  : "Frecuencia (minutos)"
+                  ? t("Intervalo esperado (minutos)")
+                  : t("Frecuencia (minutos)")
               }
               id="interval"
             >
@@ -316,7 +322,7 @@ export function MonitorForm({
               />
             </FormField>
             {kind === "heartbeat" && (
-              <FormField label="Tolerancia (segundos)" id="grace">
+              <FormField label={t("Tolerancia (segundos)")} id="grace">
                 <Input
                   id="grace"
                   name="grace"
@@ -329,7 +335,7 @@ export function MonitorForm({
             )}
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label="Fallos para abrir incidente" id="failures">
+            <FormField label={t("Fallos para abrir incidente")} id="failures">
               <Input
                 id="failures"
                 name="failures"
@@ -339,7 +345,7 @@ export function MonitorForm({
                 defaultValue={monitor?.failure_threshold ?? 2}
               />
             </FormField>
-            <FormField label="Éxitos para recuperar" id="recoveries">
+            <FormField label={t("Éxitos para recuperar")} id="recoveries">
               <Input
                 id="recoveries"
                 name="recoveries"
@@ -353,10 +359,10 @@ export function MonitorForm({
           <Notice message={error} destructive />
           <div className="flex gap-2">
             <Button type="submit" disabled={busy || !project}>
-              {busy ? "Guardando…" : "Guardar monitor"}
+              {busy ? t("Guardando…") : t("Guardar monitor")}
             </Button>
             <Button type="button" variant="outline" onClick={onCancel}>
-              Cancelar
+              {t("Cancelar")}
             </Button>
           </div>
         </FieldGroup>

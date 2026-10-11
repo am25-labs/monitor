@@ -1,3 +1,4 @@
+import { useLocale } from "../lib/locale";
 import { Link } from "react-router-dom";
 import {
   Activity,
@@ -7,7 +8,7 @@ import {
   Mail,
   Server
 } from "lucide-react";
-import { availability, date, type Snapshot } from "../lib/api";
+import { type Snapshot } from "../lib/api";
 import {
   Card,
   CardAction,
@@ -38,6 +39,7 @@ export function Overview({
   busy: boolean;
   onRetry: (id: string) => Promise<void>;
 }) {
+  const { t, date, availability } = useLocale();
   const up = data.monitors.filter((m) => m.display_status === "up").length;
   const down = data.monitors.filter((m) => m.display_status === "down").length;
   const open = data.incidents.filter((i) => !i.closed_at).length;
@@ -46,29 +48,32 @@ export function Overview({
   const failed = data.notifications.filter((n) => n.state === "failed").length;
   const states = [
     {
-      title: "Monitores",
+      title: t("Monitores"),
       value: data.monitors.length,
-      description: `${data.projects.length} proyectos · ${data.groups.length} grupos`,
+      description: t("{projects} proyectos · {groups} grupos", {
+        projects: data.projects.length,
+        groups: data.groups.length
+      }),
       icon: Activity
     },
     {
-      title: "Operativos",
+      title: t("Operativos"),
       value: up,
       description: down
-        ? `${down} con fallos`
-        : `${data.monitors.length - up} en otros estados`,
+        ? t("{count} con fallos", { count: down })
+        : t("{count} en otros estados", { count: data.monitors.length - up }),
       icon: CheckCircle2
     },
     {
-      title: "Incidentes abiertos",
+      title: t("Incidentes abiertos"),
       value: open,
-      description: "Según los umbrales de cada monitor",
+      description: t("Según los umbrales de cada monitor"),
       icon: TriangleAlert
     },
     {
-      title: "Disponibilidad · 30 días",
+      title: t("Disponibilidad · 30 días"),
       value: availability(data.stats),
-      description: "Calculada sobre el tiempo observado",
+      description: t("Calculada sobre el tiempo observado"),
       icon: Clock
     }
   ];
@@ -86,16 +91,17 @@ export function Overview({
               )}
             />
             {!data.monitors.length
-              ? "Comenzá a monitorear tu infraestructura"
+              ? t("Comenzá a monitorear tu infraestructura")
               : down
-                ? "Hay servicios que requieren atención"
+                ? t("Hay servicios que requieren atención")
                 : allUp
-                  ? "Todos los servicios están operativos"
-                  : "Monitoreo en curso"}
+                  ? t("Todos los servicios están operativos")
+                  : t("Monitoreo en curso")}
           </CardTitle>
           <CardDescription>
-            Estado actual de tus servicios. La disponibilidad incluye las
-            comprobaciones anteriores.
+            {t(
+              "Estado actual de tus servicios. La disponibilidad incluye las comprobaciones anteriores."
+            )}
           </CardDescription>
           <CardAction className="col-start-1 row-start-3 justify-self-start sm:col-start-2 sm:row-start-1 sm:justify-self-end">
             <Badge
@@ -105,7 +111,10 @@ export function Overview({
                 needsAttention && "text-warning"
               )}
             >
-              {up} de {data.monitors.length} operativos
+              {t("{up} de {total} operativos", {
+                up,
+                total: data.monitors.length
+              })}
             </Badge>
           </CardAction>
         </CardHeader>
@@ -133,17 +142,17 @@ export function Overview({
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         <EngineHealth data={data} />
         <Panel
-          title="Incidentes recientes"
-          description="Caídas y recuperaciones de tus servicios."
+          title={t("Incidentes recientes")}
+          description={t("Caídas y recuperaciones de tus servicios.")}
         >
           {data.incidents.length ? (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Monitor</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Inicio</TableHead>
-                  <TableHead>Recuperación</TableHead>
+                  <TableHead>{t("Monitor")}</TableHead>
+                  <TableHead>{t("Estado")}</TableHead>
+                  <TableHead>{t("Inicio")}</TableHead>
+                  <TableHead>{t("Recuperación")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -164,14 +173,14 @@ export function Overview({
                           i.closed_at ? "text-success" : "text-destructive"
                         }
                       >
-                        {i.closed_at ? "Resuelto" : "Abierto"}
+                        {i.closed_at ? t("Resuelto") : t("Abierto")}
                       </Badge>
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
                       {date(i.opened_at)}
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
-                      {i.closed_at ? date(i.closed_at) : "En curso"}
+                      {i.closed_at ? date(i.closed_at) : t("En curso")}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -179,8 +188,8 @@ export function Overview({
             </Table>
           ) : (
             <Nothing
-              title="Sin incidentes"
-              description="Las caídas y recuperaciones aparecerán aquí."
+              title={t("Sin incidentes")}
+              description={t("Las caídas y recuperaciones aparecerán aquí.")}
             />
           )}
         </Panel>
@@ -189,10 +198,10 @@ export function Overview({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Mail className="size-4" />
-            Alertas personales
+            {t("Alertas personales")}
           </CardTitle>
           <CardDescription>
-            Notificaciones de apertura y recuperación, solo para vos.
+            {t("Notificaciones de apertura y recuperación, solo para vos.")}
           </CardDescription>
           <CardAction>
             <Badge
@@ -200,10 +209,12 @@ export function Overview({
               className={failed ? "text-destructive" : undefined}
             >
               {failed
-                ? `${failed} fallidas`
+                ? t("{count} fallidas", { count: failed })
                 : data.notifications.length
-                  ? `${data.notifications.length} pendientes`
-                  : "Sin pendientes"}
+                  ? t("{count} pendientes", {
+                      count: data.notifications.length
+                    })
+                  : t("Sin pendientes")}
             </Badge>
           </CardAction>
         </CardHeader>
@@ -213,8 +224,8 @@ export function Overview({
               <div>
                 <dt className="text-xs text-muted-foreground">
                   {data.settings.notifications.channel === "email"
-                    ? "Destinatario"
-                    : "Chat de Telegram"}
+                    ? t("Destinatario")
+                    : t("Chat de Telegram")}
                 </dt>
                 <dd className="break-all">
                   {data.settings.notifications.channel === "email"
@@ -223,10 +234,10 @@ export function Overview({
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-muted-foreground">Canal</dt>
+                <dt className="text-xs text-muted-foreground">{t("Canal")}</dt>
                 <dd className="break-all">
                   {data.settings.notifications.channel === "email"
-                    ? "Correo · Postmark"
+                    ? t("Correo · Postmark")
                     : "Telegram"}
                 </dd>
               </div>
@@ -241,12 +252,14 @@ export function Overview({
                     <div>
                       <p className="font-medium">{n.monitor_name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {n.state === "failed" ? "Entrega fallida" : "Pendiente"}{" "}
-                        · {n.attempts} intentos
+                        {n.state === "failed"
+                          ? t("Entrega fallida")
+                          : t("Pendiente")}{" "}
+                        · {n.attempts} {t("intentos")}
                       </p>
                       {n.error && (
                         <p className="text-xs text-muted-foreground">
-                          {n.error}
+                          {t(n.error)}
                         </p>
                       )}
                     </div>
@@ -258,7 +271,7 @@ export function Overview({
                           void onRetry(n.id).catch(() => undefined)
                         }
                       >
-                        Reintentar
+                        {t("Reintentar")}
                       </Button>
                     )}
                   </div>
@@ -266,7 +279,7 @@ export function Overview({
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                No hay notificaciones pendientes o fallidas.
+                {t("No hay notificaciones pendientes o fallidas.")}
               </p>
             )}
           </div>
@@ -276,6 +289,7 @@ export function Overview({
   );
 }
 function EngineHealth({ data }: { data: Snapshot }) {
+  const { t, date, availability } = useLocale();
   const stale = Boolean(
     data.engine.last_finished &&
     Date.now() / 1000 - data.engine.last_finished > 180
@@ -286,7 +300,7 @@ function EngineHealth({ data }: { data: Snapshot }) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Server className="size-4" />
-          Salud del motor
+          {t("Salud del motor")}
         </CardTitle>
         <CardAction>
           <Badge
@@ -300,10 +314,10 @@ function EngineHealth({ data }: { data: Snapshot }) {
             }
           >
             {unhealthy
-              ? "Revisar"
+              ? t("Revisar")
               : data.engine.last_finished
-                ? "Activo"
-                : "En espera"}
+                ? t("Activo")
+                : t("En espera")}
           </Badge>
         </CardAction>
       </CardHeader>
@@ -312,20 +326,20 @@ function EngineHealth({ data }: { data: Snapshot }) {
           <dl className="flex flex-col gap-4">
             <div>
               <dt className="text-xs text-muted-foreground">
-                Último ciclo completado
+                {t("Último ciclo completado")}
               </dt>
               <dd>{date(data.engine.last_finished)}</dd>
             </div>
             <div>
               <dt className="text-xs text-muted-foreground">
-                Trabajos pendientes
+                {t("Trabajos pendientes")}
               </dt>
               <dd className="text-2xl font-semibold tabular-nums">
                 {data.backlog.total}
               </dd>
               {data.backlog.total > 0 && (
                 <dd className="text-xs text-muted-foreground">
-                  Más antiguo: {date(data.backlog.oldest)}
+                  {t("Más antiguo:")} {date(data.backlog.oldest)}
                 </dd>
               )}
             </div>
@@ -333,7 +347,9 @@ function EngineHealth({ data }: { data: Snapshot }) {
           <Notice message={data.engine.last_error ?? ""} destructive />
           {stale && (
             <Notice
-              message="El motor no ha completado un ciclo recientemente. Los estados pueden estar desactualizados."
+              message={t(
+                "El motor no ha completado un ciclo recientemente. Los estados pueden estar desactualizados."
+              )}
               destructive
             />
           )}

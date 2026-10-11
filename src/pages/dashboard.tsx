@@ -1,4 +1,6 @@
+import { useLocale } from "../lib/locale";
 import { Settings } from "../components/settings";
+import { LocaleProvider } from "../lib/locale";
 import { Overview } from "../components/overview";
 import { ConfirmDialog } from "../components/confirm-dialog";
 import { useState } from "react";
@@ -15,7 +17,7 @@ import {
   ArrowLeft,
   Settings as SettingsIcon
 } from "lucide-react";
-import { api, date, useRefresh, type Snapshot } from "../lib/api";
+import { api, useRefresh, type Snapshot } from "../lib/api";
 import type { SafeMonitor } from "../shared/types";
 import { cn } from "../lib/utils";
 import { Notice, Nothing, Panel, StatusBadge } from "../components/common";
@@ -45,9 +47,29 @@ export function Dashboard({
   theme: string;
   toggleTheme: () => void;
 }) {
+  const snapshot = useRefresh<Snapshot>("admin/snapshot");
+  return (
+    <LocaleProvider language={snapshot.data?.settings.general.language ?? "es"}>
+      <DashboardView theme={theme} toggleTheme={toggleTheme} {...snapshot} />
+    </LocaleProvider>
+  );
+}
+function DashboardView({
+  data,
+  error,
+  refresh,
+  theme,
+  toggleTheme
+}: {
+  theme: string;
+  toggleTheme: () => void;
+  data: Snapshot | null;
+  error: string;
+  refresh: () => Promise<void>;
+}) {
+  const { t, date } = useLocale();
   const { section = "overview", id } = useParams(),
     navigate = useNavigate();
-  const { data, error, refresh } = useRefresh<Snapshot>("admin/snapshot");
   const [editor, setEditor] = useState<Editor | null>(null),
     [notice, setNotice] = useState(""),
     [busy, setBusy] = useState(false),
@@ -69,12 +91,15 @@ export function Dashboard({
       );
       if (result.token)
         setNotice(
-          `Guardá este token de heartbeat; no se volverá a mostrar: ${result.token}`
+          t(
+            "Guardá este token de heartbeat; no se volverá a mostrar: {token}",
+            { token: result.token }
+          )
         );
       await refresh();
       return result;
     } catch (e) {
-      setNotice(e instanceof Error ? e.message : "Falló la operación.");
+      setNotice(e instanceof Error ? e.message : t("Falló la operación."));
       throw e;
     } finally {
       setBusy(false);
@@ -100,20 +125,20 @@ export function Dashboard({
         m.name.toLowerCase().includes(filter.toLowerCase())
     ) ?? [];
   const titles: Record<string, string> = {
-    overview: "Resumen",
-    monitors: "Monitores",
-    projects: "Proyectos y grupos",
-    pages: "Páginas públicas",
-    maintenance: "Mantenimiento",
-    settings: "Ajustes"
+    overview: t("Resumen"),
+    monitors: t("Monitores"),
+    projects: t("Proyectos y grupos"),
+    pages: t("Páginas públicas"),
+    maintenance: t("Mantenimiento"),
+    settings: t("Ajustes")
   };
   const nav = [
-    { to: "overview", label: "Resumen", icon: Activity },
-    { to: "monitors", label: "Monitores", icon: Activity },
-    { to: "projects", label: "Proyectos y grupos", icon: Folder },
-    { to: "pages", label: "Páginas públicas", icon: Globe },
-    { to: "maintenance", label: "Mantenimiento", icon: Wrench },
-    { to: "settings", label: "Ajustes", icon: SettingsIcon }
+    { to: "overview", label: t("Resumen"), icon: Activity },
+    { to: "monitors", label: t("Monitores"), icon: Activity },
+    { to: "projects", label: t("Proyectos y grupos"), icon: Folder },
+    { to: "pages", label: t("Páginas públicas"), icon: Globe },
+    { to: "maintenance", label: t("Mantenimiento"), icon: Wrench },
+    { to: "settings", label: t("Ajustes"), icon: SettingsIcon }
   ];
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[240px_1fr]">
@@ -125,11 +150,11 @@ export function Dashboard({
           AM25 Monitor
         </Link>
         <p className="mt-1 text-xs text-muted-foreground">
-          Tu infraestructura, en observación
+          {t("Tu infraestructura, en observación")}
         </p>
         <div className="mt-4 lg:hidden">
           <ChoiceSelect
-            aria-label="Navegación principal"
+            aria-label={t("Navegación principal")}
             value={section}
             options={nav.map((item) => ({ value: item.to, label: item.label }))}
             onValueChange={(value) => {
@@ -141,7 +166,7 @@ export function Dashboard({
         </div>
         <nav
           className="mt-6 hidden flex-col gap-1 lg:flex"
-          aria-label="Navegación principal"
+          aria-label={t("Navegación principal")}
         >
           {nav.map((n) => (
             <NavLink
@@ -166,7 +191,7 @@ export function Dashboard({
           ))}
         </nav>
         <p className="mt-8 hidden text-xs text-muted-foreground lg:block">
-          Historial completo · 6 meses
+          {t("Historial completo · 6 meses")}
         </p>
       </aside>
       <main className="mx-auto flex w-full min-w-0 max-w-7xl flex-col gap-6 p-5 md:p-8">
@@ -174,7 +199,7 @@ export function Dashboard({
           <div>
             <div className="flex min-w-0 flex-wrap items-center gap-3">
               <h1 className="text-2xl font-semibold tracking-tight">
-                {selected?.name ?? titles[section] ?? "Monitor"}
+                {selected?.name ?? titles[section] ?? t("Monitor")}
               </h1>
               {section === "monitors" && selected && (
                 <StatusBadge status={selected.display_status} />
@@ -182,15 +207,15 @@ export function Dashboard({
             </div>
             <p className="text-sm text-muted-foreground">
               {data?.settings.environment === "local"
-                ? "Entorno local · notificaciones interceptadas"
-                : "Actualización automática cada 30 segundos"}
+                ? t("Entorno local · notificaciones interceptadas")
+                : t("Actualización automática cada 30 segundos")}
             </p>
           </div>
           <div className="flex gap-2">
             <Button
               variant="outline"
               size="icon"
-              aria-label="Actualizar"
+              aria-label={t("Actualizar")}
               onClick={() => void refresh()}
             >
               <RefreshCw />
@@ -198,7 +223,7 @@ export function Dashboard({
             <Button
               variant="outline"
               size="icon"
-              aria-label="Cambiar tema"
+              aria-label={t("Cambiar tema")}
               onClick={toggleTheme}
             >
               {theme === "dark" ? <Sun /> : <Moon />}
@@ -255,7 +280,7 @@ export function Dashboard({
                     onClick={() => navigate("/app/monitors")}
                   >
                     <ArrowLeft data-icon="inline-start" />
-                    Volver
+                    {t("Volver")}
                   </Button>
                   <div className="grid grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap">
                     <Button
@@ -263,7 +288,7 @@ export function Dashboard({
                         setEditor({ resource: "monitors", monitor: selected })
                       }
                     >
-                      Editar
+                      {t("Editar")}
                     </Button>
                     <Button
                       variant="outline"
@@ -274,7 +299,7 @@ export function Dashboard({
                         }).catch(() => undefined)
                       }
                     >
-                      {selected.paused ? "Reactivar" : "Pausar"}
+                      {selected.paused ? t("Reactivar") : t("Pausar")}
                     </Button>
                     {selected.kind !== "heartbeat" && (
                       <Button
@@ -288,14 +313,14 @@ export function Dashboard({
                           }>(`admin/monitors/${selected.id}/test`, "POST", {})
                             .then((r) =>
                               setNotice(
-                                `${r.diagnostic}${r.latency !== null ? ` · ${r.latency} ms` : ""}`
+                                `${t(r.diagnostic)}${r.latency !== null ? ` · ${r.latency} ms` : ""}`
                               )
                             )
                             .catch((e) => setNotice(String(e.message)))
                             .finally(() => setBusy(false));
                         }}
                       >
-                        Probar sin registrar
+                        {t("Probar sin registrar")}
                       </Button>
                     )}
                     <Button
@@ -304,29 +329,37 @@ export function Dashboard({
                         remove("monitors", selected.id);
                       }}
                     >
-                      Eliminar
+                      {t("Eliminar")}
                     </Button>
                   </div>
                 </div>
-                <Panel title="Resumen del monitor">
+                <Panel title={t("Resumen del monitor")}>
                   <dl className="grid gap-4 sm:grid-cols-3">
                     <div>
                       <dt className="text-muted-foreground">
-                        Última comprobación
+                        {t("Última comprobación")}
                       </dt>
                       <dd>{date(selected.last_checked)}</dd>
                     </div>
                     <div>
-                      <dt className="text-muted-foreground">Última latencia</dt>
+                      <dt className="text-muted-foreground">
+                        {t("Última latencia")}
+                      </dt>
                       <dd>
                         {selected.last_latency === null
-                          ? "Sin datos"
+                          ? t("Sin datos")
                           : `${selected.last_latency} ms`}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-muted-foreground">Frecuencia</dt>
-                      <dd>{selected.interval_seconds / 60} minutos</dd>
+                      <dt className="text-muted-foreground">
+                        {t("Frecuencia")}
+                      </dt>
+                      <dd>
+                        {t("{count} minutos", {
+                          count: selected.interval_seconds / 60
+                        })}
+                      </dd>
                     </div>
                   </dl>
                 </Panel>
@@ -338,21 +371,21 @@ export function Dashboard({
                 <div className="flex min-w-0 flex-col gap-3">
                   <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-3">
                     <Input
-                      aria-label="Buscar monitores"
-                      placeholder="Buscar monitores…"
+                      aria-label={t("Buscar monitores")}
+                      placeholder={t("Buscar monitores…")}
                       className="w-full min-w-0"
                       value={filter}
                       onChange={(e) => setFilter(e.target.value)}
                     />
                     <ChoiceSelect
-                      aria-label="Filtrar por proyecto"
+                      aria-label={t("Filtrar por proyecto")}
                       value={project}
                       onValueChange={(value) => {
                         setProject(value);
                         setGroup("");
                       }}
                       options={[
-                        { value: "", label: "Todos los proyectos" },
+                        { value: "", label: t("Todos los proyectos") },
                         ...data.projects.map((p) => ({
                           value: p.id,
                           label: p.name
@@ -360,11 +393,11 @@ export function Dashboard({
                       ]}
                     />
                     <ChoiceSelect
-                      aria-label="Filtrar por grupo"
+                      aria-label={t("Filtrar por grupo")}
                       value={group}
                       onValueChange={(value) => setGroup(value)}
                       options={[
-                        { value: "", label: "Todos los grupos" },
+                        { value: "", label: t("Todos los grupos") },
                         ...data.groups
                           .filter((g) => !project || g.project_id === project)
                           .map((g) => ({ value: g.id, label: g.name }))
@@ -379,22 +412,24 @@ export function Dashboard({
                     onClick={() => setEditor({ resource: "monitors" })}
                   >
                     <Plus data-icon="inline-start" />
-                    Nuevo monitor
+                    {t("Nuevo monitor")}
                   </Button>
                 </div>
                 <Panel
-                  title="Monitores"
-                  description={`${data.monitors.length} de 100 configurados`}
+                  title={t("Monitores")}
+                  description={t("{count} de 100 configurados", {
+                    count: data.monitors.length
+                  })}
                 >
                   {visible.length ? (
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Nombre</TableHead>
-                          <TableHead>Proyecto / grupo</TableHead>
-                          <TableHead>Estado</TableHead>
-                          <TableHead>Latencia</TableHead>
-                          <TableHead>Última comprobación</TableHead>
+                          <TableHead>{t("Nombre")}</TableHead>
+                          <TableHead>{t("Proyecto / grupo")}</TableHead>
+                          <TableHead>{t("Estado")}</TableHead>
+                          <TableHead>{t("Latencia")}</TableHead>
+                          <TableHead>{t("Última comprobación")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -437,8 +472,8 @@ export function Dashboard({
                     <Nothing
                       description={
                         data.projects.length
-                          ? "Agregá tu primer monitor."
-                          : "Creá primero un proyecto en Proyectos y grupos."
+                          ? t("Agregá tu primer monitor.")
+                          : t("Creá primero un proyecto en Proyectos y grupos.")
                       }
                     />
                   )}
@@ -447,22 +482,22 @@ export function Dashboard({
             )}
             {section === "monitors" && id && !selected && (
               <Nothing
-                title="Monitor no encontrado"
-                description="Puede haber sido eliminado."
+                title={t("Monitor no encontrado")}
+                description={t("Puede haber sido eliminado.")}
               />
             )}
             {section === "projects" && (
               <>
                 <div className="flex flex-wrap gap-2">
                   <Button onClick={() => setEditor({ resource: "projects" })}>
-                    Crear proyecto
+                    {t("Crear proyecto")}
                   </Button>
                   <Button
                     variant="outline"
                     disabled={!data.projects.length}
                     onClick={() => setEditor({ resource: "groups" })}
                   >
-                    Crear grupo
+                    {t("Crear grupo")}
                   </Button>
                 </div>
                 {data.projects.length ? (
@@ -483,13 +518,13 @@ export function Dashboard({
                               })
                             }
                           >
-                            Editar proyecto
+                            {t("Editar proyecto")}
                           </Button>
                           <Button
                             variant="destructive"
                             onClick={() => remove("projects", p.id)}
                           >
-                            Eliminar
+                            {t("Eliminar")}
                           </Button>
                           <Link
                             className={buttonVariants({ variant: "outline" })}
@@ -499,7 +534,7 @@ export function Dashboard({
                               setGroup("");
                             }}
                           >
-                            Ver monitores
+                            {t("Ver monitores")}
                           </Link>
                         </div>
                         {data.groups
@@ -516,7 +551,7 @@ export function Dashboard({
                                     (m) => m.group_id === g.id
                                   ).length
                                 }{" "}
-                                monitores
+                                {t("monitores")}
                               </span>
                               <div className="grid grid-cols-2 gap-2 sm:flex">
                                 <Button
@@ -528,13 +563,13 @@ export function Dashboard({
                                     })
                                   }
                                 >
-                                  Editar
+                                  {t("Editar")}
                                 </Button>
                                 <Button
                                   variant="destructive"
                                   onClick={() => remove("groups", g.id)}
                                 >
-                                  Eliminar
+                                  {t("Eliminar")}
                                 </Button>
                               </div>
                             </div>
@@ -543,7 +578,11 @@ export function Dashboard({
                     </Panel>
                   ))
                 ) : (
-                  <Nothing description="Creá proyectos para organizar tus monitores." />
+                  <Nothing
+                    description={t(
+                      "Creá proyectos para organizar tus monitores."
+                    )}
+                  />
                 )}
               </>
             )}
@@ -554,7 +593,7 @@ export function Dashboard({
                   disabled={!data.projects.length}
                   onClick={() => setEditor({ resource: "pages" })}
                 >
-                  Crear página pública
+                  {t("Crear página pública")}
                 </Button>
                 {data.pages.length ? (
                   data.pages.map((p) => (
@@ -565,7 +604,8 @@ export function Dashboard({
                     >
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-muted-foreground">
-                          {p.published ? "Publicada" : "Borrador"} · /status/
+                          {p.published ? t("Publicada") : t("Borrador")} ·
+                          /status/
                           {p.slug}
                         </span>
                         {p.published && (
@@ -575,7 +615,7 @@ export function Dashboard({
                             target="_blank"
                             rel="noreferrer"
                           >
-                            Abrir
+                            {t("Abrir")}
                           </a>
                         )}
                         <Button
@@ -584,19 +624,23 @@ export function Dashboard({
                             setEditor({ resource: "pages", value: { ...p } })
                           }
                         >
-                          Editar
+                          {t("Editar")}
                         </Button>
                         <Button
                           variant="destructive"
                           onClick={() => remove("pages", p.id)}
                         >
-                          Eliminar
+                          {t("Eliminar")}
                         </Button>
                       </div>
                     </Panel>
                   ))
                 ) : (
-                  <Nothing description="Elegí un proyecto o sus grupos y excluí los monitores internos." />
+                  <Nothing
+                    description={t(
+                      "Elegí un proyecto o sus grupos y excluí los monitores internos."
+                    )}
+                  />
                 )}
               </>
             )}
@@ -607,7 +651,7 @@ export function Dashboard({
                   disabled={!data.projects.length}
                   onClick={() => setEditor({ resource: "maintenance" })}
                 >
-                  Programar mantenimiento
+                  {t("Programar mantenimiento")}
                 </Button>
                 {data.maintenance.length ? (
                   data.maintenance.map((w) => (
@@ -636,19 +680,23 @@ export function Dashboard({
                             })
                           }
                         >
-                          Editar
+                          {t("Editar")}
                         </Button>
                         <Button
                           variant="destructive"
                           onClick={() => remove("maintenance", w.id)}
                         >
-                          Eliminar
+                          {t("Eliminar")}
                         </Button>
                       </div>
                     </Panel>
                   ))
                 ) : (
-                  <Nothing description="Las ventanas evitan alertas durante tus despliegues." />
+                  <Nothing
+                    description={t(
+                      "Las ventanas evitan alertas durante tus despliegues."
+                    )}
+                  />
                 )}
               </>
             )}
@@ -659,9 +707,11 @@ export function Dashboard({
           onOpenChange={(open) => {
             if (!open) setDeleteTarget(null);
           }}
-          title="¿Eliminar este registro?"
-          description="Esta acción no se puede deshacer. Se eliminarán los datos asociados a este registro."
-          action="Eliminar"
+          title={t("¿Eliminar este registro?")}
+          description={t(
+            "Esta acción no se puede deshacer. Se eliminarán los datos asociados a este registro."
+          )}
+          action={t("Eliminar")}
           destructive
           onConfirm={async () => {
             if (deleteTarget)

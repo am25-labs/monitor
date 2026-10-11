@@ -1,3 +1,4 @@
+import { useLocale } from "../lib/locale";
 import { useState, type FormEvent } from "react";
 import type { Snapshot } from "../lib/api";
 import { FormField, Notice, Panel } from "./common";
@@ -24,6 +25,7 @@ export function ResourceForm({
   onSave: (resource: Resource, v: unknown, id?: string) => Promise<void>;
   onCancel: () => void;
 }) {
+  const { t } = useLocale();
   const [project, setProject] = useState(
     String(value?.project_id ?? data.projects[0]?.id ?? "")
   );
@@ -33,15 +35,16 @@ export function ResourceForm({
   const [included, setIncluded] = useState(
     (value?.included_ids as string[] | undefined) ?? []
   );
+  const [language, setLanguage] = useState(String(value?.language ?? "es"));
   const eligible = pageMonitors(data.monitors, project, groups);
   const [scope, setScope] = useState(String(value?.scope ?? "project")),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const names = {
-    projects: "proyecto",
-    groups: "grupo",
-    pages: "página pública",
-    maintenance: "ventana de mantenimiento"
+    projects: t("proyecto"),
+    groups: t("grupo"),
+    pages: t("página pública"),
+    maintenance: t("ventana de mantenimiento")
   };
   const datetime = (v: unknown) => {
     if (!v) return "";
@@ -62,6 +65,7 @@ export function ResourceForm({
           ? { name: f.get("name"), project_id: project }
           : resource === "pages"
             ? {
+                language,
                 title: f.get("title"),
                 slug: f.get("slug"),
                 description: f.get("description"),
@@ -88,10 +92,12 @@ export function ResourceForm({
         resource === "maintenance" &&
         (!f.get("starts_at") || !f.get("ends_at"))
       )
-        throw new Error("Elegí las fechas de inicio y fin del mantenimiento.");
+        throw new Error(
+          t("Elegí las fechas de inicio y fin del mantenimiento.")
+        );
       await onSave(resource, payload, value?.id as string | undefined);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Revisá los datos.");
+      setError(e instanceof Error ? e.message : t("Revisá los datos."));
     } finally {
       setBusy(false);
     }
@@ -103,14 +109,14 @@ export function ResourceForm({
         ? data.groups
         : data.monitors;
   return (
-    <Panel title={`${value ? "Editar" : "Crear"} ${names[resource]}`}>
+    <Panel title={`${value ? t("Editar") : t("Crear")} ${names[resource]}`}>
       <form onSubmit={submit}>
         <FieldGroup>
           <FormField
             label={
               resource === "projects" || resource === "groups"
-                ? "Nombre"
-                : "Título"
+                ? t("Nombre")
+                : t("Título")
             }
             id="resource-title"
           >
@@ -126,7 +132,7 @@ export function ResourceForm({
             />
           </FormField>
           {(resource === "projects" || resource === "pages") && (
-            <FormField label="Descripción" id="description">
+            <FormField label={t("Descripción")} id="description">
               <Textarea
                 id="description"
                 name="description"
@@ -135,7 +141,7 @@ export function ResourceForm({
             </FormField>
           )}
           {(resource === "groups" || resource === "pages") && (
-            <FormField label="Proyecto" id="resource-project">
+            <FormField label={t("Proyecto")} id="resource-project">
               <ChoiceSelect
                 id="resource-project"
                 value={project}
@@ -154,7 +160,18 @@ export function ResourceForm({
           )}
           {resource === "pages" && (
             <>
-              <FormField label="Identificador de la página" id="slug">
+              <FormField label={t("Idioma de la página")} id="page-language">
+                <ChoiceSelect
+                  id="page-language"
+                  value={language}
+                  onValueChange={setLanguage}
+                  options={[
+                    { value: "es", label: t("Español") },
+                    { value: "en", label: t("Inglés") }
+                  ]}
+                />
+              </FormField>
+              <FormField label={t("Identificador de la página")} id="slug">
                 <Input
                   id="slug"
                   name="slug"
@@ -164,14 +181,14 @@ export function ResourceForm({
                   placeholder="mi-proyecto"
                 />
                 <FieldDescription>
-                  Se publicará en /status/identificador.
+                  {t("Se publicará en /status/identificador.")}
                 </FieldDescription>
               </FormField>
               <CheckboxList
                 key={`groups-${project}`}
                 id="group_ids"
                 name="group_ids"
-                label="Grupos incluidos"
+                label={t("Grupos incluidos")}
                 options={data.groups
                   .filter((g) => g.project_id === project)
                   .map((g) => ({ value: g.id, label: g.name }))}
@@ -187,31 +204,32 @@ export function ResourceForm({
                 }}
               />
               <FieldDescription>
-                Sin grupos seleccionados, podés elegir monitores de todo el
-                proyecto.
+                {t(
+                  "Sin grupos seleccionados, podés elegir monitores de todo el proyecto."
+                )}
               </FieldDescription>
               <CheckboxList
                 key={`included-${project}`}
                 id="included_ids"
                 name="included_ids"
-                label="Monitores incluidos"
+                label={t("Monitores incluidos")}
                 options={eligible.map((m) => ({ value: m.id, label: m.name }))}
                 value={included}
                 onValueChange={setIncluded}
               />
               <FieldDescription>
-                Solo se publicarán los monitores marcados. Sin selección no se
-                muestra ninguno; los monitores nuevos requieren selección
-                manual.
+                {t(
+                  "Solo se publicarán los monitores marcados. Sin selección no se muestra ninguno; los monitores nuevos requieren selección manual."
+                )}
               </FieldDescription>
-              <FormField label="Publicación" id="published">
+              <FormField label={t("Publicación")} id="published">
                 <ChoiceSelect
                   id="published"
                   name="published"
                   defaultValue={String(value?.published ?? false)}
                   options={[
-                    { value: "false", label: "Borrador" },
-                    { value: "true", label: "Pública" }
+                    { value: "false", label: t("Borrador") },
+                    { value: "true", label: t("Pública") }
                   ]}
                 />
               </FormField>
@@ -219,19 +237,19 @@ export function ResourceForm({
           )}
           {resource === "maintenance" && (
             <>
-              <FormField label="Aplicar a" id="scope">
+              <FormField label={t("Aplicar a")} id="scope">
                 <ChoiceSelect
                   id="scope"
                   value={scope}
                   onValueChange={(value) => setScope(value)}
                   options={[
-                    { value: "project", label: "Proyecto" },
-                    { value: "group", label: "Grupo" },
-                    { value: "monitor", label: "Monitor" }
+                    { value: "project", label: t("Proyecto") },
+                    { value: "group", label: t("Grupo") },
+                    { value: "monitor", label: t("Monitor") }
                   ]}
                 />
               </FormField>
-              <FormField label="Destino" id="target_id">
+              <FormField label={t("Destino")} id="target_id">
                 <ChoiceSelect
                   key={scope}
                   id="target_id"
@@ -248,14 +266,14 @@ export function ResourceForm({
                 />
               </FormField>
               <div className="grid gap-4 sm:grid-cols-2">
-                <FormField label="Inicio (hora local)" id="starts_at">
+                <FormField label={t("Inicio (hora local)")} id="starts_at">
                   <DateTimePicker
                     id="starts_at"
                     name="starts_at"
                     defaultValue={datetime(value?.starts_at)}
                   />
                 </FormField>
-                <FormField label="Fin (hora local)" id="ends_at">
+                <FormField label={t("Fin (hora local)")} id="ends_at">
                   <DateTimePicker
                     id="ends_at"
                     name="ends_at"
@@ -268,10 +286,10 @@ export function ResourceForm({
           <Notice message={error} destructive />
           <div className="flex gap-2">
             <Button type="submit" disabled={busy}>
-              {busy ? "Guardando…" : "Guardar"}
+              {busy ? t("Guardando…") : t("Guardar")}
             </Button>
             <Button type="button" variant="outline" onClick={onCancel}>
-              Cancelar
+              {t("Cancelar")}
             </Button>
           </div>
         </FieldGroup>

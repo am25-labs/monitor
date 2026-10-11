@@ -1,5 +1,11 @@
-import { safeNotifications, saveNotifications } from "./settings";
+import {
+  safeNotifications,
+  saveNotifications,
+  generalSettings,
+  saveGeneralSettings
+} from "./settings";
 import { pageMonitors } from "../shared/page-scope";
+import { translate } from "../shared/i18n";
 import { z } from "zod";
 import {
   groupInput,
@@ -186,6 +192,7 @@ export async function admin(
       backlog,
       stats,
       settings: {
+        general: await generalSettings(env),
         notifications: await safeNotifications(env),
         environment: env.ENVIRONMENT
       }
@@ -195,6 +202,11 @@ export async function admin(
     if (method === "GET") return json(await safeNotifications(env));
     if (method === "PUT")
       return json(await saveNotifications(env, await body(request)));
+  }
+  if (resource === "settings" && id === "general" && !action) {
+    if (method === "GET") return json(await generalSettings(env));
+    if (method === "PUT")
+      return json(await saveGeneralSettings(env, await body(request)));
   }
   if (resource === "projects") {
     if (method === "POST" && !id) {
@@ -507,7 +519,7 @@ export async function admin(
       const key = id ?? crypto.randomUUID();
       await statement(
         env.DB,
-        "INSERT INTO pages(id,slug,title,description,project_id,group_ids,excluded_ids,published,included_ids) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET slug=excluded.slug,title=excluded.title,description=excluded.description,project_id=excluded.project_id,group_ids=excluded.group_ids,excluded_ids=excluded.excluded_ids,published=excluded.published,included_ids=excluded.included_ids",
+        "INSERT INTO pages(id,slug,title,description,project_id,group_ids,excluded_ids,published,included_ids,language) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET slug=excluded.slug,title=excluded.title,description=excluded.description,project_id=excluded.project_id,group_ids=excluded.group_ids,excluded_ids=excluded.excluded_ids,published=excluded.published,included_ids=excluded.included_ids,language=excluded.language",
         key,
         v.slug,
         v.title,
@@ -516,7 +528,8 @@ export async function admin(
         JSON.stringify(v.group_ids),
         JSON.stringify(excludedIds),
         +v.published,
-        v.included_ids === undefined ? null : JSON.stringify(v.included_ids)
+        v.included_ids === undefined ? null : JSON.stringify(v.included_ids),
+        v.language
       ).run();
       return json({ id: key });
     }
@@ -539,6 +552,7 @@ export async function admin(
 
 export async function publicPage(env: Env, slug: string) {
   const page = await first<{
+    language: StatusPage["language"];
     title: string;
     description: string;
     project_id: string;
@@ -609,15 +623,17 @@ export async function publicPage(env: Env, slug: string) {
         short,
         incidents: incidents.map((i) => ({
           ...i,
-          message: i.closed_at
-            ? "Servicio recuperado"
-            : "Interrupción del servicio"
+          message: translate(
+            page.language,
+            i.closed_at ? "Servicio recuperado" : "Interrupción del servicio"
+          )
         }))
       };
     })
   );
   return json({
     title: page.title,
+    language: page.language,
     description: page.description,
     monitors,
     updatedAt: now

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { CheckConfig } from "./types";
+import { languageInput } from "./settings";
 
 const name = z.string().trim().min(1).max(120);
 const id = z.string().uuid();
@@ -129,6 +130,7 @@ export const maintenanceInput = z
     "El fin debe ser posterior al inicio."
   );
 export const pageInput = z.object({
+  language: languageInput.default("es"),
   slug: z
     .string()
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)

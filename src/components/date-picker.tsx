@@ -1,7 +1,8 @@
+import { useLocale } from "../lib/locale";
 import { useState } from "react";
 import { CalendarIcon } from "lucide-react";
 import { format, parseISO } from "date-fns";
-import { es } from "date-fns/locale";
+import { es, enUS } from "date-fns/locale";
 import { Calendar } from "./ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Button } from "./ui/button";
@@ -20,6 +21,8 @@ export function DatePicker({
   onChange,
   placeholder = "Elegí una fecha"
 }: DateProps) {
+  const { t, language } = useLocale();
+  const locale = language === "en" ? enUS : es;
   const [open, setOpen] = useState(false);
   const selected = value ? parseISO(value) : undefined;
   return (
@@ -35,14 +38,12 @@ export function DatePicker({
         }
       >
         <CalendarIcon />
-        {selected
-          ? format(selected, "d MMM yyyy", { locale: es })
-          : placeholder}
+        {selected ? format(selected, "PP", { locale }) : t(placeholder)}
       </PopoverTrigger>
       <PopoverContent align="start" className="w-auto p-0">
         <Calendar
           mode="single"
-          locale={es}
+          locale={locale}
           selected={selected}
           defaultMonth={selected}
           onSelect={(date) => {
@@ -60,7 +61,7 @@ export function DatePicker({
               setOpen(false);
             }}
           >
-            Limpiar fecha
+            {t("Limpiar fecha")}
           </Button>
         </div>
       </PopoverContent>
@@ -84,6 +85,7 @@ export function DateTimePicker({
   name: string;
   defaultValue?: string;
 }) {
+  const { t } = useLocale();
   const [date, setDate] = useState(defaultValue.slice(0, 10)),
     [hour, setHour] = useState(defaultValue.slice(11, 13) || "00"),
     [minute, setMinute] = useState(defaultValue.slice(14, 16) || "00");
@@ -92,7 +94,7 @@ export function DateTimePicker({
       <DatePicker id={id} value={date} onChange={setDate} />
       <div className="grid grid-cols-2 gap-3">
         <Field>
-          <FieldLabel htmlFor={`${id}-hour`}>Hora</FieldLabel>
+          <FieldLabel htmlFor={`${id}-hour`}>{t("Hora")}</FieldLabel>
           <ChoiceSelect
             id={`${id}-hour`}
             options={hours}
@@ -101,7 +103,7 @@ export function DateTimePicker({
           />
         </Field>
         <Field>
-          <FieldLabel htmlFor={`${id}-minute`}>Minutos</FieldLabel>
+          <FieldLabel htmlFor={`${id}-minute`}>{t("Minutos")}</FieldLabel>
           <ChoiceSelect
             id={`${id}-minute`}
             options={minutes}

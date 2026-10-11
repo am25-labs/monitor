@@ -1,7 +1,8 @@
+import { useLocale } from "../lib/locale";
 import { DatePicker } from "./date-picker";
 import { ConfirmDialog } from "./confirm-dialog";
 import { useState } from "react";
-import { api, availability, date, useRefresh } from "../lib/api";
+import { api, useRefresh } from "../lib/api";
 import type { Result, SafeMonitor, Stat } from "../shared/types";
 import { FormField, Notice, Nothing, Panel } from "./common";
 import { FieldGroup } from "./ui/field";
@@ -22,6 +23,7 @@ interface HistoryData {
   stats: Stat[];
 }
 export function History({ monitor }: { monitor: SafeMonitor }) {
+  const { t, date, availability } = useLocale();
   const [from, setFrom] = useState(""),
     [to, setTo] = useState(""),
     [cursor, setCursor] = useState<number | null>(null),
@@ -58,7 +60,7 @@ export function History({ monitor }: { monitor: SafeMonitor }) {
         ).token
       );
     } catch (e) {
-      setNotice(e instanceof Error ? e.message : "Falló la operación.");
+      setNotice(e instanceof Error ? e.message : t("Falló la operación."));
     } finally {
       setBusy(false);
     }
@@ -72,16 +74,20 @@ export function History({ monitor }: { monitor: SafeMonitor }) {
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title="¿Regenerar el token?"
-        description="El token anterior dejará de funcionar. Actualizá el servicio que envía tus heartbeats con el token nuevo."
-        action="Regenerar token"
+        title={t("¿Regenerar el token?")}
+        description={t(
+          "El token anterior dejará de funcionar. Actualizá el servicio que envía tus heartbeats con el token nuevo."
+        )}
+        action={t("Regenerar token")}
         onConfirm={regenerate}
       />
 
       {monitor.kind === "heartbeat" && (
         <Panel
-          title="Reportar heartbeat"
-          description="El token se muestra únicamente al crearlo o regenerarlo."
+          title={t("Reportar heartbeat")}
+          description={t(
+            "El token se muestra únicamente al crearlo o regenerarlo."
+          )}
         >
           <div className="flex flex-col gap-3">
             <p className="break-all font-mono text-xs">
@@ -97,11 +103,11 @@ export function History({ monitor }: { monitor: SafeMonitor }) {
               onClick={() => setConfirmOpen(true)}
               disabled={busy}
             >
-              Regenerar token
+              {t("Regenerar token")}
             </Button>
             {token && (
               <Input
-                aria-label="Token nuevo de heartbeat"
+                aria-label={t("Token nuevo de heartbeat")}
                 readOnly
                 value={token}
               />
@@ -111,12 +117,14 @@ export function History({ monitor }: { monitor: SafeMonitor }) {
         </Panel>
       )}
       <Panel
-        title="Historial completo"
-        description="Comprobaciones individuales disponibles durante seis meses. Fechas en tu hora local."
+        title={t("Historial completo")}
+        description={t(
+          "Comprobaciones individuales disponibles durante seis meses. Fechas en tu hora local."
+        )}
       >
         <div className="flex flex-col gap-4">
           <FieldGroup className="grid gap-4 sm:grid-cols-2">
-            <FormField label="Desde" id="history-from">
+            <FormField label={t("Desde")} id="history-from">
               <DatePicker
                 id="history-from"
                 value={from}
@@ -126,7 +134,7 @@ export function History({ monitor }: { monitor: SafeMonitor }) {
                 }}
               />
             </FormField>
-            <FormField label="Hasta" id="history-to">
+            <FormField label={t("Hasta")} id="history-to">
               <DatePicker
                 id="history-to"
                 value={to}
@@ -141,17 +149,17 @@ export function History({ monitor }: { monitor: SafeMonitor }) {
           {data && (
             <>
               <p>
-                Disponibilidad del rango:{" "}
+                {t("Disponibilidad del rango:")}{" "}
                 <strong>{availability(data.stats)}</strong>
               </p>
               {data.results.length ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Fecha</TableHead>
-                      <TableHead>Resultado</TableHead>
-                      <TableHead>Latencia</TableHead>
-                      <TableHead>Diagnóstico</TableHead>
+                      <TableHead>{t("Fecha")}</TableHead>
+                      <TableHead>{t("Resultado")}</TableHead>
+                      <TableHead>{t("Latencia")}</TableHead>
+                      <TableHead>{t("Diagnóstico")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -161,14 +169,14 @@ export function History({ monitor }: { monitor: SafeMonitor }) {
                           {date(r.checked_at)}
                         </TableCell>
                         <TableCell>
-                          {r.ok ? "Éxito" : "Fallo"}
-                          {r.maintenance ? " · mantenimiento" : ""}
+                          {r.ok ? t("Éxito") : t("Fallo")}
+                          {r.maintenance ? t(" · mantenimiento") : ""}
                         </TableCell>
                         <TableCell>
                           {r.latency === null ? "—" : `${r.latency} ms`}
                         </TableCell>
                         <TableCell>
-                          {r.diagnostic}
+                          {t(r.diagnostic)}
                           {r.code !== null ? ` (${r.code})` : ""}
                         </TableCell>
                       </TableRow>
@@ -176,7 +184,9 @@ export function History({ monitor }: { monitor: SafeMonitor }) {
                   </TableBody>
                 </Table>
               ) : (
-                <Nothing description="No hay comprobaciones en este rango." />
+                <Nothing
+                  description={t("No hay comprobaciones en este rango.")}
+                />
               )}
               <div className="flex gap-2">
                 <Button
@@ -187,7 +197,7 @@ export function History({ monitor }: { monitor: SafeMonitor }) {
                     setTrail(trail.slice(0, -1));
                   }}
                 >
-                  Anterior
+                  {t("Anterior")}
                 </Button>
                 <Button
                   variant="outline"
@@ -197,7 +207,7 @@ export function History({ monitor }: { monitor: SafeMonitor }) {
                     setCursor(data.nextCursor);
                   }}
                 >
-                  Siguiente
+                  {t("Siguiente")}
                 </Button>
               </div>
             </>
@@ -206,16 +216,18 @@ export function History({ monitor }: { monitor: SafeMonitor }) {
       </Panel>
       {data?.stats.length !== 0 && (
         <Panel
-          title="Resumen diario"
-          description="Disponibilidad y latencia promedio de comprobaciones exitosas."
+          title={t("Resumen diario")}
+          description={t(
+            "Disponibilidad y latencia promedio de comprobaciones exitosas."
+          )}
         >
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Día</TableHead>
-                <TableHead>Disponibilidad</TableHead>
-                <TableHead>Comprobaciones</TableHead>
-                <TableHead>Latencia media</TableHead>
+                <TableHead>{t("Día")}</TableHead>
+                <TableHead>{t("Disponibilidad")}</TableHead>
+                <TableHead>{t("Comprobaciones")}</TableHead>
+                <TableHead>{t("Latencia media")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

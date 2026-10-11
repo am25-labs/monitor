@@ -2,11 +2,30 @@ import { first, statement, nowSeconds } from "./db";
 import { seal, unseal } from "./crypto";
 import {
   notificationInput,
+  generalInput,
+  type GeneralSettings,
   type NotificationConfig,
   type SafeNotificationConfig,
 } from "../shared/settings";
 
 const context = "settings:notifications";
+export async function generalSettings(env: Env): Promise<GeneralSettings> {
+  const stored = await first<{ value: string }>(
+    env.DB,
+    "SELECT value FROM app_settings WHERE id='general'",
+  );
+  return generalInput.parse(stored ? JSON.parse(stored.value) : {});
+}
+export async function saveGeneralSettings(env: Env, input: unknown) {
+  const settings = generalInput.parse(input);
+  await statement(
+    env.DB,
+    "INSERT INTO app_settings(id,value,updated_at) VALUES('general',?,?) ON CONFLICT(id) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at",
+    JSON.stringify(settings),
+    nowSeconds(),
+  ).run();
+  return settings;
+}
 export async function notificationConfig(env: Env): Promise<{
   config: NotificationConfig;
   configured: boolean;

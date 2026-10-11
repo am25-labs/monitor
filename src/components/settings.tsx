@@ -1,3 +1,4 @@
+import { useLocale } from "../lib/locale";
 import {
   useState,
   type FormEvent,
@@ -10,6 +11,7 @@ import { product } from "../shared/product";
 import type {
   SafeNotificationConfig,
   NotificationConfig,
+  GeneralSettings,
 } from "../shared/settings";
 import { ChoiceSelect } from "./choice-select";
 import { FormField, Notice, Panel } from "./common";
@@ -39,13 +41,14 @@ function EmailFields({
   busy,
   hasToken,
 }: ChannelFields<NotificationConfig["email"]>) {
+  const { t } = useLocale();
   return (
     <>
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Mail className="size-4" />
-        <p>El envío de correo está integrado con Postmark.</p>
+        <p>{t("El envío de correo está integrado con Postmark.")}</p>
       </div>
-      <FormField id="notification-to" label="Correo destinatario">
+      <FormField id="notification-to" label={t("Correo destinatario")}>
         <Input
           id="notification-to"
           type="email"
@@ -62,7 +65,7 @@ function EmailFields({
       </FormField>
       <FormField
         id="notification-from"
-        label="Remitente verificado en Postmark"
+        label={t("Remitente verificado en Postmark")}
       >
         <Input
           id="notification-from"
@@ -92,12 +95,12 @@ function EmailFields({
           }
         />
         <FieldDescription>
-          Usá un stream transaccional; normalmente es outbound.
+          {t("Usá un stream transaccional; normalmente es outbound.")}
         </FieldDescription>
       </FormField>
       <FormField
         id="notification-postmark-token"
-        label="Server API Token de Postmark"
+        label={t("Server API Token de Postmark")}
       >
         <Input
           id="notification-postmark-token"
@@ -106,7 +109,7 @@ function EmailFields({
           required={!hasToken}
           disabled={busy}
           value={email.token}
-          placeholder={hasToken ? "Token guardado" : "Ingresá tu token"}
+          placeholder={hasToken ? t("Token guardado") : t("Ingresá tu token")}
           onChange={(event) =>
             setEmail((current) => ({
               ...current,
@@ -116,8 +119,8 @@ function EmailFields({
         />
         <FieldDescription>
           {hasToken
-            ? "Dejalo vacío para conservar el token existente."
-            : "El token se guardará cifrado y no se volverá a mostrar."}
+            ? t("Dejalo vacío para conservar el token existente.")
+            : t("El token se guardará cifrado y no se volverá a mostrar.")}
         </FieldDescription>
       </FormField>
     </>
@@ -129,13 +132,14 @@ function TelegramFields({
   busy,
   hasToken,
 }: ChannelFields<NotificationConfig["telegram"]>) {
+  const { t } = useLocale();
   return (
     <>
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Send className="size-4" />
-        <p>Recibí tus alertas mediante un bot de Telegram.</p>
+        <p>{t("Recibí tus alertas mediante un bot de Telegram.")}</p>
       </div>
-      <FormField id="notification-chat" label="Identificador del chat">
+      <FormField id="notification-chat" label={t("Identificador del chat")}>
         <Input
           id="notification-chat"
           required
@@ -150,11 +154,12 @@ function TelegramFields({
           placeholder="123456789"
         />
         <FieldDescription>
-          Iniciá una conversación con tu bot y usá el identificador numérico del
-          chat destinatario.
+          {t(
+            "Iniciá una conversación con tu bot y usá el identificador numérico del chat destinatario.",
+          )}
         </FieldDescription>
       </FormField>
-      <FormField id="notification-telegram-token" label="Token del bot">
+      <FormField id="notification-telegram-token" label={t("Token del bot")}>
         <Input
           id="notification-telegram-token"
           type="password"
@@ -163,7 +168,7 @@ function TelegramFields({
           disabled={busy}
           value={telegram.token}
           placeholder={
-            hasToken ? "Token guardado" : "Token generado por BotFather"
+            hasToken ? t("Token guardado") : t("Token generado por BotFather")
           }
           onChange={(event) =>
             setTelegram((current) => ({
@@ -174,8 +179,8 @@ function TelegramFields({
         />
         <FieldDescription>
           {hasToken
-            ? "Dejalo vacío para conservar el token existente."
-            : "El token se guardará cifrado y no se volverá a mostrar."}
+            ? t("Dejalo vacío para conservar el token existente.")
+            : t("El token se guardará cifrado y no se volverá a mostrar.")}
         </FieldDescription>
       </FormField>
       <a
@@ -184,7 +189,7 @@ function TelegramFields({
         rel="noreferrer"
         className="text-sm underline underline-offset-4"
       >
-        Cómo crear un bot de Telegram
+        {t("Cómo crear un bot de Telegram")}
       </a>
     </>
   );
@@ -196,6 +201,7 @@ function Notifications({
   initial: SafeNotificationConfig;
   onChange: () => Promise<void>;
 }) {
+  const { t } = useLocale();
   const [saved, setSaved] = useState(initial);
   const [channel, setChannel] = useState(initial.channel);
   const [email, setEmail] = useState({
@@ -226,14 +232,14 @@ function Notifications({
       setEmail((current) => ({ ...current, token: "" }));
       setTelegram((current) => ({ ...current, token: "" }));
       setNotice(
-        "Configuración guardada. Las alertas usarán el canal seleccionado.",
+        t("Configuración guardada. Las alertas usarán el canal seleccionado."),
       );
       await onChange();
     } catch (error) {
       setError(
         error instanceof Error
           ? error.message
-          : "No se pudo guardar la configuración.",
+          : t("No se pudo guardar la configuración."),
       );
     } finally {
       setBusy(false);
@@ -241,26 +247,33 @@ function Notifications({
   }
   return (
     <Panel
-      title="Notificaciones"
-      description="Un canal para tus alertas personales de caída y recuperación."
+      title={t("Notificaciones")}
+      description={t(
+        "Un canal para tus alertas personales de caída y recuperación.",
+      )}
     >
       <form onSubmit={submit} className="flex flex-col gap-6">
         <Notice message={error} destructive />
         <Notice message={notice} />
         <FieldGroup>
-          <FormField id="notification-channel" label="Canal de notificaciones">
+          <FormField
+            id="notification-channel"
+            label={t("Canal de notificaciones")}
+          >
             <ChoiceSelect
               id="notification-channel"
               value={channel}
               disabled={busy}
               onValueChange={(value) => setChannel(value as typeof channel)}
               options={[
-                { value: "email", label: "Correo · Postmark" },
+                { value: "email", label: t("Correo · Postmark") },
                 { value: "telegram", label: "Telegram" },
               ]}
             />
             <FieldDescription>
-              Las alertas se envían únicamente al destinatario configurado aquí.
+              {t(
+                "Las alertas se envían únicamente al destinatario configurado aquí.",
+              )}
             </FieldDescription>
           </FormField>
           {channel === "email" ? (
@@ -282,17 +295,83 @@ function Notifications({
         <div className="flex flex-wrap items-center justify-between gap-4">
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <ShieldCheck className="size-4" />
-            Tokens cifrados en D1.
+            {t("Tokens cifrados en D1.")}
           </p>
           <Button type="submit" disabled={busy}>
-            {busy ? "Guardando…" : "Guardar cambios"}
+            {busy ? t("Guardando…") : t("Guardar cambios")}
           </Button>
         </div>
         {!saved.configured && (
           <p className="text-sm text-muted-foreground">
-            Configurá y guardá un canal para comenzar a recibir alertas.
+            {t("Configurá y guardá un canal para comenzar a recibir alertas.")}
           </p>
         )}
+      </form>
+    </Panel>
+  );
+}
+
+function General({
+  initial,
+  onChange,
+}: {
+  initial: GeneralSettings;
+  onChange: () => Promise<void>;
+}) {
+  const { t } = useLocale();
+  const [language, setLanguage] = useState(initial.language);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState(false);
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    setSaved(false);
+    try {
+      await api<GeneralSettings>("admin/settings/general", "PUT", { language });
+      await onChange();
+      setSaved(true);
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : t("No se pudo guardar la configuración."),
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Panel
+      title={t("General")}
+      description={t(
+        "Preferencias del dashboard. Cada página pública tiene su propio idioma.",
+      )}
+    >
+      <form onSubmit={submit} className="flex flex-col gap-6">
+        <FieldGroup>
+          <FormField id="dashboard-language" label={t("Idioma del dashboard")}>
+            <ChoiceSelect
+              id="dashboard-language"
+              value={language}
+              disabled={busy}
+              onValueChange={(value) => {
+                setLanguage(value as GeneralSettings["language"]);
+                setSaved(false);
+              }}
+              options={[
+                { value: "es", label: t("Español") },
+                { value: "en", label: t("Inglés") },
+              ]}
+            />
+          </FormField>
+        </FieldGroup>
+        <Notice message={error} destructive />
+        {saved && <Notice message={t("Idioma guardado.")} />}
+        <Button type="submit" disabled={busy} className="self-end">
+          {busy ? t("Guardando…") : t("Guardar cambios")}
+        </Button>
       </form>
     </Panel>
   );
@@ -305,13 +384,16 @@ export function Settings({
   data: Snapshot;
   onChange: () => Promise<void>;
 }) {
+  const { t } = useLocale();
   return (
     <div className="flex max-w-3xl flex-col gap-6 text-sm [&_[data-slot=card-title]]:text-sm">
       <Card>
         <CardHeader>
           <CardTitle>{product.name}</CardTitle>
           <CardDescription className="flex flex-wrap items-center gap-2">
-            <span>Versión {product.version}</span>
+            <span>
+              {t("Versión")} {product.version}
+            </span>
             <Badge
               variant="outline"
               render={
@@ -328,7 +410,7 @@ export function Settings({
         </CardHeader>
         <CardContent className="flex flex-col items-start gap-3">
           <p className="text-muted-foreground">
-            Creado por {product.author} · © {new Date().getFullYear()}{" "}
+            {t("Creado por")} {product.author} · © {new Date().getFullYear()}{" "}
             {product.copyright}
           </p>
           <a
@@ -337,24 +419,25 @@ export function Settings({
             rel="noreferrer"
             className="flex items-center gap-1.5 underline underline-offset-4"
           >
-            Repositorio del proyecto
+            {t("Repositorio del proyecto")}
             <ExternalLink className="size-3.5" />
           </a>
         </CardContent>
       </Card>
       <Tabs defaultValue="about" className="gap-6">
-        <TabsList aria-label="Ajustes">
-          <TabsTrigger value="about">Acerca de</TabsTrigger>
-          <TabsTrigger value="notifications">Notificaciones</TabsTrigger>
+        <TabsList aria-label={t("Ajustes")}>
+          <TabsTrigger value="about">{t("Acerca de")}</TabsTrigger>
+          <TabsTrigger value="notifications">{t("Notificaciones")}</TabsTrigger>
+          <TabsTrigger value="general">{t("General")}</TabsTrigger>
         </TabsList>
         <TabsContent value="about" className="flex flex-col gap-6">
           <Panel
-            title="Licencia y autoría"
-            description="Información del proyecto y condiciones de uso."
+            title={t("Licencia y autoría")}
+            description={t("Información del proyecto y condiciones de uso.")}
           >
             <div className="flex flex-col gap-4 text-sm">
               <p>
-                {product.name} está disponible bajo{" "}
+                {product.name} {t("está disponible bajo")}{" "}
                 <a
                   href={`${product.repository}/blob/main/LICENSE`}
                   target="_blank"
@@ -366,37 +449,40 @@ export function Settings({
                 .
               </p>
               <p className="text-muted-foreground">
-                La licencia permite usar, modificar y distribuir el código bajo
-                sus condiciones. Consultá el texto completo en el repositorio.
-                Las dependencias conservan sus propias licencias.
+                {t(
+                  "La licencia permite usar, modificar y distribuir el código bajo sus condiciones. Consultá el texto completo en el repositorio. Las dependencias conservan sus propias licencias.",
+                )}
               </p>
               <Separator />
-              <p>Autoría: {product.author}.</p>
+              <p>
+                {t("Autoría:")} {product.author}.
+              </p>
               <p className="text-muted-foreground">
                 © {new Date().getFullYear()} {product.copyright}
               </p>
             </div>
           </Panel>
           <Panel
-            title="Datos y privacidad"
-            description="Cómo esta instalación procesa la información de monitoreo."
+            title={t("Datos y privacidad")}
+            description={t(
+              "Cómo esta instalación procesa la información de monitoreo.",
+            )}
           >
             <div className="flex flex-col gap-3 text-sm text-muted-foreground">
               <p>
-                Las comprobaciones y la configuración se almacenan en Cloudflare
-                D1. Las credenciales de los monitores y los tokens de
-                notificaciones se guardan cifrados.
+                {t(
+                  "Las comprobaciones y la configuración se almacenan en Cloudflare D1. Las credenciales de los monitores y los tokens de notificaciones se guardan cifrados.",
+                )}
               </p>
               <p>
-                El historial individual se conserva seis meses calendario; los
-                agregados diarios y los incidentes, 365 días. Las páginas
-                públicas solo muestran los monitores seleccionados y datos
-                sanitizados.
+                {t(
+                  "El historial individual se conserva seis meses calendario; los agregados diarios y los incidentes, 365 días. Las páginas públicas solo muestran los monitores seleccionados y datos sanitizados.",
+                )}
               </p>
               <p>
-                Las alertas comparten los detalles del incidente con Postmark o
-                Telegram, según el canal que configures. El acceso privado se
-                administra mediante Cloudflare Access.
+                {t(
+                  "Las alertas comparten los detalles del incidente con Postmark o Telegram, según el canal que configures. El acceso privado se administra mediante Cloudflare Access.",
+                )}
               </p>
             </div>
           </Panel>
@@ -406,6 +492,9 @@ export function Settings({
             initial={data.settings.notifications}
             onChange={onChange}
           />
+        </TabsContent>
+        <TabsContent value="general">
+          <General initial={data.settings.general} onChange={onChange} />
         </TabsContent>
       </Tabs>
     </div>

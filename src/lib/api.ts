@@ -1,4 +1,9 @@
-import type { SafeNotificationConfig } from "../shared/settings";
+import type {
+  SafeNotificationConfig,
+  GeneralSettings,
+  Language
+} from "../shared/settings";
+import { locales, translate } from "../shared/i18n";
 import { useCallback, useEffect, useState } from "react";
 import type {
   Group,
@@ -32,7 +37,11 @@ export interface Snapshot {
     error: string | null;
   }[];
   backlog: { total: number; oldest: number | null };
-  settings: { notifications: SafeNotificationConfig; environment: string };
+  settings: {
+    general: GeneralSettings;
+    notifications: SafeNotificationConfig;
+    environment: string;
+  };
 }
 export async function api<T>(
   path: string,
@@ -85,13 +94,21 @@ export function useRefresh<T>(path: string) {
   }, [refresh]);
   return { data, error, refresh };
 }
-export function date(value: number | null | undefined) {
-  return value ? new Date(value * 1000).toLocaleString("es-SV") : "Sin datos";
+export function date(
+  value: number | null | undefined,
+  language: Language = "es"
+) {
+  return value
+    ? new Date(value * 1000).toLocaleString(locales[language])
+    : translate(language, "Sin datos");
 }
 export function availability(
-  stats: Pick<Stat, "observed_seconds" | "up_seconds">[]
+  stats: Pick<Stat, "observed_seconds" | "up_seconds">[],
+  language: Language = "es"
 ) {
   const total = stats.reduce((v, s) => v + s.observed_seconds, 0),
     up = stats.reduce((v, s) => v + s.up_seconds, 0);
-  return total ? `${((100 * up) / total).toFixed(2)}%` : "Sin datos";
+  return total
+    ? `${((100 * up) / total).toFixed(2)}%`
+    : translate(language, "Sin datos");
 }

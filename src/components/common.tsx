@@ -1,3 +1,4 @@
+import { useLocale } from "../lib/locale";
 import type { ReactNode } from "react";
 import { Badge } from "./ui/badge";
 import {
@@ -22,6 +23,7 @@ export const statusLabels: Record<Status, string> = {
   maintenance: "Mantenimiento"
 };
 export function StatusBadge({ status }: { status: Status }) {
+  const { t } = useLocale();
   return (
     <Badge
       variant="outline"
@@ -32,7 +34,7 @@ export function StatusBadge({ status }: { status: Status }) {
       )}
     >
       <span className="size-1.5 rounded-full bg-current" />
-      {statusLabels[status]}
+      {t(statusLabels[status])}
     </Badge>
   );
 }
@@ -56,17 +58,20 @@ export function Panel({
   );
 }
 export function Nothing({
-  title = "Todavía no hay registros",
-  description = "Agregá el primero para comenzar."
+  title,
+  description
 }: {
   title?: string;
   description?: string;
 }) {
+  const { t } = useLocale();
   return (
     <Empty>
       <EmptyHeader>
-        <EmptyTitle>{title}</EmptyTitle>
-        <EmptyDescription>{description}</EmptyDescription>
+        <EmptyTitle>{title ?? t("Todavía no hay registros")}</EmptyTitle>
+        <EmptyDescription>
+          {description ?? t("Agregá el primero para comenzar.")}
+        </EmptyDescription>
       </EmptyHeader>
     </Empty>
   );
@@ -78,12 +83,13 @@ export function Notice({
   message: string;
   destructive?: boolean;
 }) {
+  const { t } = useLocale();
   return message ? (
     <Alert variant={destructive ? "destructive" : "default"}>
       <AlertTitle>
-        {destructive ? "No se pudo completar" : "Información"}
+        {destructive ? t("No se pudo completar") : t("Información")}
       </AlertTitle>
-      <AlertDescription>{message}</AlertDescription>
+      <AlertDescription>{t(message)}</AlertDescription>
     </Alert>
   ) : null;
 }

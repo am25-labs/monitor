@@ -1,8 +1,10 @@
+import { useLocale, LocaleProvider } from "../lib/locale";
 import { useState } from "react";
+import type { Language } from "../shared/settings";
 import { ChoiceSelect } from "../components/choice-select";
 import { useParams } from "react-router-dom";
 import { Moon, Sun, RefreshCw } from "lucide-react";
-import { availability, date, useRefresh } from "../lib/api";
+import { useRefresh } from "../lib/api";
 import type { Status } from "../shared/types";
 import { Notice, Nothing, Panel, StatusBadge } from "../components/common";
 import { Button } from "../components/ui/button";
@@ -10,6 +12,7 @@ import { Skeleton } from "../components/ui/skeleton";
 import { cn } from "../lib/utils";
 
 interface PublicData {
+  language: Language;
   title: string;
   description: string;
   updatedAt: number;
@@ -46,6 +49,7 @@ function History({
   range: HistoryRange;
   updatedAt: number;
 }) {
+  const { t, date, availability } = useLocale();
   const granular = range !== "90d";
   const count = range === "24h" ? 288 : range === "7d" ? 168 : 90;
   const stride = range === "24h" ? 300000 : range === "7d" ? 3600000 : 86400000;
@@ -85,25 +89,25 @@ function History({
     stat?.observed_seconds ? [stat] : []
   );
   const labels: Record<string, string> = {
-    none: "Sin registros",
-    up: "Sin interrupciones registradas",
-    down: "Interrupción durante todo el tiempo observado",
-    partial: "Hubo interrupciones"
+    none: t("Sin registros"),
+    up: t("Sin interrupciones registradas"),
+    down: t("Interrupción durante todo el tiempo observado"),
+    partial: t("Hubo interrupciones")
   };
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
         <p>
-          Historial{" "}
+          {t("Historial")}{" "}
           {range === "24h"
-            ? "cada 5 minutos"
+            ? t("cada 5 minutos")
             : range === "7d"
-              ? "por hora"
-              : "diario"}{" "}
-          · últimos {periods[range]}
+              ? t("por hora")
+              : t("diario")}{" "}
+          {t("· últimos")} {t(periods[range])}
         </p>
         <p className="text-muted-foreground">
-          Disponibilidad observada: {availability(observed)}
+          {t("Disponibilidad observada:")} {availability(observed)}
         </p>
       </div>
       <div
@@ -116,10 +120,10 @@ function History({
               : "grid-cols-[repeat(90,minmax(0,1fr))]"
         )}
         role="list"
-        aria-label="Historial, de más antiguo a más reciente"
+        aria-label={t("Historial, de más antiguo a más reciente")}
       >
         {days.map(({ day, start, stat, state, coverage, uptime }) => {
-          const label = `${granular ? date(start / 1000) : `${day} (UTC)`}: ${labels[state]}${stat?.observed_seconds ? ` · ${availability([stat])} · ${Math.round(stat.observed_seconds - stat.up_seconds)} s de interrupción / ${Math.round(stat.observed_seconds)} s observados` : ""}`;
+          const label = `${granular ? date(start / 1000) : `${day} (UTC)`}: ${labels[state]}${stat?.observed_seconds ? ` · ${availability([stat])} · ${t("{outage} s de interrupción / {observed} s observados", { outage: Math.round(stat.observed_seconds - stat.up_seconds), observed: Math.round(stat.observed_seconds) })}` : ""}`;
           return (
             <span
               key={day}
@@ -145,18 +149,24 @@ function History({
         })}
       </div>
       <div className="flex justify-between text-xs text-muted-foreground">
-        <span>Inicio del período</span>
-        <span>{granular ? "Ahora" : "Día más reciente"}</span>
+        <span>{t("Inicio del período")}</span>
+        <span>{granular ? t("Ahora") : t("Día más reciente")}</span>
       </div>
       <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
         {[
-          ["bg-success", granular ? "Tiempo operativo" : "Sin interrupciones"],
-          ...(!granular ? [["bg-warning", "Con interrupciones"]] : []),
+          [
+            "bg-success",
+            granular ? t("Tiempo operativo") : t("Sin interrupciones")
+          ],
+          ...(!granular ? [["bg-warning", t("Con interrupciones")]] : []),
           [
             "bg-destructive",
-            granular ? "Tiempo con interrupciones" : "Sin disponibilidad"
+            granular ? t("Tiempo con interrupciones") : t("Sin disponibilidad")
           ],
-          ["bg-muted", granular ? "Tiempo sin observación" : "Sin registros"]
+          [
+            "bg-muted",
+            granular ? t("Tiempo sin observación") : t("Sin registros")
+          ]
         ].map(([color, label]) => (
           <span key={label} className="flex items-center gap-1.5">
             <span
@@ -168,18 +178,26 @@ function History({
         ))}
       </div>
       <p className="text-xs text-muted-foreground">
-        {observed.length} de {count} segmentos con registros. Cada segmento
-        representa{" "}
-        {range === "24h"
-          ? "5 minutos"
-          : range === "7d"
-            ? "una hora"
-            : "un día UTC"}
-        .
+        {t(
+          "{observed} de {count} segmentos con registros. Cada segmento representa {duration}.",
+          {
+            observed: observed.length,
+            count,
+            duration: t(
+              range === "24h"
+                ? "5 minutos"
+                : range === "7d"
+                  ? "una hora"
+                  : "un día UTC"
+            )
+          }
+        )}
         {granular
-          ? " Leé de izquierda a derecha y de arriba hacia abajo. La altura de cada color indica su proporción de tiempo dentro del segmento; el gris excluye pausas, mantenimiento y períodos sin datos."
-          : " El historial puede incluir incidentes ya resueltos."}{" "}
-        El segmento actual está en curso.
+          ? t(
+              " Leé de izquierda a derecha y de arriba hacia abajo. La altura de cada color indica su proporción de tiempo dentro del segmento; el gris excluye pausas, mantenimiento y períodos sin datos."
+            )
+          : t(" El historial puede incluir incidentes ya resueltos.")}{" "}
+        {t("El segmento actual está en curso.")}
       </p>
     </div>
   );
@@ -191,8 +209,28 @@ export function PublicStatus({
   theme: string;
   toggleTheme: () => void;
 }) {
-  const { slug } = useParams(),
-    { data, error, refresh } = useRefresh<PublicData>(`public/${slug}`);
+  const { slug } = useParams();
+  const snapshot = useRefresh<PublicData>(`public/${slug}`);
+  return (
+    <LocaleProvider language={snapshot.data?.language ?? "es"}>
+      <StatusView theme={theme} toggleTheme={toggleTheme} {...snapshot} />
+    </LocaleProvider>
+  );
+}
+function StatusView({
+  data,
+  error,
+  refresh,
+  theme,
+  toggleTheme
+}: {
+  theme: string;
+  toggleTheme: () => void;
+  data: PublicData | null;
+  error: string;
+  refresh: () => Promise<void>;
+}) {
+  const { t, date, availability } = useLocale();
   const [range, setRange] = useState<HistoryRange>("7d");
   const overall: Status = data?.monitors.some((m) => m.status === "down")
     ? "down"
@@ -210,10 +248,10 @@ export function PublicStatus({
       <header className="flex items-start justify-between gap-4">
         <div>
           <p className="mb-2 text-sm text-muted-foreground">
-            Estado de los servicios
+            {t("Estado de los servicios")}
           </p>
           <h1 className="text-3xl font-semibold">
-            {data?.title ?? "Estado del proyecto"}
+            {data?.title ?? t("Estado del proyecto")}
           </h1>
           <p className="mt-2 text-muted-foreground">{data?.description}</p>
         </div>
@@ -221,7 +259,7 @@ export function PublicStatus({
           <Button
             variant="outline"
             size="icon"
-            aria-label="Actualizar"
+            aria-label={t("Actualizar")}
             onClick={() => void refresh()}
           >
             <RefreshCw />
@@ -229,7 +267,7 @@ export function PublicStatus({
           <Button
             variant="outline"
             size="icon"
-            aria-label="Cambiar tema"
+            aria-label={t("Cambiar tema")}
             onClick={toggleTheme}
           >
             {theme === "dark" ? <Sun /> : <Moon />}
@@ -242,20 +280,22 @@ export function PublicStatus({
         <>
           {data.monitors.length > 0 && (
             <Panel
-              title="Estado general"
-              description={`Última actualización: ${date(data.updatedAt)}`}
+              title={t("Estado general")}
+              description={t("Última actualización: {date}", {
+                date: date(data.updatedAt)
+              })}
             >
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <StatusBadge status={overall} />
                 <ChoiceSelect
-                  aria-label="Período del historial"
+                  aria-label={t("Período del historial")}
                   className="w-full sm:w-48"
                   value={range}
                   onValueChange={(value) => setRange(value as HistoryRange)}
                   options={[
-                    { value: "90d", label: "Últimos 90 días" },
-                    { value: "7d", label: "Últimos 7 días" },
-                    { value: "24h", label: "Últimas 24 horas" }
+                    { value: "90d", label: t("Últimos 90 días") },
+                    { value: "7d", label: t("Últimos 7 días") },
+                    { value: "24h", label: t("Últimas 24 horas") }
                   ]}
                 />
               </div>
@@ -273,7 +313,7 @@ export function PublicStatus({
                   <div className="flex flex-col gap-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-sm text-muted-foreground">
-                        Estado actual
+                        {t("Estado actual")}
                       </span>
                       <StatusBadge status={m.status} />
                     </div>
@@ -285,21 +325,21 @@ export function PublicStatus({
                       updatedAt={data.updatedAt}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Última comprobación: {date(m.lastChecked)}
+                      {t("Última comprobación:")} {date(m.lastChecked)}
                     </p>
                     {incidents.length > 0 && (
                       <div className="flex flex-col gap-3 border-t pt-3">
                         <p className="text-sm font-medium">
-                          Incidentes recientes
+                          {t("Incidentes recientes")}
                         </p>
                         {incidents.map((i) => (
                           <div key={i.opened_at} className="text-sm">
-                            <p>{i.message}</p>
+                            <p>{t(i.message)}</p>
                             <p className="text-muted-foreground">
                               {date(i.opened_at)}
                               {i.closed_at
                                 ? ` → ${date(i.closed_at)}`
-                                : " · En curso"}
+                                : t(" · En curso")}
                             </p>
                           </div>
                         ))}
@@ -311,20 +351,26 @@ export function PublicStatus({
             })
           ) : (
             <Nothing
-              title="Sin servicios publicados"
-              description="No hay servicios disponibles para mostrar en esta página."
+              title={t("Sin servicios publicados")}
+              description={t(
+                "No hay servicios disponibles para mostrar en esta página."
+              )}
             />
           )}
         </>
       )}
       <footer className="mt-auto flex flex-col gap-2 border-t pt-6 text-center text-xs text-muted-foreground">
-        <p>AM25 Monitor · Estado público de los servicios</p>
+        <p>{t("AM25 Monitor · Estado público de los servicios")}</p>
         <p>
-          Actualización automática cada 30 segundos · Fechas en tu hora local
+          {t(
+            "Actualización automática cada 30 segundos · Fechas en tu hora local"
+          )}
         </p>
         <p>
-          La disponibilidad corresponde al tiempo observado durante los últimos
-          {periods[range]}. Excluye pausas, mantenimiento y períodos sin datos.
+          {t(
+            "La disponibilidad corresponde al tiempo observado durante los últimos {period}. Excluye pausas, mantenimiento y períodos sin datos.",
+            { period: t(periods[range]) }
+          )}
         </p>
       </footer>
     </main>

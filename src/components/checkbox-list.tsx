@@ -1,3 +1,4 @@
+import { useLocale } from "../lib/locale";
 import { Checkbox } from "./ui/checkbox";
 import { Field, FieldLabel, FieldLegend, FieldSet } from "./ui/field";
 import type { Choice } from "./choice-select";
@@ -18,6 +19,7 @@ export function CheckboxList({
   value?: string[];
   onValueChange?: (value: string[]) => void;
 }) {
+  const { t } = useLocale();
   return (
     <FieldSet>
       <FieldLegend variant="label">{label}</FieldLegend>
@@ -52,7 +54,7 @@ export function CheckboxList({
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">
-          No hay opciones en este proyecto.
+          {t("No hay opciones en este proyecto.")}
         </p>
       )}
     </FieldSet>

@@ -1,3 +1,5 @@
+import type { Language } from "./settings";
+
 export type Status =
   "pending" | "up" | "down" | "unknown" | "paused" | "maintenance";
 export interface HttpConfig {
@@ -76,6 +78,7 @@ export interface Window {
   ends_at: number;
 }
 export interface StatusPage {
+  language: Language;
   id: string;
   slug: string;
   title: string;

@@ -7,6 +7,7 @@ import {
   SelectValue
 } from "./ui/select";
 import { cn } from "../lib/utils";
+import { useLocale } from "../lib/locale";
 
 export interface Choice {
   value: string;
@@ -29,11 +30,13 @@ export function ChoiceSelect({
   id,
   options,
   onValueChange,
-  placeholder = "Seleccioná una opción",
+  placeholder,
   className,
   "aria-label": label,
   ...props
 }: Props) {
+  const { t } = useLocale();
+  const hint = placeholder ?? t("Seleccioná una opción");
   return (
     <Select
       items={options}
@@ -45,10 +48,10 @@ export function ChoiceSelect({
         aria-label={label}
         className={cn("w-full min-w-0", className)}
       >
-        <SelectValue placeholder={placeholder}>
+        <SelectValue placeholder={hint}>
           {(value) =>
             options.find((option) => option.value === (value ?? ""))?.label ??
-            placeholder
+            hint
           }
         </SelectValue>
       </SelectTrigger>
