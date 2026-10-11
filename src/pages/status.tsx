@@ -19,6 +19,7 @@ interface PublicData {
     status: Status;
     lastChecked: number | null;
     stats: { day: string; observed_seconds: number; up_seconds: number }[];
+    short: { slot: string; observed_seconds: number; up_seconds: number }[];
     hourly: { hour: string; observed_seconds: number; up_seconds: number }[];
     incidents: {
       opened_at: number;
@@ -35,27 +36,32 @@ const periods = { "90d": "90 días", "7d": "7 días", "24h": "24 horas" };
 function History({
   stats,
   hourly,
+  short,
   range,
   updatedAt
 }: {
   stats: DailyStat[];
   hourly: PublicData["monitors"][number]["hourly"];
+  short: PublicData["monitors"][number]["short"];
   range: HistoryRange;
   updatedAt: number;
 }) {
-  const hours = range === "24h";
-  const count = hours ? 24 : range === "7d" ? 7 : 90;
-  const stride = hours ? 3600000 : 86400000;
+  const granular = range !== "90d";
+  const count = range === "24h" ? 288 : range === "7d" ? 168 : 90;
+  const stride = range === "24h" ? 300000 : range === "7d" ? 3600000 : 86400000;
   const last = Math.floor((updatedAt * 1000) / stride) * stride;
-  const byDay = new Map(
-    (hours ? hourly.map((stat) => ({ ...stat, day: stat.hour })) : stats).map(
-      (stat) => [stat.day, stat]
-    )
-  );
+  const source =
+    range === "24h"
+      ? short.map((stat) => ({ ...stat, day: stat.slot }))
+      : range === "7d"
+        ? hourly.map((stat) => ({ ...stat, day: stat.hour }))
+        : stats;
+  const byDay = new Map(source.map((stat) => [stat.day, stat]));
   const days = Array.from({ length: count }, (_, index) => {
-    const day = new Date(last - (count - 1 - index) * stride)
+    const start = last - (count - 1 - index) * stride;
+    const day = new Date(start)
       .toISOString()
-      .slice(0, hours ? 13 : 10);
+      .slice(0, range === "24h" ? 16 : range === "7d" ? 13 : 10);
     const stat = byDay.get(day);
     const state = !stat?.observed_seconds
       ? "none"
@@ -64,7 +70,16 @@ function History({
         : stat.up_seconds === 0
           ? "down"
           : "partial";
-    return { day, stat, state };
+    const duration = Math.max(
+      1,
+      Math.min(stride / 1000, updatedAt - start / 1000)
+    );
+    const observedSeconds = stat?.observed_seconds ?? 0;
+    const coverage = Math.min(100, (observedSeconds / duration) * 100);
+    const uptime = observedSeconds
+      ? (stat!.up_seconds / observedSeconds) * coverage
+      : 0;
+    return { day, start, stat, state, coverage, uptime };
   });
   const observed = days.flatMap(({ stat }) =>
     stat?.observed_seconds ? [stat] : []
@@ -79,49 +94,69 @@ function History({
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
         <p>
-          Historial {hours ? "por hora" : "diario"} · últimos {periods[range]}
+          Historial{" "}
+          {range === "24h"
+            ? "cada 5 minutos"
+            : range === "7d"
+              ? "por hora"
+              : "diario"}{" "}
+          · últimos {periods[range]}
         </p>
         <p className="text-muted-foreground">
           Disponibilidad observada: {availability(observed)}
         </p>
       </div>
       <div
-        className="grid gap-0.5"
-        style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` }}
+        className={cn(
+          "grid gap-0.5",
+          range === "24h"
+            ? "grid-cols-[repeat(48,minmax(0,1fr))] sm:grid-cols-[repeat(96,minmax(0,1fr))]"
+            : range === "7d"
+              ? "grid-cols-[repeat(24,minmax(0,1fr))] sm:grid-cols-[repeat(56,minmax(0,1fr))]"
+              : "grid-cols-[repeat(90,minmax(0,1fr))]"
+        )}
         role="list"
-        aria-label={`Historial ${hours ? "por hora" : "diario"}, de más antiguo a más reciente`}
+        aria-label="Historial, de más antiguo a más reciente"
       >
-        {days.map(({ day, stat, state }) => {
-          const label = `${day.replace("T", " ")}${hours ? ":00" : ""} (UTC): ${labels[state]}${stat?.observed_seconds ? ` · ${availability([stat])}` : ""}`;
+        {days.map(({ day, start, stat, state, coverage, uptime }) => {
+          const label = `${granular ? date(start / 1000) : `${day} (UTC)`}: ${labels[state]}${stat?.observed_seconds ? ` · ${availability([stat])} · ${Math.round(stat.observed_seconds - stat.up_seconds)} s de interrupción / ${Math.round(stat.observed_seconds)} s observados` : ""}`;
           return (
             <span
               key={day}
               role="listitem"
               aria-label={label}
               title={label}
+              style={
+                granular
+                  ? {
+                      background: `linear-gradient(to top, var(--success) 0% ${uptime}%, var(--destructive) ${uptime}% ${coverage}%, var(--muted) ${coverage}% 100%)`
+                    }
+                  : undefined
+              }
               className={cn(
-                "h-6 rounded-sm",
-                state === "none" && "bg-muted",
-                state === "up" && "bg-success",
-                state === "down" && "bg-destructive",
-                state === "partial" && "bg-warning"
+                "h-8 rounded-sm",
+                !granular && state === "none" && "bg-muted",
+                !granular && state === "up" && "bg-success",
+                !granular && state === "down" && "bg-destructive",
+                !granular && state === "partial" && "bg-warning"
               )}
             />
           );
         })}
       </div>
       <div className="flex justify-between text-xs text-muted-foreground">
-        <span>
-          Hace {count - 1} {hours ? "horas" : "días"}
-        </span>
-        <span>{hours ? "Hora actual" : "Día más reciente"}</span>
+        <span>Inicio del período</span>
+        <span>{granular ? "Ahora" : "Día más reciente"}</span>
       </div>
       <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
         {[
-          ["bg-success", "Sin interrupciones"],
-          ["bg-warning", "Con interrupciones"],
-          ["bg-destructive", "Sin disponibilidad"],
-          ["bg-muted", "Sin registros"]
+          ["bg-success", granular ? "Tiempo operativo" : "Sin interrupciones"],
+          ...(!granular ? [["bg-warning", "Con interrupciones"]] : []),
+          [
+            "bg-destructive",
+            granular ? "Tiempo con interrupciones" : "Sin disponibilidad"
+          ],
+          ["bg-muted", granular ? "Tiempo sin observación" : "Sin registros"]
         ].map(([color, label]) => (
           <span key={label} className="flex items-center gap-1.5">
             <span
@@ -133,10 +168,18 @@ function History({
         ))}
       </div>
       <p className="text-xs text-muted-foreground">
-        {observed.length} de {count} {hours ? "horas" : "días"} con registros.
-        Cada segmento representa {hours ? "una hora" : "un día"} UTC; el
-        segmento actual está en curso y el historial puede incluir incidentes ya
-        resueltos.
+        {observed.length} de {count} segmentos con registros. Cada segmento
+        representa{" "}
+        {range === "24h"
+          ? "5 minutos"
+          : range === "7d"
+            ? "una hora"
+            : "un día UTC"}
+        .
+        {granular
+          ? " Leé de izquierda a derecha y de arriba hacia abajo. La altura de cada color indica su proporción de tiempo dentro del segmento; el gris excluye pausas, mantenimiento y períodos sin datos."
+          : " El historial puede incluir incidentes ya resueltos."}{" "}
+        El segmento actual está en curso.
       </p>
     </div>
   );
@@ -237,6 +280,7 @@ export function PublicStatus({
                     <History
                       stats={m.stats}
                       hourly={m.hourly ?? []}
+                      short={m.short ?? []}
                       range={range}
                       updatedAt={data.updatedAt}
                     />

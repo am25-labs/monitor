@@ -92,9 +92,12 @@ export function observation(
     }
     const seconds = end - start - excluded;
     segments.push({
-      day: new Date(start * 1000)
+      day: new Date(Math.floor(start / bucketSeconds) * bucketSeconds * 1000)
         .toISOString()
-        .slice(0, bucketSeconds === 3600 ? 13 : 10),
+        .slice(
+          0,
+          bucketSeconds === 300 ? 16 : bucketSeconds === 3600 ? 13 : 10
+        ),
       seconds,
       up: m.last_ok ? seconds : 0
     });

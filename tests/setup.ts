@@ -20,6 +20,7 @@ export async function setup() {
       "jobs",
       "daily_stats",
       "hourly_stats",
+      "short_stats",
       "monitors",
       "pages",
       "maintenance",

@@ -402,7 +402,9 @@ it("publishes only explicitly included monitors within the selected groups", asy
         new Request("http://localhost/api/v1/public/selected"),
         env
       )
-    ).json()) as { monitors: { id: string; hourly: unknown[] }[] };
+    ).json()) as {
+      monitors: { id: string; hourly: unknown[]; short: unknown[] }[];
+    };
   expect((await read()).monitors.map((m) => m.id)).toEqual([visible.id]);
   const hour = new Date().toISOString().slice(0, 13);
   await statement(
@@ -413,6 +415,20 @@ it("publishes only explicitly included monitors within the selected groups", asy
     60,
     60
   ).run();
+  const slot = new Date(Math.floor(Date.now() / 300000) * 300000)
+    .toISOString()
+    .slice(0, 16);
+  await statement(
+    env.DB,
+    "INSERT INTO short_stats VALUES(?,?,?,?)",
+    visible.id,
+    slot,
+    300,
+    240
+  ).run();
+  expect((await read()).monitors[0].short).toEqual([
+    { slot, observed_seconds: 300, up_seconds: 240 }
+  ]);
   expect((await read()).monitors[0].hourly).toEqual([
     { hour, observed_seconds: 60, up_seconds: 60 }
   ]);

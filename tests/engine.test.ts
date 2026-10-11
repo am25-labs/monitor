@@ -406,10 +406,40 @@ it("splits hourly observations and excludes overlapping maintenance and stale da
     env.DB,
     "INSERT INTO hourly_stats VALUES(?,?,?,?)",
     m.id,
-    "1969-12-29T00",
+    "1969-12-20T00",
     60,
     60
   ).run();
   await cleanup(env, 3630);
   expect((await rows(env.DB, "SELECT * FROM hourly_stats")).length).toBe(2);
+});
+
+it("records five-minute slots across boundaries without expanding a brief outage", async () => {
+  const m = await createMonitor({ last_checked: 1170, last_ok: 0 });
+  expect(observation(m, [], 1230, false, 300)).toEqual([
+    { day: "1970-01-01T00:15", seconds: 30, up: 0 },
+    { day: "1970-01-01T00:20", seconds: 30, up: 0 }
+  ]);
+  const job = await sample(m.id, 1230, success);
+  await record(env, job, m, success, "lease", 1230);
+  await sample(m.id, 1290, success);
+  expect(
+    await rows(
+      env.DB,
+      "SELECT slot,observed_seconds,up_seconds FROM short_stats ORDER BY slot"
+    )
+  ).toEqual([
+    { slot: "1970-01-01T00:15", observed_seconds: 30, up_seconds: 0 },
+    { slot: "1970-01-01T00:20", observed_seconds: 90, up_seconds: 60 }
+  ]);
+  await statement(
+    env.DB,
+    "INSERT INTO short_stats VALUES(?,?,?,?)",
+    m.id,
+    "1969-12-29T00:00",
+    60,
+    60
+  ).run();
+  await cleanup(env, 1290);
+  expect((await rows(env.DB, "SELECT * FROM short_stats")).length).toBe(2);
 });

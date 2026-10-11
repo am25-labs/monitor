@@ -574,7 +574,19 @@ export async function publicPage(env: Env, slug: string) {
         env.DB,
         "SELECT hour,observed_seconds,up_seconds FROM hourly_stats WHERE monitor_id=? AND hour>=? ORDER BY hour",
         m.id,
-        new Date((now - 23 * 3600) * 1000).toISOString().slice(0, 13)
+        new Date((now - 167 * 3600) * 1000).toISOString().slice(0, 13)
+      );
+      const short = await rows<{
+        slot: string;
+        observed_seconds: number;
+        up_seconds: number;
+      }>(
+        env.DB,
+        "SELECT slot,observed_seconds,up_seconds FROM short_stats WHERE monitor_id=? AND slot>=? ORDER BY slot",
+        m.id,
+        new Date((Math.floor(now / 300) * 300 - 287 * 300) * 1000)
+          .toISOString()
+          .slice(0, 16)
       );
       const incidents = await rows<Incident>(
         env.DB,
@@ -589,6 +601,7 @@ export async function publicPage(env: Env, slug: string) {
         lastChecked: m.last_checked,
         stats,
         hourly,
+        short,
         incidents: incidents.map((i) => ({
           ...i,
           message: i.closed_at
