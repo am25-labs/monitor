@@ -4,6 +4,7 @@ import worker from "../src/worker/index";
 import { statement } from "../src/worker/db";
 import { saveNotifications, notificationConfig } from "../src/worker/settings";
 import { translate } from "../src/shared/i18n";
+import { english } from "../src/shared/translations";
 import { date, availability } from "../src/lib/api";
 import { createMonitor, createProject, projectId, setup } from "./setup";
 
@@ -176,6 +177,28 @@ it("translates UI labels and interpolated counts without modifying custom conten
     translate("es", "{up} de {total} operativos", { up: 15, total: 16 }),
   ).toBe("15 de 16 operativos");
   expect(translate("en", "Mi API personalizada")).toBe("Mi API personalizada");
+  expect(
+    translate("en", "Borrar historial de {name}", {
+      name: "Mi API personalizada",
+    }),
+  ).toBe("Delete history for Mi API personalizada");
+  expect(
+    translate("es", "Borrar historial de {name}", {
+      name: "Mi API personalizada",
+    }),
+  ).toBe("Borrar historial de Mi API personalizada");
+  expect(
+    translate("en", "Activa el modo de pruebas para borrar el historial."),
+  ).toBe("Enable test mode to delete history.");
+});
+
+it("keeps interpolation fields consistent in every translation", () => {
+  const fields = (text: string) =>
+    [...text.matchAll(/\{(\w+)\}/g)].map((match) => match[1]).sort();
+  for (const [source, translated] of Object.entries(english)) {
+    expect(translated.trim(), source).not.toBe("");
+    expect(fields(translated), source).toEqual(fields(source));
+  }
 });
 
 it("formats dates and empty availability in the selected language", () => {

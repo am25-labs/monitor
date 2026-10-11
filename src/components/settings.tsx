@@ -85,7 +85,10 @@ function EmailFields({
           }
         />
       </FormField>
-      <FormField id="notification-stream" label="Message Stream">
+      <FormField
+        id="notification-stream"
+        label={t("Flujo de mensajes de Postmark")}
+      >
         <Input
           id="notification-stream"
           required

@@ -1,4 +1,7 @@
 export const english: Record<string, string> = {
+  "Flujo de mensajes de Postmark": "Postmark Message Stream",
+  "Los heartbeats reciben reportes.": "Heartbeats receive reports.",
+  "Token inválido.": "Invalid token.",
   "Modo de pruebas": "Test mode",
   "Configuración guardada.": "Settings saved.",
   "Habilitar herramientas para borrar el historial": "Enable history deletion tools",
