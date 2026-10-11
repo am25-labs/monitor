@@ -439,7 +439,9 @@ export async function tick(env: Env, now = nowSeconds()) {
         statement(
           env.DB,
           "UPDATE monitors SET next_due=? WHERE id=? AND config_version=? AND next_due=?",
-          now + m.interval_seconds,
+          m.next_due +
+            (Math.floor((now - m.next_due) / m.interval_seconds) + 1) *
+              m.interval_seconds,
           m.id,
           m.config_version,
           m.next_due

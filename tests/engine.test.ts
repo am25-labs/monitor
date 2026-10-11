@@ -50,6 +50,48 @@ async function sample(id: string, now: number, result: CheckResult) {
   return job;
 }
 describe("engine and persistence", () => {
+  it("keeps the check cadence when cron delivery times fluctuate", async () => {
+    const m = await createMonitor({ next_due: 1020 });
+    const executions = [1028, 1083, 1149, 1201, 1266, 1322];
+    for (const [index, now] of executions.entries()) {
+      await tick(env, now);
+      const jobs = await rows<Job>(
+        env.DB,
+        "SELECT * FROM jobs WHERE monitor_id=? AND state='pending' ORDER BY due_at",
+        m.id
+      );
+      expect(jobs).toHaveLength(index + 1);
+      expect(jobs.at(-1)?.due_at).toBe(1020 + index * 60);
+      await sample(m.id, now, success);
+    }
+    const updated = (await first<Monitor>(
+      env.DB,
+      "SELECT * FROM monitors WHERE id=?",
+      m.id
+    ))!;
+    expect(updated.next_due).toBe(1380);
+    const totals = await first<{ seconds: number }>(
+      env.DB,
+      "SELECT SUM(observed_seconds) AS seconds FROM short_stats WHERE monitor_id=?",
+      m.id
+    );
+    expect(totals?.seconds).toBe(1322 - 1028);
+  });
+  it("skips missed periods without drifting or creating catch-up checks", async () => {
+    const m = await createMonitor({ next_due: 1020 });
+    await tick(env, 1234);
+    expect(
+      (await first<Monitor>(env.DB, "SELECT * FROM monitors WHERE id=?", m.id))
+        ?.next_due
+    ).toBe(1260);
+    await tick(env, 1261);
+    const jobs = await rows<Job>(
+      env.DB,
+      "SELECT * FROM jobs WHERE monitor_id=? ORDER BY due_at",
+      m.id
+    );
+    expect(jobs.map((job) => job.due_at)).toEqual([1020, 1260]);
+  });
   it("opens after two failures, recovers after one success and deduplicates results", async () => {
     const m = await createMonitor();
     await sample(m.id, 1000, failure);
