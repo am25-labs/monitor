@@ -391,27 +391,14 @@ export function Settings({
         <CardHeader>
           <CardTitle>{product.name}</CardTitle>
           <CardDescription className="flex flex-wrap items-center gap-2">
-            <span>
+            <Badge variant="outline">
               {t("Versión")} {product.version}
-            </span>
-            <Badge
-              variant="outline"
-              render={
-                <a
-                  href={`${product.repository}/blob/main/LICENSE`}
-                  target="_blank"
-                  rel="noreferrer"
-                />
-              }
-            >
-              {product.license}
             </Badge>
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-start gap-3">
           <p className="text-muted-foreground">
-            {t("Creado por")} {product.author} · © {new Date().getFullYear()}{" "}
-            {product.copyright}
+            {t("Creado por")} {product.author}
           </p>
           <a
             href={product.repository}
@@ -424,11 +411,11 @@ export function Settings({
           </a>
         </CardContent>
       </Card>
-      <Tabs defaultValue="about" className="gap-6">
-        <TabsList aria-label={t("Ajustes")}>
+      <Tabs defaultValue="about" className="flex-col gap-6">
+        <TabsList aria-label={t("Ajustes")} className="h-8 shrink-0 self-start">
           <TabsTrigger value="about">{t("Acerca de")}</TabsTrigger>
-          <TabsTrigger value="notifications">{t("Notificaciones")}</TabsTrigger>
           <TabsTrigger value="general">{t("General")}</TabsTrigger>
+          <TabsTrigger value="notifications">{t("Notificaciones")}</TabsTrigger>
         </TabsList>
         <TabsContent value="about" className="flex flex-col gap-6">
           <Panel
@@ -457,9 +444,6 @@ export function Settings({
               <p>
                 {t("Autoría:")} {product.author}.
               </p>
-              <p className="text-muted-foreground">
-                © {new Date().getFullYear()} {product.copyright}
-              </p>
             </div>
           </Panel>
           <Panel
@@ -469,11 +453,6 @@ export function Settings({
             )}
           >
             <div className="flex flex-col gap-3 text-sm text-muted-foreground">
-              <p>
-                {t(
-                  "Las comprobaciones y la configuración se almacenan en Cloudflare D1. Las credenciales de los monitores y los tokens de notificaciones se guardan cifrados.",
-                )}
-              </p>
               <p>
                 {t(
                   "El historial individual se conserva seis meses calendario; los agregados diarios y los incidentes, 365 días. Las páginas públicas solo muestran los monitores seleccionados y datos sanitizados.",
@@ -487,14 +466,14 @@ export function Settings({
             </div>
           </Panel>
         </TabsContent>
+        <TabsContent value="general">
+          <General initial={data.settings.general} onChange={onChange} />
+        </TabsContent>
         <TabsContent value="notifications">
           <Notifications
             initial={data.settings.notifications}
             onChange={onChange}
           />
-        </TabsContent>
-        <TabsContent value="general">
-          <General initial={data.settings.general} onChange={onChange} />
         </TabsContent>
       </Tabs>
     </div>

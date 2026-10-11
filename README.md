@@ -46,7 +46,7 @@ Los secretos se pasan mediante un archivo temporal con permisos 0600, eliminado 
 
 ## Ajustes, licencia y notificaciones
 
-`/app/settings` está protegido por la misma aplicación de Access que el dashboard. La pestaña Acerca de muestra la versión de `package.json`, autoría, copyright y enlace a la licencia Apache 2.0 del repositorio. El texto completo está en `LICENSE` y la atribución del proyecto en `NOTICE`. Las dependencias conservan sus licencias.
+`/app/settings` está protegido por la misma aplicación de Access que el dashboard. El encabezado muestra la versión de `package.json` en un chip y la autoría de Alejandro Mártir. La pestaña Acerca de incluye el enlace a la licencia Apache 2.0 del repositorio. El texto completo está en `LICENSE` y la atribución del proyecto en `NOTICE`. Las dependencias conservan sus licencias.
 
 La pestaña General permite guardar el idioma del dashboard (español o inglés) para esta instalación. Cada página pública tiene un selector independiente de idioma en su formulario. El idioma predeterminado siempre es español; no depende del idioma del navegador ni del dashboard. Se traducen etiquetas, controles, estados y fechas; los nombres, títulos y descripciones escritos por el administrador conservan su contenido. Los correos mantienen su idioma actual.
 
