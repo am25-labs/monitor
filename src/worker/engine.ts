@@ -329,7 +329,7 @@ export async function heartbeat(env: Env, m: Monitor, ok: boolean) {
       id
     );
     if (existing?.state === "completed") return;
-    throw new Response("Comprobación en curso; reintentá el reporte.", {
+    throw new Response("Comprobación en curso; reintenta el reporte.", {
       status: 409
     });
   }

@@ -78,7 +78,7 @@ export function MonitorForm({
         monitor?.id
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("Revisá los datos."));
+      setError(e instanceof Error ? e.message : t("Revisa los datos."));
     } finally {
       setBusy(false);
     }

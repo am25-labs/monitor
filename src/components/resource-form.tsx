@@ -93,11 +93,11 @@ export function ResourceForm({
         (!f.get("starts_at") || !f.get("ends_at"))
       )
         throw new Error(
-          t("Elegí las fechas de inicio y fin del mantenimiento.")
+          t("Elige las fechas de inicio y fin del mantenimiento.")
         );
       await onSave(resource, payload, value?.id as string | undefined);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t("Revisá los datos."));
+      setError(e instanceof Error ? e.message : t("Revisa los datos."));
     } finally {
       setBusy(false);
     }
@@ -205,7 +205,7 @@ export function ResourceForm({
               />
               <FieldDescription>
                 {t(
-                  "Sin grupos seleccionados, podés elegir monitores de todo el proyecto."
+                  "Sin grupos seleccionados, puedes elegir monitores de todo el proyecto."
                 )}
               </FieldDescription>
               <CheckboxList

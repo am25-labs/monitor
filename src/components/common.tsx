@@ -70,7 +70,7 @@ export function Nothing({
       <EmptyHeader>
         <EmptyTitle>{title ?? t("Todavía no hay registros")}</EmptyTitle>
         <EmptyDescription>
-          {description ?? t("Agregá el primero para comenzar.")}
+          {description ?? t("Agrega el primero para comenzar.")}
         </EmptyDescription>
       </EmptyHeader>
     </Empty>

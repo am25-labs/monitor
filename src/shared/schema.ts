@@ -19,7 +19,7 @@ export const httpInput = z
         return (
           ["http:", "https:"].includes(u.protocol) && !u.username && !u.password
         );
-      }, "Usá HTTP o HTTPS sin credenciales en la URL."),
+      }, "Usa HTTP o HTTPS sin credenciales en la URL."),
     method: z.enum(["GET", "HEAD"]).default("GET"),
     headers: z
       .record(
@@ -44,7 +44,7 @@ export const httpInput = z
                 Number(item.split("-")[0]) <=
                   Number(item.split("-")[1] ?? item.split("-")[0])
             ),
-        "Indicá códigos o rangos válidos."
+        "Indica códigos o rangos válidos."
       ),
     followRedirects: z.boolean().default(false),
     timeoutSeconds: z.number().int().min(1).max(30).default(10),
@@ -60,7 +60,7 @@ export const httpInput = z
         message: "HEAD no admite validaciones de contenido."
       });
     if (v.assertion === "text" && !v.text)
-      ctx.addIssue({ code: "custom", message: "Indicá el texto esperado." });
+      ctx.addIssue({ code: "custom", message: "Indica el texto esperado." });
     if (
       v.assertion === "json" &&
       (v.pointer === undefined ||
@@ -68,12 +68,12 @@ export const httpInput = z
     )
       ctx.addIssue({
         code: "custom",
-        message: "Indicá un JSON Pointer válido."
+        message: "Indica un JSON Pointer válido."
       });
     if (v.assertion === "json" && !Object.hasOwn(v, "expected"))
       ctx.addIssue({
         code: "custom",
-        message: "Indicá el valor JSON esperado."
+        message: "Indica el valor JSON esperado."
       });
   });
 export const tcpInput = z.object({

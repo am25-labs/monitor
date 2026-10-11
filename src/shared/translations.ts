@@ -1,7 +1,7 @@
 export const english: Record<string, string> = {
   "Falló una operación del motor; revisar los logs de Cloudflare.":
     "An engine operation failed; check the Cloudflare logs.",
-  "Quitá el monitor de la página pública antes de moverlo.":
+  "Quita el monitor de la página pública antes de moverlo.":
     "Remove the monitor from the public page before moving it.",
   Resumen: "Overview",
   Monitores: "Monitors",
@@ -42,8 +42,8 @@ export const english: Record<string, string> = {
   "Proyecto / grupo": "Project / group",
   Estado: "Status",
   Latencia: "Latency",
-  "Agregá tu primer monitor.": "Add your first monitor.",
-  "Creá primero un proyecto en Proyectos y grupos.":
+  "Agrega tu primer monitor.": "Add your first monitor.",
+  "Crea primero un proyecto en Proyectos y grupos.":
     "Create a project in Projects and groups first.",
   "Monitor no encontrado": "Monitor not found",
   "Puede haber sido eliminado.": "It may have been deleted.",
@@ -52,13 +52,13 @@ export const english: Record<string, string> = {
   "Editar proyecto": "Edit project",
   "Ver monitores": "View monitors",
   monitores: "monitors",
-  "Creá proyectos para organizar tus monitores.":
+  "Crea proyectos para organizar tus monitores.":
     "Create projects to organize your monitors.",
   "Crear página pública": "Create public page",
   Publicada: "Published",
   Borrador: "Draft",
   Abrir: "Open",
-  "Elegí un proyecto o sus grupos y excluí los monitores internos.":
+  "Elige un proyecto o sus grupos y excluye los monitores internos.":
     "Choose a project or its groups and exclude internal monitors.",
   "Programar mantenimiento": "Schedule maintenance",
   "Las ventanas evitan alertas durante tus despliegues.":
@@ -71,10 +71,10 @@ export const english: Record<string, string> = {
     "The token is only shown when it is created or regenerated.",
   "Regenerar token": "Regenerate token",
   "¿Regenerar el token?": "Regenerate the token?",
-  "El token anterior dejará de funcionar. Actualizá el servicio que envía tus heartbeats con el token nuevo.":
+  "El token anterior dejará de funcionar. Actualiza el servicio que envía tus heartbeats con el token nuevo.":
     "The previous token will stop working. Update the service sending your heartbeats with the new token.",
   "Token nuevo de heartbeat": "New heartbeat token",
-  "Comenzá a monitorear tu infraestructura":
+  "Comienza a monitorear tu infraestructura":
     "Start monitoring your infrastructure",
   "Hay servicios que requieren atención": "Some services need attention",
   "Todos los servicios están operativos": "All services are operational",
@@ -99,7 +99,7 @@ export const english: Record<string, string> = {
   "Las caídas y recuperaciones aparecerán aquí.":
     "Outages and recoveries will appear here.",
   "Alertas personales": "Personal alerts",
-  "Notificaciones de apertura y recuperación, solo para vos.":
+  "Notificaciones de apertura y recuperación, solo para ti.":
     "Outage and recovery notifications, just for you.",
   "Sin pendientes": "Nothing pending",
   Destinatario: "Recipient",
@@ -127,7 +127,7 @@ export const english: Record<string, string> = {
   "No se pudo completar": "Unable to complete",
   Información: "Information",
   "Todavía no hay registros": "No records yet",
-  "Agregá el primero para comenzar.": "Add the first one to get started.",
+  "Agrega el primero para comenzar.": "Add the first one to get started.",
   "Editar monitor": "Edit monitor",
   Proyecto: "Project",
   Grupo: "Group",
@@ -160,7 +160,7 @@ export const english: Record<string, string> = {
   "Tolerancia (segundos)": "Grace period (seconds)",
   "Fallos para abrir incidente": "Failures to open an incident",
   "Éxitos para recuperar": "Successes to recover",
-  "Revisá los datos.": "Check your input.",
+  "Revisa los datos.": "Check your input.",
   "Guardar monitor": "Save monitor",
   "Guardando…": "Saving…",
   Guardar: "Save",
@@ -175,7 +175,7 @@ export const english: Record<string, string> = {
   "Identificador de la página": "Page slug",
   "Se publicará en /status/identificador.": "Published at /status/slug.",
   "Grupos incluidos": "Included groups",
-  "Sin grupos seleccionados, podés elegir monitores de todo el proyecto.":
+  "Sin grupos seleccionados, puedes elegir monitores de todo el proyecto.":
     "With no groups selected, you can choose monitors from the entire project.",
   "Monitores incluidos": "Included monitors",
   "Solo se publicarán los monitores marcados. Sin selección no se muestra ninguno; los monitores nuevos requieren selección manual.":
@@ -186,7 +186,7 @@ export const english: Record<string, string> = {
   Destino: "Target",
   "Inicio (hora local)": "Start (local time)",
   "Fin (hora local)": "End (local time)",
-  "Elegí las fechas de inicio y fin del mantenimiento.":
+  "Elige las fechas de inicio y fin del mantenimiento.":
     "Choose the maintenance start and end dates.",
   "Historial completo": "Full history",
   "Comprobaciones individuales disponibles durante seis meses. Fechas en tu hora local.":
@@ -211,11 +211,11 @@ export const english: Record<string, string> = {
   Comprobaciones: "Checks",
   "Latencia media": "Average latency",
   "Procesando…": "Processing…",
-  "Elegí una fecha": "Choose a date",
+  "Elige una fecha": "Choose a date",
   "Limpiar fecha": "Clear date",
   Hora: "Hour",
   Minutos: "Minutes",
-  "Seleccioná una opción": "Select an option",
+  "Selecciona una opción": "Select an option",
   "No hay opciones en este proyecto.": "No options in this project.",
   "Acerca de": "About",
   Notificaciones: "Notifications",
@@ -223,19 +223,19 @@ export const english: Record<string, string> = {
     "Email delivery is integrated with Postmark.",
   "Correo destinatario": "Recipient email",
   "Remitente verificado en Postmark": "Verified sender in Postmark",
-  "Usá un stream transaccional; normalmente es outbound.":
+  "Usa un stream transaccional; normalmente es outbound.":
     "Use a transactional stream; usually outbound.",
   "Server API Token de Postmark": "Postmark Server API Token",
   "Token guardado": "Saved token",
-  "Ingresá tu token": "Enter your token",
+  "Ingresa tu token": "Enter your token",
   "Dejalo vacío para conservar el token existente.":
     "Leave blank to keep the existing token.",
   "El token se guardará cifrado y no se volverá a mostrar.":
     "The token will be encrypted and will not be shown again.",
-  "Recibí tus alertas mediante un bot de Telegram.":
+  "Recibe tus alertas mediante un bot de Telegram.":
     "Receive your alerts through a Telegram bot.",
   "Identificador del chat": "Chat ID",
-  "Iniciá una conversación con tu bot y usá el identificador numérico del chat destinatario.":
+  "Inicia una conversación con tu bot y usa el identificador numérico del chat destinatario.":
     "Start a conversation with your bot and use the recipient chat's numeric ID.",
   "Token del bot": "Bot token",
   "Token generado por BotFather": "Token generated by BotFather",
@@ -250,7 +250,7 @@ export const english: Record<string, string> = {
     "Alerts are sent only to the recipient configured here.",
   "Tokens cifrados en D1.": "Tokens encrypted in D1.",
   "Guardar cambios": "Save changes",
-  "Configurá y guardá un canal para comenzar a recibir alertas.":
+  "Configura y guarda un canal para comenzar a recibir alertas.":
     "Configure and save a channel to start receiving alerts.",
   Versión: "Version",
   "Creado por": "Created by",
@@ -259,7 +259,7 @@ export const english: Record<string, string> = {
   "Información del proyecto y condiciones de uso.":
     "Project information and terms of use.",
   "está disponible bajo": "is available under",
-  "La licencia permite usar, modificar y distribuir el código bajo sus condiciones. Consultá el texto completo en el repositorio. Las dependencias conservan sus propias licencias.":
+  "La licencia permite usar, modificar y distribuir el código bajo sus condiciones. Consulta el texto completo en el repositorio. Las dependencias conservan sus propias licencias.":
     "The license allows use, modification and distribution under its terms. Read the full text in the repository. Dependencies retain their own licenses.",
   "Autoría:": "Author:",
   "Datos y privacidad": "Data and privacy",
@@ -300,7 +300,7 @@ export const english: Record<string, string> = {
   "5 minutos": "5 minutes",
   "una hora": "one hour",
   "un día UTC": "one UTC day",
-  " Leé de izquierda a derecha. Cualquier interrupción pinta todo el segmento de rojo, sin importar su duración; el gris indica que no hay registros.":
+  " Lee de izquierda a derecha. Cualquier interrupción pinta todo el segmento de rojo, sin importar su duración; el gris indica que no hay registros.":
     " Read left to right. Any interruption turns the entire segment red, regardless of its duration; gray indicates there are no records.",
   " El historial puede incluir incidentes ya resueltos.":
     " History may include resolved incidents.",
@@ -329,9 +329,9 @@ export const english: Record<string, string> = {
   "Servicio recuperado": "Service recovered",
   "Interrupción del servicio": "Service interruption",
   "No fue posible completar la operación.": "Unable to complete the operation.",
-  "Tu sesión expiró. Volvé a entrar.":
+  "Tu sesión expiró. Vuelve a entrar.":
     "Your session has expired. Sign in again.",
-  "No se pudo consultar el servicio. Revisá tu sesión o conexión.":
+  "No se pudo consultar el servicio. Revisa tu sesión o conexión.":
     "Unable to reach the service. Check your session or connection.",
   "Falló la consulta.": "The request failed.",
   "Comprobación exitosa": "Check successful",
@@ -346,7 +346,7 @@ export const english: Record<string, string> = {
   "El servicio reportó un fallo": "Service reported a failure",
   "No se pudo entregar la notificación.": "Unable to deliver the notification.",
   "Entrega pendiente de reintento.": "Delivery pending retry.",
-  "Usá JSON.": "Use JSON.",
+  "Usa JSON.": "Use JSON.",
   "Falta el contenido.": "Request body is missing.",
   "Solicitud demasiado grande.": "Request is too large.",
   "JSON inválido.": "Invalid JSON.",
@@ -363,20 +363,20 @@ export const english: Record<string, string> = {
     "The monitor does not belong to the selected scope.",
   "El recurso tiene dependencias, un nombre duplicado o se alcanzó el límite de 100 monitores.":
     "The resource has dependencies, a duplicate name, or the 100-monitor limit was reached.",
-  "Usá HTTP o HTTPS sin credenciales en la URL.":
+  "Usa HTTP o HTTPS sin credenciales en la URL.":
     "Use HTTP or HTTPS without credentials in the URL.",
-  "Indicá códigos o rangos válidos.": "Enter valid status codes or ranges.",
+  "Indica códigos o rangos válidos.": "Enter valid status codes or ranges.",
   "HEAD no admite validaciones de contenido.":
     "HEAD does not support content validation.",
-  "Indicá el texto esperado.": "Enter the expected text.",
-  "Indicá un JSON Pointer válido.": "Enter a valid JSON Pointer.",
-  "Indicá el valor JSON esperado.": "Enter the expected JSON value.",
+  "Indica el texto esperado.": "Enter the expected text.",
+  "Indica un JSON Pointer válido.": "Enter a valid JSON Pointer.",
+  "Indica el valor JSON esperado.": "Enter the expected JSON value.",
   "El fin debe ser posterior al inicio.": "End must be after start.",
-  "Completá destinatario, remitente y token de Postmark.":
+  "Completa destinatario, remitente y token de Postmark.":
     "Enter the recipient, sender and Postmark token.",
-  "Completá el identificador de chat y un token válido del bot de Telegram.":
+  "Completa el identificador de chat y un token válido del bot de Telegram.":
     "Enter the chat ID and a valid Telegram bot token.",
-  "Usá el identificador numérico de tu chat personal.":
+  "Usa el identificador numérico de tu chat personal.":
     "Use your personal chat's numeric ID.",
   General: "General",
   "Idioma del dashboard": "Dashboard language",
@@ -396,7 +396,7 @@ export const english: Record<string, string> = {
   "{count} fallidas": "{count} failed",
   "{count} pendientes": "{count} pending",
   "{count} minutos": "{count} minutes",
-  "Guardá este token de heartbeat; no se volverá a mostrar: {token}":
+  "Guarda este token de heartbeat; no se volverá a mostrar: {token}":
     "Save this heartbeat token; it will not be shown again: {token}",
   "Última actualización: {date}": "Last updated: {date}",
   "{outage} s de interrupción / {observed} s observados":

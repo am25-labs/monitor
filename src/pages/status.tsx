@@ -172,7 +172,7 @@ function History({
         )}
         {granular
           ? t(
-              " Leé de izquierda a derecha. Cualquier interrupción pinta todo el segmento de rojo, sin importar su duración; el gris indica que no hay registros."
+              " Lee de izquierda a derecha. Cualquier interrupción pinta todo el segmento de rojo, sin importar su duración; el gris indica que no hay registros."
             )
           : t(" El historial puede incluir incidentes ya resueltos.")}{" "}
         {t("El segmento actual está en curso.")}

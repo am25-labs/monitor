@@ -91,7 +91,7 @@ export function Overview({
               )}
             />
             {!data.monitors.length
-              ? t("Comenzá a monitorear tu infraestructura")
+              ? t("Comienza a monitorear tu infraestructura")
               : down
                 ? t("Hay servicios que requieren atención")
                 : allUp
@@ -201,7 +201,7 @@ export function Overview({
             {t("Alertas personales")}
           </CardTitle>
           <CardDescription>
-            {t("Notificaciones de apertura y recuperación, solo para vos.")}
+            {t("Notificaciones de apertura y recuperación, solo para ti.")}
           </CardDescription>
           <CardAction>
             <Badge

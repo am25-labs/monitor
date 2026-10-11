@@ -24,7 +24,7 @@ async function route(request: Request, env: Env) {
     }
     if (env.ENVIRONMENT === "local")
       return new Response(
-        "Abrí http://localhost:5173/app/ para el dashboard local."
+        "Abre http://localhost:5173/app/ para el dashboard local."
       );
     return env.ASSETS.fetch(new Request(new URL("/", url), request));
   }

@@ -57,11 +57,11 @@ export async function api<T>(
   });
   if (response.status === 401) {
     if (path.startsWith("admin")) location.assign("/app/");
-    throw new Error("Tu sesión expiró. Volvé a entrar.");
+    throw new Error("Tu sesión expiró. Vuelve a entrar.");
   }
   if (!response.headers.get("Content-Type")?.includes("application/json"))
     throw new Error(
-      "No se pudo consultar el servicio. Revisá tu sesión o conexión."
+      "No se pudo consultar el servicio. Revisa tu sesión o conexión."
     );
   const data = await response.json();
   if (!response.ok)

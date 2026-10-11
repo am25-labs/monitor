@@ -92,7 +92,7 @@ function DashboardView({
       if (result.token)
         setNotice(
           t(
-            "Guardá este token de heartbeat; no se volverá a mostrar: {token}",
+            "Guarda este token de heartbeat; no se volverá a mostrar: {token}",
             { token: result.token }
           )
         );
@@ -472,8 +472,8 @@ function DashboardView({
                     <Nothing
                       description={
                         data.projects.length
-                          ? t("Agregá tu primer monitor.")
-                          : t("Creá primero un proyecto en Proyectos y grupos.")
+                          ? t("Agrega tu primer monitor.")
+                          : t("Crea primero un proyecto en Proyectos y grupos.")
                       }
                     />
                   )}
@@ -580,7 +580,7 @@ function DashboardView({
                 ) : (
                   <Nothing
                     description={t(
-                      "Creá proyectos para organizar tus monitores."
+                      "Crea proyectos para organizar tus monitores."
                     )}
                   />
                 )}
@@ -640,7 +640,7 @@ function DashboardView({
                 ) : (
                   <Nothing
                     description={t(
-                      "Elegí un proyecto o sus grupos y excluí los monitores internos."
+                      "Elige un proyecto o sus grupos y excluye los monitores internos."
                     )}
                   />
                 )}

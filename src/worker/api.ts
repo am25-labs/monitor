@@ -40,7 +40,7 @@ export function json(value: unknown, status = 200) {
 }
 export async function body(request: Request): Promise<unknown> {
   if (!request.headers.get("Content-Type")?.startsWith("application/json"))
-    throw new Response("Usá JSON.", { status: 415 });
+    throw new Response("Usa JSON.", { status: 415 });
   const reader = request.body?.getReader();
   if (!reader) throw new Response("Falta el contenido.", { status: 400 });
   const chunks: Uint8Array[] = [];
@@ -368,7 +368,7 @@ export async function admin(
           )
         )
           throw new Response(
-            "Quitá el monitor de la página pública antes de moverlo.",
+            "Quita el monitor de la página pública antes de moverlo.",
             { status: 409 }
           );
       }

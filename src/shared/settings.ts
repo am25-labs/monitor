@@ -21,7 +21,7 @@ export const notificationInput = z.object({
       .max(100)
       .refine(
         (value) => value === "" || /^-?\d+$/.test(value),
-        "Usá el identificador numérico de tu chat personal.",
+        "Usa el identificador numérico de tu chat personal.",
       ),
     token,
   }),

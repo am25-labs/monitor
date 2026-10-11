@@ -36,7 +36,7 @@ export function ChoiceSelect({
   ...props
 }: Props) {
   const { t } = useLocale();
-  const hint = placeholder ?? t("Seleccioná una opción");
+  const hint = placeholder ?? t("Selecciona una opción");
   return (
     <Select
       items={options}

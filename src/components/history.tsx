@@ -76,7 +76,7 @@ export function History({ monitor }: { monitor: SafeMonitor }) {
         onOpenChange={setConfirmOpen}
         title={t("¿Regenerar el token?")}
         description={t(
-          "El token anterior dejará de funcionar. Actualizá el servicio que envía tus heartbeats con el token nuevo."
+          "El token anterior dejará de funcionar. Actualiza el servicio que envía tus heartbeats con el token nuevo."
         )}
         action={t("Regenerar token")}
         onConfirm={regenerate}

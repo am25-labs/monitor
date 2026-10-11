@@ -19,7 +19,7 @@ export function DatePicker({
   id,
   value,
   onChange,
-  placeholder = "Elegí una fecha"
+  placeholder = "Elige una fecha"
 }: DateProps) {
   const { t, language } = useLocale();
   const locale = language === "en" ? enUS : es;

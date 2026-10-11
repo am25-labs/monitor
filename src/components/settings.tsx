@@ -95,7 +95,7 @@ function EmailFields({
           }
         />
         <FieldDescription>
-          {t("Usá un stream transaccional; normalmente es outbound.")}
+          {t("Usa un stream transaccional; normalmente es outbound.")}
         </FieldDescription>
       </FormField>
       <FormField
@@ -109,7 +109,7 @@ function EmailFields({
           required={!hasToken}
           disabled={busy}
           value={email.token}
-          placeholder={hasToken ? t("Token guardado") : t("Ingresá tu token")}
+          placeholder={hasToken ? t("Token guardado") : t("Ingresa tu token")}
           onChange={(event) =>
             setEmail((current) => ({
               ...current,
@@ -137,7 +137,7 @@ function TelegramFields({
     <>
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Send className="size-4" />
-        <p>{t("Recibí tus alertas mediante un bot de Telegram.")}</p>
+        <p>{t("Recibe tus alertas mediante un bot de Telegram.")}</p>
       </div>
       <FormField id="notification-chat" label={t("Identificador del chat")}>
         <Input
@@ -155,7 +155,7 @@ function TelegramFields({
         />
         <FieldDescription>
           {t(
-            "Iniciá una conversación con tu bot y usá el identificador numérico del chat destinatario.",
+            "Inicia una conversación con tu bot y usa el identificador numérico del chat destinatario.",
           )}
         </FieldDescription>
       </FormField>
@@ -303,7 +303,7 @@ function Notifications({
         </div>
         {!saved.configured && (
           <p className="text-sm text-muted-foreground">
-            {t("Configurá y guardá un canal para comenzar a recibir alertas.")}
+            {t("Configura y guarda un canal para comenzar a recibir alertas.")}
           </p>
         )}
       </form>
@@ -418,10 +418,7 @@ export function Settings({
           <TabsTrigger value="notifications">{t("Notificaciones")}</TabsTrigger>
         </TabsList>
         <TabsContent value="about" className="flex flex-col gap-6">
-          <Panel
-            title={t("Licencia y autoría")}
-            description={t("Información del proyecto y condiciones de uso.")}
-          >
+          <Panel title={t("Licencia y autoría")}>
             <div className="flex flex-col gap-4 text-sm">
               <p>
                 {product.name} {t("está disponible bajo")}{" "}
@@ -437,21 +434,19 @@ export function Settings({
               </p>
               <p className="text-muted-foreground">
                 {t(
-                  "La licencia permite usar, modificar y distribuir el código bajo sus condiciones. Consultá el texto completo en el repositorio. Las dependencias conservan sus propias licencias.",
+                  "La licencia permite usar, modificar y distribuir el código bajo sus condiciones. Consulta el texto completo en el repositorio. Las dependencias conservan sus propias licencias.",
                 )}
               </p>
               <Separator />
               <p>
                 {t("Autoría:")} {product.author}.
               </p>
+              <p className="text-muted-foreground">
+                © {new Date().getFullYear()} {product.copyright}
+              </p>
             </div>
           </Panel>
-          <Panel
-            title={t("Datos y privacidad")}
-            description={t(
-              "Cómo esta instalación procesa la información de monitoreo.",
-            )}
-          >
+          <Panel title={t("Datos y privacidad")}>
             <div className="flex flex-col gap-3 text-sm text-muted-foreground">
               <p>
                 {t(

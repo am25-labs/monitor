@@ -92,7 +92,7 @@ export async function saveNotifications(env: Env, input: unknown) {
     (!config.email.to || !config.email.from || !config.email.token)
   )
     throw new Response(
-      "Completá destinatario, remitente y token de Postmark.",
+      "Completa destinatario, remitente y token de Postmark.",
       { status: 400 },
     );
   if (
@@ -101,7 +101,7 @@ export async function saveNotifications(env: Env, input: unknown) {
       !/^\d+:[A-Za-z0-9_-]+$/.test(config.telegram.token))
   )
     throw new Response(
-      "Completá el identificador de chat y un token válido del bot de Telegram.",
+      "Completa el identificador de chat y un token válido del bot de Telegram.",
       { status: 400 },
     );
   await statement(
