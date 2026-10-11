@@ -131,6 +131,19 @@ it("validates Access signature, issuer, audience, expiration and owner identity"
     expect((await worker.fetch(request(await sign()), production)).status).toBe(
       200
     );
+    const jwt = await sign();
+    for (const path of ["/app", "/app/", "/app/monitors"]) {
+      const response = await worker.fetch(
+        new Request(`https://monitor.example.com${path}`, {
+          redirect: "manual",
+          headers: { Cookie: `CF_Authorization=${jwt}` }
+        }),
+        production
+      );
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Location")).toBeNull();
+      expect(await response.text()).toContain("Monitor test shell");
+    }
     for (const claims of [
       { aud: "other" },
       { issuer: "https://other.test" },
@@ -259,4 +272,44 @@ it("paginates filtered history and exposes permanent notification failures", asy
       )
     )?.state
   ).toBe("failed");
+});
+
+it("serves public status HTML without redirecting to the private dashboard", async () => {
+  const production = {
+    ...env,
+    ENVIRONMENT: "production",
+    APP_ORIGIN: "https://monitor.example.com"
+  };
+  const response = await worker.fetch(
+    new Request("https://monitor.example.com/status/project", {
+      redirect: "manual"
+    }),
+    production
+  );
+  expect(response.status).toBe(200);
+  expect(response.headers.get("Location")).toBeNull();
+  expect(await response.text()).toContain("Monitor test shell");
+  const privateResponse = await worker.fetch(
+    new Request("https://monitor.example.com/app/"),
+    production
+  );
+  expect(privateResponse.status).toBe(401);
+});
+it("reproduces asset canonicalization and preserves the single root redirect", async () => {
+  const asset = await env.ASSETS.fetch(
+    new Request("https://monitor.example.com/index.html", { redirect: "manual" })
+  );
+  expect(asset.status).toBe(307);
+  expect(asset.headers.get("Location")).toBe("/");
+  const production = {
+    ...env,
+    ENVIRONMENT: "production",
+    APP_ORIGIN: "https://monitor.example.com"
+  };
+  const root = await worker.fetch(
+    new Request("https://monitor.example.com/"),
+    production
+  );
+  expect(root.status).toBe(302);
+  expect(root.headers.get("Location")).toBe("https://monitor.example.com/app/");
 });

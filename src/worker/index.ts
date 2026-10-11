@@ -26,7 +26,7 @@ async function route(request: Request, env: Env) {
       return new Response(
         "Abrí http://localhost:5173/app/ para el dashboard local."
       );
-    return env.ASSETS.fetch(new Request(new URL("/index.html", url), request));
+    return env.ASSETS.fetch(new Request(new URL("/", url), request));
   }
   const heartbeat = path.match(/^\/api\/v1\/heartbeats\/([a-f\d-]+)$/);
   if (heartbeat && request.method === "POST")
@@ -38,7 +38,7 @@ async function route(request: Request, env: Env) {
   if (env.ENVIRONMENT === "local")
     return new Response("Frontend local en http://localhost:5173");
   if (/^\/status\/[a-z0-9-]+\/?$/.test(path))
-    return env.ASSETS.fetch(new Request(new URL("/index.html", url), request));
+    return env.ASSETS.fetch(new Request(new URL("/", url), request));
   if (path.startsWith("/assets/")) return env.ASSETS.fetch(request);
   return new Response("No encontrado.", { status: 404 });
 }

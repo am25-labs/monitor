@@ -6,6 +6,11 @@ export default defineConfig({
     cloudflareTest(async () => ({
       wrangler: { configPath: "./wrangler.local.jsonc" },
       miniflare: {
+        assets: {
+          directory: "./tests/fixtures/assets",
+          binding: "ASSETS",
+          assetConfig: { html_handling: "auto-trailing-slash" },
+        },
         bindings: {
           TEST_MIGRATIONS: await readD1Migrations("./migrations"),
           CONFIG_KEY:
