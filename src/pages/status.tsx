@@ -74,16 +74,7 @@ function History({
         : stat.up_seconds === 0
           ? "down"
           : "partial";
-    const duration = Math.max(
-      1,
-      Math.min(stride / 1000, updatedAt - start / 1000)
-    );
-    const observedSeconds = stat?.observed_seconds ?? 0;
-    const coverage = Math.min(100, (observedSeconds / duration) * 100);
-    const uptime = observedSeconds
-      ? (stat!.up_seconds / observedSeconds) * coverage
-      : 0;
-    return { day, start, stat, state, coverage, uptime };
+    return { day, start, stat, state };
   });
   const observed = days.flatMap(({ stat }) =>
     stat?.observed_seconds ? [stat] : []
@@ -110,43 +101,36 @@ function History({
           {t("Disponibilidad observada:")} {availability(observed)}
         </p>
       </div>
-      <div
-        className={cn(
-          "grid gap-0.5",
-          range === "24h"
-            ? "grid-cols-[repeat(48,minmax(0,1fr))] sm:grid-cols-[repeat(96,minmax(0,1fr))]"
-            : range === "7d"
-              ? "grid-cols-[repeat(24,minmax(0,1fr))] sm:grid-cols-[repeat(56,minmax(0,1fr))]"
-              : "grid-cols-[repeat(90,minmax(0,1fr))]"
-        )}
-        role="list"
-        aria-label={t("Historial, de más antiguo a más reciente")}
-      >
-        {days.map(({ day, start, stat, state, coverage, uptime }) => {
-          const label = `${granular ? date(start / 1000) : `${day} (UTC)`}: ${labels[state]}${stat?.observed_seconds ? ` · ${availability([stat])} · ${t("{outage} s de interrupción / {observed} s observados", { outage: Math.round(stat.observed_seconds - stat.up_seconds), observed: Math.round(stat.observed_seconds) })}` : ""}`;
-          return (
-            <span
-              key={day}
-              role="listitem"
-              aria-label={label}
-              title={label}
-              style={
-                granular
-                  ? {
-                      background: `linear-gradient(to top, var(--success) 0% ${uptime}%, var(--destructive) ${uptime}% ${coverage}%, var(--muted) ${coverage}% 100%)`
-                    }
-                  : undefined
-              }
-              className={cn(
-                "h-8 rounded-sm",
-                !granular && state === "none" && "bg-muted",
-                !granular && state === "up" && "bg-success",
-                !granular && state === "down" && "bg-destructive",
-                !granular && state === "partial" && "bg-warning"
-              )}
-            />
-          );
-        })}
+      <div className="overflow-x-auto">
+        <div
+          className={cn("grid", granular ? "gap-px" : "gap-0.5")}
+          style={{
+            gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))`,
+            minWidth: granular ? count * 2 : undefined
+          }}
+          role="list"
+          aria-label={t("Historial, de más antiguo a más reciente")}
+        >
+          {days.map(({ day, start, stat, state }) => {
+            const label = `${granular ? date(start / 1000) : `${day} (UTC)`}: ${labels[state]}${stat?.observed_seconds ? ` · ${availability([stat])} · ${t("{outage} s de interrupción / {observed} s observados", { outage: Math.round(stat.observed_seconds - stat.up_seconds), observed: Math.round(stat.observed_seconds) })}` : ""}`;
+            return (
+              <span
+                key={day}
+                role="listitem"
+                aria-label={label}
+                title={label}
+                className={cn(
+                  "h-8 rounded-sm",
+                  state === "none" && "bg-muted",
+                  state === "up" && "bg-success",
+                  state === "down" && "bg-destructive",
+                  state === "partial" &&
+                    (granular ? "bg-destructive" : "bg-warning")
+                )}
+              />
+            );
+          })}
+        </div>
       </div>
       <div className="flex justify-between text-xs text-muted-foreground">
         <span>{t("Inicio del período")}</span>
@@ -154,19 +138,13 @@ function History({
       </div>
       <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
         {[
-          [
-            "bg-success",
-            granular ? t("Tiempo operativo") : t("Sin interrupciones")
-          ],
+          ["bg-success", t("Sin interrupciones")],
           ...(!granular ? [["bg-warning", t("Con interrupciones")]] : []),
           [
             "bg-destructive",
-            granular ? t("Tiempo con interrupciones") : t("Sin disponibilidad")
+            granular ? t("Con interrupciones") : t("Sin disponibilidad")
           ],
-          [
-            "bg-muted",
-            granular ? t("Tiempo sin observación") : t("Sin registros")
-          ]
+          ["bg-muted", t("Sin registros")]
         ].map(([color, label]) => (
           <span key={label} className="flex items-center gap-1.5">
             <span
@@ -194,7 +172,7 @@ function History({
         )}
         {granular
           ? t(
-              " Leé de izquierda a derecha y de arriba hacia abajo. La altura de cada color indica su proporción de tiempo dentro del segmento; el gris excluye pausas, mantenimiento y períodos sin datos."
+              " Leé de izquierda a derecha. Cualquier interrupción pinta todo el segmento de rojo, sin importar su duración; el gris indica que no hay registros."
             )
           : t(" El historial puede incluir incidentes ya resueltos.")}{" "}
         {t("El segmento actual está en curso.")}

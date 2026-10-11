@@ -300,8 +300,8 @@ export const english: Record<string, string> = {
   "5 minutos": "5 minutes",
   "una hora": "one hour",
   "un día UTC": "one UTC day",
-  " Leé de izquierda a derecha y de arriba hacia abajo. La altura de cada color indica su proporción de tiempo dentro del segmento; el gris excluye pausas, mantenimiento y períodos sin datos.":
-    " Read left to right and top to bottom. Each color's height shows its share of time within the segment; gray excludes pauses, maintenance and periods without data.",
+  " Leé de izquierda a derecha. Cualquier interrupción pinta todo el segmento de rojo, sin importar su duración; el gris indica que no hay registros.":
+    " Read left to right. Any interruption turns the entire segment red, regardless of its duration; gray indicates there are no records.",
   " El historial puede incluir incidentes ya resueltos.":
     " History may include resolved incidents.",
   "El segmento actual está en curso.": "The current segment is still ongoing.",
