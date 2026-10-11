@@ -1,0 +1,96 @@
+import { useCallback, useEffect, useState } from "react";
+import type {
+  Group,
+  Incident,
+  Project,
+  SafeMonitor,
+  Stat,
+  StatusPage,
+  Window
+} from "../shared/types";
+
+export interface Snapshot {
+  projects: Project[];
+  groups: Group[];
+  monitors: SafeMonitor[];
+  maintenance: Window[];
+  pages: StatusPage[];
+  incidents: Incident[];
+  stats: Stat[];
+  engine: {
+    last_started: number | null;
+    last_finished: number | null;
+    last_error: string | null;
+  };
+  notifications: {
+    id: string;
+    monitor_name: string;
+    event: string;
+    state: string;
+    attempts: number;
+    error: string | null;
+  }[];
+  backlog: { total: number; oldest: number | null };
+  settings: { ownerEmail: string; from: string; environment: string };
+}
+export async function api<T>(
+  path: string,
+  method = "GET",
+  payload?: unknown
+): Promise<T> {
+  const response = await fetch(`/api/v1/${path}`, {
+    method,
+    credentials: "same-origin",
+    headers:
+      payload === undefined ? {} : { "Content-Type": "application/json" },
+    body: payload === undefined ? undefined : JSON.stringify(payload)
+  });
+  if (response.status === 401) {
+    if (path.startsWith("admin")) location.assign("/app/");
+    throw new Error("Tu sesión expiró. Volvé a entrar.");
+  }
+  if (!response.headers.get("Content-Type")?.includes("application/json"))
+    throw new Error(
+      "No se pudo consultar el servicio. Revisá tu sesión o conexión."
+    );
+  const data = await response.json();
+  if (!response.ok)
+    throw new Error(
+      typeof data === "object" &&
+        data !== null &&
+        "error" in data &&
+        typeof data.error === "string"
+        ? data.error
+        : "No fue posible completar la operación."
+    );
+  return data as T;
+}
+export function useRefresh<T>(path: string) {
+  const [data, setData] = useState<T | null>(null),
+    [error, setError] = useState("");
+  const refresh = useCallback(async () => {
+    try {
+      setData(await api<T>(path));
+      setError("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Falló la consulta.");
+    }
+  }, [path]);
+  useEffect(() => {
+    setData(null);
+    void refresh();
+    const timer = setInterval(() => void refresh(), 30000);
+    return () => clearInterval(timer);
+  }, [refresh]);
+  return { data, error, refresh };
+}
+export function date(value: number | null | undefined) {
+  return value ? new Date(value * 1000).toLocaleString("es-SV") : "Sin datos";
+}
+export function availability(
+  stats: Pick<Stat, "observed_seconds" | "up_seconds">[]
+) {
+  const total = stats.reduce((v, s) => v + s.observed_seconds, 0),
+    up = stats.reduce((v, s) => v + s.up_seconds, 0);
+  return total ? `${((100 * up) / total).toFixed(2)}%` : "Sin datos";
+}

@@ -1,0 +1,752 @@
+import { useState } from "react";
+import { Link, NavLink, useNavigate, useParams } from "react-router-dom";
+import {
+  Activity,
+  Folder,
+  Globe,
+  Moon,
+  Sun,
+  Wrench,
+  RefreshCw,
+  Plus,
+  ArrowLeft
+} from "lucide-react";
+import { api, availability, date, useRefresh, type Snapshot } from "../lib/api";
+import type { SafeMonitor } from "../shared/types";
+import { cn } from "../lib/utils";
+import { Notice, Nothing, Panel, StatusBadge } from "../components/common";
+import { MonitorForm } from "../components/monitor-form";
+import { ResourceForm, type Resource } from "../components/resource-form";
+import { History } from "../components/history";
+import { Button, buttonVariants } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Skeleton } from "../components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "../components/ui/table";
+import { NativeSelect } from "../components/ui/native-select";
+
+type Editor =
+  | { resource: Resource; value?: Record<string, unknown> }
+  | { resource: "monitors"; monitor?: SafeMonitor };
+export function Dashboard({
+  theme,
+  toggleTheme
+}: {
+  theme: string;
+  toggleTheme: () => void;
+}) {
+  const { section = "overview", id } = useParams(),
+    navigate = useNavigate();
+  const { data, error, refresh } = useRefresh<Snapshot>("admin/snapshot");
+  const [editor, setEditor] = useState<Editor | null>(null),
+    [notice, setNotice] = useState(""),
+    [busy, setBusy] = useState(false);
+  const [filter, setFilter] = useState(""),
+    [project, setProject] = useState(""),
+    [group, setGroup] = useState("");
+  async function mutate(path: string, method: string, payload?: unknown) {
+    setBusy(true);
+    setNotice("");
+    try {
+      const result = await api<{ token?: string }>(
+        `admin/${path}`,
+        method,
+        payload
+      );
+      if (result.token)
+        setNotice(
+          `Guardá este token de heartbeat; no se volverá a mostrar: ${result.token}`
+        );
+      await refresh();
+      return result;
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : "Falló la operación.");
+      throw e;
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function save(resource: Resource, v: unknown, id?: string) {
+    await mutate(`${resource}${id ? `/${id}` : ""}`, id ? "PUT" : "POST", v);
+    setEditor(null);
+  }
+  async function saveMonitor(v: unknown, id?: string) {
+    await mutate(`monitors${id ? `/${id}` : ""}`, id ? "PUT" : "POST", v);
+    setEditor(null);
+  }
+  function remove(resource: string, id: string) {
+    if (confirm("¿Eliminar este registro? Esta acción no se puede deshacer."))
+      void mutate(`${resource}/${id}`, "DELETE").catch(() => undefined);
+  }
+  const selected = data?.monitors.find((m) => m.id === id);
+  const visible =
+    data?.monitors.filter(
+      (m) =>
+        (!project || m.project_id === project) &&
+        (!group || m.group_id === group) &&
+        m.name.toLowerCase().includes(filter.toLowerCase())
+    ) ?? [];
+  const titles: Record<string, string> = {
+    overview: "Resumen",
+    monitors: "Monitores",
+    projects: "Proyectos y grupos",
+    pages: "Páginas públicas",
+    maintenance: "Mantenimiento"
+  };
+  const nav = [
+    { to: "overview", label: "Resumen", icon: Activity },
+    { to: "monitors", label: "Monitores", icon: Activity },
+    { to: "projects", label: "Proyectos y grupos", icon: Folder },
+    { to: "pages", label: "Páginas públicas", icon: Globe },
+    { to: "maintenance", label: "Mantenimiento", icon: Wrench }
+  ];
+  return (
+    <div className="min-h-screen lg:grid lg:grid-cols-[240px_1fr]">
+      <aside className="border-b bg-card p-5 lg:sticky lg:top-0 lg:h-screen lg:border-r lg:border-b-0">
+        <Link
+          to="/app/"
+          className="flex items-center gap-2 text-lg font-semibold"
+        >
+          <Activity className="size-5" />
+          AM25 Monitor
+        </Link>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Tu infraestructura, en observación
+        </p>
+        <nav
+          className="mt-6 flex flex-wrap gap-1 lg:flex-col"
+          aria-label="Navegación principal"
+        >
+          {nav.map((n) => (
+            <NavLink
+              key={n.to}
+              to={`/app/${n.to}`}
+              onClick={() => {
+                setEditor(null);
+                setNotice("");
+              }}
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-2 rounded-lg px-3 py-2 text-sm",
+                  isActive
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent"
+                )
+              }
+            >
+              <n.icon className="size-4" />
+              {n.label}
+            </NavLink>
+          ))}
+        </nav>
+        <p className="mt-8 text-xs text-muted-foreground">
+          Historial completo · 6 meses
+        </p>
+      </aside>
+      <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-5 md:p-8">
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              {selected?.name ?? titles[section] ?? "Monitor"}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {data?.settings.environment === "local"
+                ? "Entorno local · correos interceptados"
+                : "Actualización automática cada 30 segundos"}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Actualizar"
+              onClick={() => void refresh()}
+            >
+              <RefreshCw />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Cambiar tema"
+              onClick={toggleTheme}
+            >
+              {theme === "dark" ? <Sun /> : <Moon />}
+            </Button>
+          </div>
+        </header>
+        <Notice message={error} destructive />
+        <Notice message={notice} />
+        {!data && !error && (
+          <>
+            <Skeleton className="h-28 w-full" />
+            <Skeleton className="h-80 w-full" />
+          </>
+        )}
+        {data && (
+          <>
+            {editor &&
+              (editor.resource === "monitors" ? (
+                <MonitorForm
+                  key={editor.monitor?.id ?? "new"}
+                  data={data}
+                  monitor={editor.monitor}
+                  onSave={saveMonitor}
+                  onCancel={() => setEditor(null)}
+                />
+              ) : (
+                <ResourceForm
+                  key={`${editor.resource}-${editor.value?.id ?? "new"}`}
+                  resource={editor.resource}
+                  data={data}
+                  value={editor.value}
+                  onSave={save}
+                  onCancel={() => setEditor(null)}
+                />
+              ))}
+            {section === "overview" && (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                  {[
+                    { title: "Monitores", value: data.monitors.length },
+                    {
+                      title: "Operativos",
+                      value: data.monitors.filter(
+                        (m) => m.display_status === "up"
+                      ).length
+                    },
+                    {
+                      title: "Incidentes abiertos",
+                      value: data.incidents.filter((i) => !i.closed_at).length
+                    },
+                    {
+                      title: "Disponibilidad · 30 días",
+                      value: availability(data.stats)
+                    }
+                  ].map((s) => (
+                    <Panel key={s.title} title={s.title}>
+                      <p className="text-3xl font-semibold">{s.value}</p>
+                    </Panel>
+                  ))}
+                </div>
+                <Panel title="Salud del motor">
+                  <dl className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <dt className="text-muted-foreground">
+                        Último ciclo completado
+                      </dt>
+                      <dd>{date(data.engine.last_finished)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">
+                        Trabajos pendientes
+                      </dt>
+                      <dd>
+                        {data.backlog.total} · más antiguo:{" "}
+                        {date(data.backlog.oldest)}
+                      </dd>
+                    </div>
+                  </dl>
+                  {data.engine.last_error && (
+                    <Notice message={data.engine.last_error} destructive />
+                  )}
+                  {data.engine.last_finished &&
+                    Date.now() / 1000 - data.engine.last_finished > 180 && (
+                      <Notice
+                        message="El motor no ha completado un ciclo recientemente. Los estados pueden estar desactualizados."
+                        destructive
+                      />
+                    )}
+                </Panel>
+                <Panel title="Incidentes recientes">
+                  {data.incidents.length ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Monitor</TableHead>
+                          <TableHead>Inicio</TableHead>
+                          <TableHead>Recuperación</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {data.incidents.map((i) => (
+                          <TableRow key={i.id}>
+                            <TableCell>
+                              <Link to={`/app/monitors/${i.monitor_id}`}>
+                                {i.monitor_name}
+                              </Link>
+                            </TableCell>
+                            <TableCell>{date(i.opened_at)}</TableCell>
+                            <TableCell>
+                              {i.closed_at ? date(i.closed_at) : "Abierto"}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <Nothing
+                      title="Sin incidentes"
+                      description="Los incidentes aparecerán cuando se alcance el umbral de fallos."
+                    />
+                  )}
+                </Panel>
+                <Panel
+                  title="Alertas personales"
+                  description={`Destinatario: ${data.settings.ownerEmail} · remitente: ${data.settings.from}`}
+                >
+                  {data.notifications.length ? (
+                    <div className="flex flex-col gap-3">
+                      {data.notifications.map((n) => (
+                        <div
+                          key={n.id}
+                          className="flex flex-wrap items-center justify-between gap-2"
+                        >
+                          <span>
+                            {n.monitor_name} ·{" "}
+                            {n.state === "failed"
+                              ? "Entrega fallida"
+                              : "Pendiente"}{" "}
+                            · {n.attempts} intentos
+                          </span>
+                          {n.state === "failed" && (
+                            <Button
+                              variant="outline"
+                              disabled={busy}
+                              onClick={() =>
+                                void mutate(
+                                  `notifications/${n.id}/retry`,
+                                  "POST",
+                                  {}
+                                ).catch(() => undefined)
+                              }
+                            >
+                              Reintentar
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">
+                      No hay correos pendientes o fallidos.
+                    </p>
+                  )}
+                </Panel>
+              </>
+            )}
+            {section === "monitors" && selected && (
+              <>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => navigate("/app/monitors")}
+                  >
+                    <ArrowLeft data-icon="inline-start" />
+                    Volver
+                  </Button>
+                  <StatusBadge status={selected.display_status} />
+                  <Button
+                    onClick={() =>
+                      setEditor({ resource: "monitors", monitor: selected })
+                    }
+                  >
+                    Editar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() =>
+                      void mutate(`monitors/${selected.id}/pause`, "POST", {
+                        paused: !selected.paused
+                      }).catch(() => undefined)
+                    }
+                  >
+                    {selected.paused ? "Reactivar" : "Pausar"}
+                  </Button>
+                  {selected.kind !== "heartbeat" && (
+                    <Button
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() => {
+                        setBusy(true);
+                        void api<{
+                          diagnostic: string;
+                          latency: number | null;
+                        }>(`admin/monitors/${selected.id}/test`, "POST", {})
+                          .then((r) =>
+                            setNotice(
+                              `${r.diagnostic}${r.latency !== null ? ` · ${r.latency} ms` : ""}`
+                            )
+                          )
+                          .catch((e) => setNotice(String(e.message)))
+                          .finally(() => setBusy(false));
+                      }}
+                    >
+                      Probar sin registrar
+                    </Button>
+                  )}
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      remove("monitors", selected.id);
+                    }}
+                  >
+                    Eliminar
+                  </Button>
+                </div>
+                <Panel title="Resumen del monitor">
+                  <dl className="grid gap-4 sm:grid-cols-3">
+                    <div>
+                      <dt className="text-muted-foreground">
+                        Última comprobación
+                      </dt>
+                      <dd>{date(selected.last_checked)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">Última latencia</dt>
+                      <dd>
+                        {selected.last_latency === null
+                          ? "Sin datos"
+                          : `${selected.last_latency} ms`}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">Frecuencia</dt>
+                      <dd>{selected.interval_seconds / 60} minutos</dd>
+                    </div>
+                  </dl>
+                </Panel>
+                <History key={selected.id} monitor={selected} />
+              </>
+            )}
+            {section === "monitors" && !id && (
+              <>
+                <div className="flex flex-wrap gap-3">
+                  <Input
+                    aria-label="Buscar monitores"
+                    placeholder="Buscar monitores…"
+                    className="max-w-xs"
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value)}
+                  />
+                  <NativeSelect
+                    aria-label="Filtrar por proyecto"
+                    value={project}
+                    onChange={(e) => {
+                      setProject(e.target.value);
+                      setGroup("");
+                    }}
+                  >
+                    <option value="">Todos los proyectos</option>
+                    {data.projects.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                  <NativeSelect
+                    aria-label="Filtrar por grupo"
+                    value={group}
+                    onChange={(e) => setGroup(e.target.value)}
+                  >
+                    <option value="">Todos los grupos</option>
+                    {data.groups
+                      .filter((g) => !project || g.project_id === project)
+                      .map((g) => (
+                        <option key={g.id} value={g.id}>
+                          {g.name}
+                        </option>
+                      ))}
+                  </NativeSelect>
+                  <Button
+                    disabled={
+                      !data.projects.length || data.monitors.length >= 100
+                    }
+                    onClick={() => setEditor({ resource: "monitors" })}
+                  >
+                    <Plus data-icon="inline-start" />
+                    Nuevo monitor
+                  </Button>
+                </div>
+                <Panel
+                  title="Monitores"
+                  description={`${data.monitors.length} de 100 configurados`}
+                >
+                  {visible.length ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Nombre</TableHead>
+                          <TableHead>Proyecto / grupo</TableHead>
+                          <TableHead>Estado</TableHead>
+                          <TableHead>Latencia</TableHead>
+                          <TableHead>Última comprobación</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {visible.map((m) => (
+                          <TableRow key={m.id}>
+                            <TableCell>
+                              <Link
+                                className="font-medium hover:underline"
+                                to={`/app/monitors/${m.id}`}
+                              >
+                                {m.name}
+                              </Link>
+                              <p className="text-xs text-muted-foreground">
+                                {m.kind.toUpperCase()}
+                              </p>
+                            </TableCell>
+                            <TableCell>
+                              {
+                                data.projects.find((p) => p.id === m.project_id)
+                                  ?.name
+                              }
+                              {m.group_id
+                                ? ` / ${data.groups.find((g) => g.id === m.group_id)?.name}`
+                                : ""}
+                            </TableCell>
+                            <TableCell>
+                              <StatusBadge status={m.display_status} />
+                            </TableCell>
+                            <TableCell>
+                              {m.last_latency === null
+                                ? "—"
+                                : `${m.last_latency} ms`}
+                            </TableCell>
+                            <TableCell>{date(m.last_checked)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <Nothing
+                      description={
+                        data.projects.length
+                          ? "Agregá tu primer monitor."
+                          : "Creá primero un proyecto en Proyectos y grupos."
+                      }
+                    />
+                  )}
+                </Panel>
+              </>
+            )}
+            {section === "monitors" && id && !selected && (
+              <Nothing
+                title="Monitor no encontrado"
+                description="Puede haber sido eliminado."
+              />
+            )}
+            {section === "projects" && (
+              <>
+                <div className="flex gap-2">
+                  <Button onClick={() => setEditor({ resource: "projects" })}>
+                    Crear proyecto
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={!data.projects.length}
+                    onClick={() => setEditor({ resource: "groups" })}
+                  >
+                    Crear grupo
+                  </Button>
+                </div>
+                {data.projects.length ? (
+                  data.projects.map((p) => (
+                    <Panel
+                      key={p.id}
+                      title={p.name}
+                      description={p.description}
+                    >
+                      <div className="flex flex-col gap-3">
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() =>
+                              setEditor({
+                                resource: "projects",
+                                value: { ...p }
+                              })
+                            }
+                          >
+                            Editar proyecto
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            onClick={() => remove("projects", p.id)}
+                          >
+                            Eliminar
+                          </Button>
+                          <Link
+                            className={buttonVariants({ variant: "outline" })}
+                            to="/app/monitors"
+                            onClick={() => {
+                              setProject(p.id);
+                              setGroup("");
+                            }}
+                          >
+                            Ver monitores
+                          </Link>
+                        </div>
+                        {data.groups
+                          .filter((g) => g.project_id === p.id)
+                          .map((g) => (
+                            <div
+                              key={g.id}
+                              className="flex flex-wrap items-center justify-between gap-2 border-t pt-3"
+                            >
+                              <span>
+                                {g.name} ·{" "}
+                                {
+                                  data.monitors.filter(
+                                    (m) => m.group_id === g.id
+                                  ).length
+                                }{" "}
+                                monitores
+                              </span>
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="ghost"
+                                  onClick={() =>
+                                    setEditor({
+                                      resource: "groups",
+                                      value: { ...g }
+                                    })
+                                  }
+                                >
+                                  Editar
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  onClick={() => remove("groups", g.id)}
+                                >
+                                  Eliminar
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    </Panel>
+                  ))
+                ) : (
+                  <Nothing description="Creá proyectos para organizar tus monitores." />
+                )}
+              </>
+            )}
+            {section === "pages" && (
+              <>
+                <Button
+                  className="self-start"
+                  disabled={!data.projects.length}
+                  onClick={() => setEditor({ resource: "pages" })}
+                >
+                  Crear página pública
+                </Button>
+                {data.pages.length ? (
+                  data.pages.map((p) => (
+                    <Panel
+                      key={p.id}
+                      title={p.title}
+                      description={p.description}
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-muted-foreground">
+                          {p.published ? "Publicada" : "Borrador"} · /status/
+                          {p.slug}
+                        </span>
+                        {p.published && (
+                          <a
+                            className={buttonVariants({ variant: "outline" })}
+                            href={`/status/${p.slug}`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Abrir
+                          </a>
+                        )}
+                        <Button
+                          variant="outline"
+                          onClick={() =>
+                            setEditor({ resource: "pages", value: { ...p } })
+                          }
+                        >
+                          Editar
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          onClick={() => remove("pages", p.id)}
+                        >
+                          Eliminar
+                        </Button>
+                      </div>
+                    </Panel>
+                  ))
+                ) : (
+                  <Nothing description="Elegí un proyecto o sus grupos y excluí los monitores internos." />
+                )}
+              </>
+            )}
+            {section === "maintenance" && (
+              <>
+                <Button
+                  className="self-start"
+                  disabled={!data.projects.length}
+                  onClick={() => setEditor({ resource: "maintenance" })}
+                >
+                  Programar mantenimiento
+                </Button>
+                {data.maintenance.length ? (
+                  data.maintenance.map((w) => (
+                    <Panel
+                      key={w.id}
+                      title={w.title}
+                      description={`${date(w.starts_at)} → ${date(w.ends_at)}`}
+                    >
+                      <div className="flex flex-wrap gap-2">
+                        <span>
+                          {w.scope === "project"
+                            ? data.projects.find((p) => p.id === w.target_id)
+                                ?.name
+                            : w.scope === "group"
+                              ? data.groups.find((g) => g.id === w.target_id)
+                                  ?.name
+                              : data.monitors.find((m) => m.id === w.target_id)
+                                  ?.name}
+                        </span>
+                        <Button
+                          variant="outline"
+                          onClick={() =>
+                            setEditor({
+                              resource: "maintenance",
+                              value: { ...w }
+                            })
+                          }
+                        >
+                          Editar
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          onClick={() => remove("maintenance", w.id)}
+                        >
+                          Eliminar
+                        </Button>
+                      </div>
+                    </Panel>
+                  ))
+                ) : (
+                  <Nothing description="Las ventanas evitan alertas durante tus despliegues." />
+                )}
+              </>
+            )}
+          </>
+        )}
+      </main>
+    </div>
+  );
+}
