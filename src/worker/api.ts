@@ -1,3 +1,4 @@
+import { pageMonitors } from "../shared/page-scope";
 import { z } from "zod";
 import {
   groupInput,
@@ -133,10 +134,13 @@ export async function admin(
       rows<Group>(env.DB, "SELECT * FROM groups ORDER BY name"),
       rows<Monitor>(env.DB, "SELECT * FROM monitors ORDER BY name"),
       windows(env),
-      rows<StatusPage & { group_ids: string; excluded_ids: string }>(
-        env.DB,
-        "SELECT * FROM pages ORDER BY title"
-      ),
+      rows<
+        Omit<StatusPage, "group_ids" | "excluded_ids" | "included_ids"> & {
+          group_ids: string;
+          excluded_ids: string;
+          included_ids: string | null;
+        }
+      >(env.DB, "SELECT * FROM pages ORDER BY title"),
       rows<Incident>(
         env.DB,
         "SELECT i.*,m.name AS monitor_name FROM incidents i JOIN monitors m ON m.id=i.monitor_id ORDER BY i.opened_at DESC LIMIT 100"
@@ -167,6 +171,12 @@ export async function admin(
         ...p,
         group_ids: JSON.parse(p.group_ids),
         excluded_ids: JSON.parse(p.excluded_ids),
+        included_ids:
+          p.included_ids === null
+            ? pageMonitors(monitors, p.project_id, JSON.parse(p.group_ids))
+                .filter((m) => !JSON.parse(p.excluded_ids).includes(m.id))
+                .map((m) => m.id)
+            : JSON.parse(p.included_ids),
         published: Boolean(p.published)
       })),
       incidents,
@@ -331,16 +341,17 @@ export async function admin(
         const allPages = await rows<{
           project_id: string;
           excluded_ids: string;
-        }>(env.DB, "SELECT project_id,excluded_ids FROM pages");
+          included_ids: string | null;
+        }>(env.DB, "SELECT project_id,excluded_ids,included_ids FROM pages");
         if (
           allPages.some(
             (p) =>
               p.project_id !== v.project_id &&
-              JSON.parse(p.excluded_ids).includes(id)
+              JSON.parse(p.included_ids ?? p.excluded_ids).includes(id)
           )
         )
           throw new Response(
-            "Quitá el monitor de las exclusiones antes de moverlo.",
+            "Quitá el monitor de la página pública antes de moverlo.",
             { status: 409 }
           );
       }
@@ -461,25 +472,46 @@ export async function admin(
       await requireProject(env, v.project_id);
       for (const group of v.group_ids)
         await requireGroup(env, group, v.project_id);
-      for (const monitorId of v.excluded_ids) {
+      for (const monitorId of v.included_ids ?? v.excluded_ids) {
         const m = await monitor(env, monitorId);
-        if (m.project_id !== v.project_id)
-          throw new Response("La exclusión no pertenece al proyecto.", {
-            status: 400
-          });
+        if (
+          m.project_id !== v.project_id ||
+          (v.included_ids !== undefined &&
+            v.group_ids.length > 0 &&
+            !v.group_ids.includes(m.group_id ?? ""))
+        )
+          throw new Response(
+            "El monitor no pertenece al alcance seleccionado.",
+            {
+              status: 400
+            }
+          );
       }
+      const excludedIds =
+        v.included_ids === undefined
+          ? v.excluded_ids
+          : (
+              await rows<Monitor>(
+                env.DB,
+                "SELECT * FROM monitors WHERE project_id=?",
+                v.project_id
+              )
+            )
+              .filter((m) => !v.included_ids!.includes(m.id))
+              .map((m) => m.id);
       const key = id ?? crypto.randomUUID();
       await statement(
         env.DB,
-        "INSERT INTO pages(id,slug,title,description,project_id,group_ids,excluded_ids,published) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET slug=excluded.slug,title=excluded.title,description=excluded.description,project_id=excluded.project_id,group_ids=excluded.group_ids,excluded_ids=excluded.excluded_ids,published=excluded.published",
+        "INSERT INTO pages(id,slug,title,description,project_id,group_ids,excluded_ids,published,included_ids) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET slug=excluded.slug,title=excluded.title,description=excluded.description,project_id=excluded.project_id,group_ids=excluded.group_ids,excluded_ids=excluded.excluded_ids,published=excluded.published,included_ids=excluded.included_ids",
         key,
         v.slug,
         v.title,
         v.description,
         v.project_id,
         JSON.stringify(v.group_ids),
-        JSON.stringify(v.excluded_ids),
-        +v.published
+        JSON.stringify(excludedIds),
+        +v.published,
+        v.included_ids === undefined ? null : JSON.stringify(v.included_ids)
       ).run();
       return json({ id: key });
     }
@@ -507,6 +539,7 @@ export async function publicPage(env: Env, slug: string) {
     project_id: string;
     group_ids: string;
     excluded_ids: string;
+    included_ids: string | null;
   }>(env.DB, "SELECT * FROM pages WHERE slug=? AND published=1", slug);
   if (!page) missing();
   const groups = JSON.parse(page.group_ids) as string[],
@@ -518,10 +551,12 @@ export async function publicPage(env: Env, slug: string) {
     ),
     activeWindows = await windows(env),
     now = nowSeconds();
-  const included = all.filter(
-    (m) =>
-      (!groups.length || groups.includes(m.group_id ?? "")) &&
-      !excluded.includes(m.id)
+  const selected =
+    page.included_ids === null
+      ? null
+      : (JSON.parse(page.included_ids) as string[]);
+  const included = pageMonitors(all, page.project_id, groups).filter((m) =>
+    selected === null ? !excluded.includes(m.id) : selected.includes(m.id)
   );
   const monitors = await Promise.all(
     included.map(async (m) => {
@@ -530,6 +565,16 @@ export async function publicPage(env: Env, slug: string) {
         "SELECT day,observed_seconds,up_seconds FROM daily_stats WHERE monitor_id=? AND day>=? ORDER BY day",
         m.id,
         new Date((now - 90 * 86400) * 1000).toISOString().slice(0, 10)
+      );
+      const hourly = await rows<{
+        hour: string;
+        observed_seconds: number;
+        up_seconds: number;
+      }>(
+        env.DB,
+        "SELECT hour,observed_seconds,up_seconds FROM hourly_stats WHERE monitor_id=? AND hour>=? ORDER BY hour",
+        m.id,
+        new Date((now - 23 * 3600) * 1000).toISOString().slice(0, 13)
       );
       const incidents = await rows<Incident>(
         env.DB,
@@ -543,6 +588,7 @@ export async function publicPage(env: Env, slug: string) {
         status: displayStatus(m, activeWindows, now),
         lastChecked: m.last_checked,
         stats,
+        hourly,
         incidents: incidents.map((i) => ({
           ...i,
           message: i.closed_at

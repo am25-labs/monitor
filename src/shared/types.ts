@@ -83,6 +83,7 @@ export interface StatusPage {
   project_id: string;
   group_ids: string[];
   excluded_ids: string[];
+  included_ids: string[];
   published: boolean;
 }
 export interface Result {

@@ -55,7 +55,8 @@ export function observation(
   m: Monitor,
   windows: Window[],
   now: number,
-  maintenance: boolean
+  maintenance: boolean,
+  bucketSeconds = 86400
 ) {
   if (
     !m.last_checked ||
@@ -75,7 +76,7 @@ export function observation(
   const segments: { day: string; seconds: number; up: number }[] = [];
   let start = m.last_checked;
   while (start < now) {
-    const midnight = (Math.floor(start / 86400) + 1) * 86400,
+    const midnight = (Math.floor(start / bucketSeconds) + 1) * bucketSeconds,
       end = Math.min(now, midnight);
     const spans = windows
       .filter((w) => applies(m, w) && w.starts_at < end && w.ends_at > start)
@@ -91,7 +92,9 @@ export function observation(
     }
     const seconds = end - start - excluded;
     segments.push({
-      day: new Date(start * 1000).toISOString().slice(0, 10),
+      day: new Date(start * 1000)
+        .toISOString()
+        .slice(0, bucketSeconds === 3600 ? 13 : 10),
       seconds,
       up: m.last_ok ? seconds : 0
     });

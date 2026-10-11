@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { ChoiceSelect } from "../components/choice-select";
 import { useParams } from "react-router-dom";
 import { Moon, Sun, RefreshCw } from "lucide-react";
 import { availability, date, useRefresh } from "../lib/api";
@@ -17,6 +19,7 @@ interface PublicData {
     status: Status;
     lastChecked: number | null;
     stats: { day: string; observed_seconds: number; up_seconds: number }[];
+    hourly: { hour: string; observed_seconds: number; up_seconds: number }[];
     incidents: {
       opened_at: number;
       closed_at: number | null;
@@ -26,20 +29,33 @@ interface PublicData {
 }
 type DailyStat = PublicData["monitors"][number]["stats"][number];
 
-function DailyHistory({
+type HistoryRange = "90d" | "7d" | "24h";
+const periods = { "90d": "90 días", "7d": "7 días", "24h": "24 horas" };
+
+function History({
   stats,
+  hourly,
+  range,
   updatedAt
 }: {
   stats: DailyStat[];
+  hourly: PublicData["monitors"][number]["hourly"];
+  range: HistoryRange;
   updatedAt: number;
 }) {
-  const lastDay = new Date(updatedAt * 1000).toISOString().slice(0, 10);
-  const last = Date.parse(`${lastDay}T00:00:00Z`);
-  const byDay = new Map(stats.map((stat) => [stat.day, stat]));
-  const days = Array.from({ length: 90 }, (_, index) => {
-    const day = new Date(last - (89 - index) * 86400000)
+  const hours = range === "24h";
+  const count = hours ? 24 : range === "7d" ? 7 : 90;
+  const stride = hours ? 3600000 : 86400000;
+  const last = Math.floor((updatedAt * 1000) / stride) * stride;
+  const byDay = new Map(
+    (hours ? hourly.map((stat) => ({ ...stat, day: stat.hour })) : stats).map(
+      (stat) => [stat.day, stat]
+    )
+  );
+  const days = Array.from({ length: count }, (_, index) => {
+    const day = new Date(last - (count - 1 - index) * stride)
       .toISOString()
-      .slice(0, 10);
+      .slice(0, hours ? 13 : 10);
     const stat = byDay.get(day);
     const state = !stat?.observed_seconds
       ? "none"
@@ -62,18 +78,21 @@ function DailyHistory({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-        <p>Historial diario · últimos 90 días</p>
+        <p>
+          Historial {hours ? "por hora" : "diario"} · últimos {periods[range]}
+        </p>
         <p className="text-muted-foreground">
           Disponibilidad observada: {availability(observed)}
         </p>
       </div>
       <div
-        className="grid grid-cols-[repeat(90,minmax(0,1fr))] gap-0.5"
+        className="grid gap-0.5"
+        style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` }}
         role="list"
-        aria-label="Historial diario, de más antiguo a más reciente"
+        aria-label={`Historial ${hours ? "por hora" : "diario"}, de más antiguo a más reciente`}
       >
         {days.map(({ day, stat, state }) => {
-          const label = `${day} (UTC): ${labels[state]}${stat?.observed_seconds ? ` · ${availability([stat])}` : ""}`;
+          const label = `${day.replace("T", " ")}${hours ? ":00" : ""} (UTC): ${labels[state]}${stat?.observed_seconds ? ` · ${availability([stat])}` : ""}`;
           return (
             <span
               key={day}
@@ -92,8 +111,10 @@ function DailyHistory({
         })}
       </div>
       <div className="flex justify-between text-xs text-muted-foreground">
-        <span>Hace 89 días</span>
-        <span>Día más reciente</span>
+        <span>
+          Hace {count - 1} {hours ? "horas" : "días"}
+        </span>
+        <span>{hours ? "Hora actual" : "Día más reciente"}</span>
       </div>
       <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
         {[
@@ -112,8 +133,10 @@ function DailyHistory({
         ))}
       </div>
       <p className="text-xs text-muted-foreground">
-        {observed.length} de 90 días con registros. Cada segmento representa un
-        día UTC; el historial puede incluir incidentes ya resueltos.
+        {observed.length} de {count} {hours ? "horas" : "días"} con registros.
+        Cada segmento representa {hours ? "una hora" : "un día"} UTC; el
+        segmento actual está en curso y el historial puede incluir incidentes ya
+        resueltos.
       </p>
     </div>
   );
@@ -127,6 +150,7 @@ export function PublicStatus({
 }) {
   const { slug } = useParams(),
     { data, error, refresh } = useRefresh<PublicData>(`public/${slug}`);
+  const [range, setRange] = useState<HistoryRange>("7d");
   const overall: Status = data?.monitors.some((m) => m.status === "down")
     ? "down"
     : data?.monitors.some(
@@ -178,7 +202,20 @@ export function PublicStatus({
               title="Estado general"
               description={`Última actualización: ${date(data.updatedAt)}`}
             >
-              <StatusBadge status={overall} />
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <StatusBadge status={overall} />
+                <ChoiceSelect
+                  aria-label="Período del historial"
+                  className="w-full sm:w-48"
+                  value={range}
+                  onValueChange={(value) => setRange(value as HistoryRange)}
+                  options={[
+                    { value: "90d", label: "Últimos 90 días" },
+                    { value: "7d", label: "Últimos 7 días" },
+                    { value: "24h", label: "Últimas 24 horas" }
+                  ]}
+                />
+              </div>
             </Panel>
           )}
           {data.monitors.length ? (
@@ -197,7 +234,12 @@ export function PublicStatus({
                       </span>
                       <StatusBadge status={m.status} />
                     </div>
-                    <DailyHistory stats={m.stats} updatedAt={data.updatedAt} />
+                    <History
+                      stats={m.stats}
+                      hourly={m.hourly ?? []}
+                      range={range}
+                      updatedAt={data.updatedAt}
+                    />
                     <p className="text-xs text-muted-foreground">
                       Última comprobación: {date(m.lastChecked)}
                     </p>
@@ -238,7 +280,7 @@ export function PublicStatus({
         </p>
         <p>
           La disponibilidad corresponde al tiempo observado durante los últimos
-          90 días. Excluye pausas, mantenimiento y períodos sin datos.
+          {periods[range]}. Excluye pausas, mantenimiento y períodos sin datos.
         </p>
       </footer>
     </main>

@@ -6,6 +6,8 @@ export function CheckboxList({
   name,
   label,
   options,
+  value,
+  onValueChange,
   defaultValue = []
 }: {
   id: string;
@@ -13,6 +15,8 @@ export function CheckboxList({
   label: string;
   options: Choice[];
   defaultValue?: string[];
+  value?: string[];
+  onValueChange?: (value: string[]) => void;
 }) {
   return (
     <FieldSet>
@@ -25,7 +29,20 @@ export function CheckboxList({
                 id={`${id}-${option.value}`}
                 name={name}
                 value={option.value}
-                defaultChecked={defaultValue.includes(option.value)}
+                defaultChecked={
+                  value === undefined
+                    ? defaultValue.includes(option.value)
+                    : undefined
+                }
+                checked={value?.includes(option.value)}
+                onCheckedChange={(checked) => {
+                  if (value && onValueChange)
+                    onValueChange(
+                      checked
+                        ? [...value, option.value]
+                        : value.filter((id) => id !== option.value)
+                    );
+                }}
               />
               <FieldLabel htmlFor={`${id}-${option.value}`}>
                 {option.label}

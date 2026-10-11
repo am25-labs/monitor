@@ -138,6 +138,7 @@ export const pageInput = z.object({
   project_id: id,
   group_ids: z.array(id).max(100).default([]),
   excluded_ids: z.array(id).max(100).default([]),
+  included_ids: z.array(id).max(100).optional(),
   published: z.boolean().default(false)
 });
 export type MonitorInput = z.output<typeof monitorInput>;

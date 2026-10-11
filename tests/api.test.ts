@@ -5,6 +5,7 @@ import worker from "../src/worker/index";
 import { setup, createProject, createMonitor, projectId } from "./setup";
 import { digest } from "../src/worker/crypto";
 import { statement, first } from "../src/worker/db";
+import { pageMonitors } from "../src/shared/page-scope";
 import { deliverNotifications, mailBody } from "../src/worker/mail";
 
 beforeEach(async () => {
@@ -30,6 +31,8 @@ it("redacts credentials in administrative responses and exposes only selected pu
   const privateBody = await privateResponse.text();
   expect(privateBody).not.toContain("secret-value");
   expect(privateBody).toContain("hasCredentials");
+  const snapshot = JSON.parse(privateBody);
+  expect(snapshot.pages[0].included_ids).toEqual([visible.id]);
   const response = await worker.fetch(
     new Request("http://localhost/api/v1/public/project"),
     env
@@ -343,4 +346,88 @@ it("reproduces asset canonicalization and preserves the single root redirect", a
   );
   expect(root.status).toBe(302);
   expect(root.headers.get("Location")).toBe("https://monitor.example.com/app/");
+});
+
+it("publishes only explicitly included monitors within the selected groups", async () => {
+  const group = crypto.randomUUID();
+  await statement(
+    env.DB,
+    "INSERT INTO groups(id,project_id,name) VALUES(?,?,?)",
+    group,
+    projectId,
+    "Public"
+  ).run();
+  const visible = await createMonitor({ group_id: group });
+  const hidden = await createMonitor();
+  const payload = {
+    title: "Project",
+    slug: "selected",
+    project_id: projectId,
+    group_ids: [group],
+    included_ids: [visible.id],
+    published: true
+  };
+  const save = (value: unknown, id = "") =>
+    worker.fetch(
+      new Request(`http://localhost/api/v1/admin/pages${id ? `/${id}` : ""}`, {
+        method: id ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(value)
+      }),
+      env
+    );
+  expect((await save({ ...payload, included_ids: [hidden.id] })).status).toBe(
+    400
+  );
+  const otherProject = crypto.randomUUID();
+  await statement(
+    env.DB,
+    "INSERT INTO projects(id,name,created_at) VALUES(?,?,?)",
+    otherProject,
+    "Other",
+    1000
+  ).run();
+  const foreign = await createMonitor({ project_id: otherProject });
+  expect(
+    (await save({ ...payload, group_ids: [], included_ids: [foreign.id] }))
+      .status
+  ).toBe(400);
+  const response = await save(payload);
+  expect(response.status).toBe(200);
+  const { id } = (await response.json()) as { id: string };
+  await createMonitor({ group_id: group });
+  const read = async () =>
+    (await (
+      await worker.fetch(
+        new Request("http://localhost/api/v1/public/selected"),
+        env
+      )
+    ).json()) as { monitors: { id: string; hourly: unknown[] }[] };
+  expect((await read()).monitors.map((m) => m.id)).toEqual([visible.id]);
+  const hour = new Date().toISOString().slice(0, 13);
+  await statement(
+    env.DB,
+    "INSERT INTO hourly_stats VALUES(?,?,?,?)",
+    visible.id,
+    hour,
+    60,
+    60
+  ).run();
+  expect((await read()).monitors[0].hourly).toEqual([
+    { hour, observed_seconds: 60, up_seconds: 60 }
+  ]);
+  expect(
+    pageMonitors([visible, hidden, foreign], projectId, [group]).map(
+      (m) => m.id
+    )
+  ).toEqual([visible.id]);
+  expect((await save({ ...payload, included_ids: [] }, id)).status).toBe(200);
+  expect((await read()).monitors).toEqual([]);
+  await save(payload, id);
+  await statement(
+    env.DB,
+    "UPDATE monitors SET group_id=NULL WHERE id=?",
+    visible.id
+  ).run();
+  expect((await read()).monitors).toEqual([]);
 });

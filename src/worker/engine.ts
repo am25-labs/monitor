@@ -105,6 +105,20 @@ export async function record(
         lease
       )
     );
+  for (const segment of observation(m, activeWindows, now, maintenance, 3600))
+    batch.push(
+      statement(
+        env.DB,
+        `INSERT INTO hourly_stats(monitor_id,hour,observed_seconds,up_seconds) SELECT ?,?,?,? WHERE ${guarded} ON CONFLICT(monitor_id,hour) DO UPDATE SET observed_seconds=observed_seconds+excluded.observed_seconds,up_seconds=up_seconds+excluded.up_seconds`,
+        m.id,
+        segment.day,
+        segment.seconds,
+        segment.up,
+        job.id,
+        now,
+        lease
+      )
+    );
   const day = new Date(now * 1000).toISOString().slice(0, 10);
   batch.push(
     statement(
@@ -350,6 +364,11 @@ export async function cleanup(env: Env, now: number) {
       env.DB,
       "DELETE FROM daily_stats WHERE rowid IN (SELECT rowid FROM daily_stats WHERE day<? LIMIT 1000)",
       new Date(annual * 1000).toISOString().slice(0, 10)
+    ),
+    statement(
+      env.DB,
+      "DELETE FROM hourly_stats WHERE rowid IN (SELECT rowid FROM hourly_stats WHERE hour<? LIMIT 1000)",
+      new Date((now - 48 * 3600) * 1000).toISOString().slice(0, 13)
     ),
     statement(
       env.DB,

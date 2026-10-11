@@ -8,6 +8,7 @@ import { ChoiceSelect } from "./choice-select";
 import { CheckboxList } from "./checkbox-list";
 import { DateTimePicker } from "./date-picker";
 import { Button } from "./ui/button";
+import { pageMonitors } from "../shared/page-scope";
 
 export type Resource = "projects" | "groups" | "pages" | "maintenance";
 export function ResourceForm({
@@ -26,6 +27,13 @@ export function ResourceForm({
   const [project, setProject] = useState(
     String(value?.project_id ?? data.projects[0]?.id ?? "")
   );
+  const [groups, setGroups] = useState(
+    (value?.group_ids as string[] | undefined) ?? []
+  );
+  const [included, setIncluded] = useState(
+    (value?.included_ids as string[] | undefined) ?? []
+  );
+  const eligible = pageMonitors(data.monitors, project, groups);
   const [scope, setScope] = useState(String(value?.scope ?? "project")),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -58,8 +66,10 @@ export function ResourceForm({
                 slug: f.get("slug"),
                 description: f.get("description"),
                 project_id: project,
-                group_ids: f.getAll("group_ids"),
-                excluded_ids: f.getAll("excluded_ids"),
+                group_ids: groups,
+                included_ids: included.filter((id) =>
+                  eligible.some((m) => m.id === id)
+                ),
                 published: f.get("published") === "true"
               }
             : {
@@ -129,7 +139,11 @@ export function ResourceForm({
               <ChoiceSelect
                 id="resource-project"
                 value={project}
-                onValueChange={(value) => setProject(value)}
+                onValueChange={(value) => {
+                  setProject(value);
+                  setGroups([]);
+                  setIncluded([]);
+                }}
                 disabled={resource === "groups" && Boolean(value)}
                 required
                 options={[
@@ -161,33 +175,34 @@ export function ResourceForm({
                 options={data.groups
                   .filter((g) => g.project_id === project)
                   .map((g) => ({ value: g.id, label: g.name }))}
-                defaultValue={
-                  project === value?.project_id
-                    ? (value?.group_ids as string[] | undefined)
-                    : []
-                }
+                value={groups}
+                onValueChange={(selected) => {
+                  setGroups(selected);
+                  const ids = new Set(
+                    pageMonitors(data.monitors, project, selected).map(
+                      (m) => m.id
+                    )
+                  );
+                  setIncluded((current) => current.filter((id) => ids.has(id)));
+                }}
               />
               <FieldDescription>
-                Sin selección incluye todo el proyecto.
+                Sin grupos seleccionados, podés elegir monitores de todo el
+                proyecto.
               </FieldDescription>
               <CheckboxList
-                key={`excluded-${project}`}
-                id="excluded_ids"
-                name="excluded_ids"
-                label="Monitores que se ocultarán"
-                options={data.monitors
-                  .filter((m) => m.project_id === project)
-                  .map((m) => ({ value: m.id, label: m.name }))}
-                defaultValue={
-                  project === value?.project_id
-                    ? (value?.excluded_ids as string[] | undefined)
-                    : []
-                }
+                key={`included-${project}`}
+                id="included_ids"
+                name="included_ids"
+                label="Monitores incluidos"
+                options={eligible.map((m) => ({ value: m.id, label: m.name }))}
+                value={included}
+                onValueChange={setIncluded}
               />
               <FieldDescription>
-                Marcá únicamente los monitores que no querés mostrar. Para
-                publicar todos los monitores de los grupos incluidos, dejá estas
-                casillas sin marcar.
+                Solo se publicarán los monitores marcados. Sin selección no se
+                muestra ninguno; los monitores nuevos requieren selección
+                manual.
               </FieldDescription>
               <FormField label="Publicación" id="published">
                 <ChoiceSelect

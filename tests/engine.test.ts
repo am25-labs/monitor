@@ -69,6 +69,14 @@ describe("engine and persistence", () => {
         )
       )?.n
     ).toBe(2);
+    expect(
+      (
+        await first<{ seconds: number }>(
+          env.DB,
+          "SELECT SUM(observed_seconds) AS seconds FROM hourly_stats"
+        )
+      )?.seconds
+    ).toBe(60);
     await sample(m.id, 1120, success);
     expect(
       (await first<Monitor>(env.DB, "SELECT * FROM monitors WHERE id=?", m.id))
@@ -351,3 +359,57 @@ it("drains 100 slow checks with five batches of five concurrent jobs and no dupl
     mock.mockRestore();
   }
 }, 30000);
+
+it("splits hourly observations and excludes overlapping maintenance and stale data", async () => {
+  const m = await createMonitor({ last_checked: 3570, last_ok: 1 });
+  const window: Window = {
+    id: "hour-window",
+    scope: "monitor",
+    target_id: m.id,
+    title: "Maintenance",
+    starts_at: 3580,
+    ends_at: 3610
+  };
+  expect(
+    observation(
+      m,
+      [window, { ...window, id: "overlap", starts_at: 3590 }],
+      3630,
+      false,
+      3600
+    )
+  ).toEqual([
+    { day: "1970-01-01T00", seconds: 10, up: 10 },
+    { day: "1970-01-01T01", seconds: 20, up: 20 }
+  ]);
+  expect(observation(m, [], 4000, false, 3600)).toEqual([]);
+  await statement(
+    env.DB,
+    "INSERT INTO maintenance VALUES(?,?,?,?,?,?)",
+    window.id,
+    window.scope,
+    window.target_id,
+    window.title,
+    window.starts_at,
+    window.ends_at
+  ).run();
+  await sample(m.id, 3630, success);
+  expect(
+    (
+      await first<{ seconds: number }>(
+        env.DB,
+        "SELECT SUM(observed_seconds) AS seconds FROM hourly_stats"
+      )
+    )?.seconds
+  ).toBe(30);
+  await statement(
+    env.DB,
+    "INSERT INTO hourly_stats VALUES(?,?,?,?)",
+    m.id,
+    "1969-12-29T00",
+    60,
+    60
+  ).run();
+  await cleanup(env, 3630);
+  expect((await rows(env.DB, "SELECT * FROM hourly_stats")).length).toBe(2);
+});
