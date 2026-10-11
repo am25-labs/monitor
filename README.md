@@ -26,7 +26,7 @@ El despliegue utiliza GitHub Actions y se activa únicamente con cambios en `mai
 
 ### Versiones y Releases
 
-Al publicar el proyecto, cada promoción a `main` se identificará con una versión y un GitHub Release. La versión de `package.json`, la etiqueta `vX.Y.Z` y el Release deben corresponder al mismo estado del código; la versión de la aplicación se muestra en Ajustes.
+Al publicar el proyecto, cada promoción a `main` se identificará con una versión y un GitHub Release. La versión de `package.json`, la etiqueta `X.Y.Z` y el Release deben corresponder al mismo estado del código; la versión de la aplicación se muestra en Ajustes.
 
 Se usará versionado semántico: `MAJOR.MINOR.PATCH`. Los cambios incompatibles incrementan la versión mayor, las funciones compatibles la menor y las correcciones la revisión. Durante `0.x`, las versiones menores pueden introducir cambios incompatibles, que se indicarán en las notas del Release.
 
@@ -64,7 +64,7 @@ Deployment uses GitHub Actions and runs only on changes to `main`. It works with
 
 ### Versions and Releases
 
-Once the project is public, each promotion to `main` will have a version and a GitHub Release. The version in `package.json`, the `vX.Y.Z` tag, and the Release must correspond to the same code state; the application version appears in Settings.
+Once the project is public, each promotion to `main` will have a version and a GitHub Release. The version in `package.json`, the `X.Y.Z` tag, and the Release must correspond to the same code state; the application version appears in Settings.
 
 Semantic versioning will use `MAJOR.MINOR.PATCH`. Breaking changes increase the major version, compatible features the minor version, and fixes the patch version. During `0.x`, minor versions may introduce breaking changes, which will be stated in the Release notes.
 

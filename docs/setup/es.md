@@ -14,7 +14,7 @@ Revisa los límites y el consumo antes de elegir tu plan. A un minuto, 100 monit
 
 ## 2. Preparar tu repositorio y elegir una versión
 
-Crea un fork o un repositorio propio con el código del proyecto, público o privado. Si quieres una versión específica, obtén el código de su etiqueta `vX.Y.Z` o descarga su archivo desde [Releases](https://github.com/am25-labs/monitor/releases). Prepara esa versión en una rama de tu repositorio antes de llevarla a `main`; no mezcles archivos de Releases distintos.
+Crea un fork o un repositorio propio con el código del proyecto, público o privado. Si quieres una versión específica, obtén el código de su etiqueta `X.Y.Z` o descarga su archivo desde [Releases](https://github.com/am25-labs/monitor/releases). Prepara esa versión en una rama de tu repositorio antes de llevarla a `main`; no mezcles archivos de Releases distintos.
 
 Clona tu repositorio y entra en su carpeta. Instala las dependencias:
 
@@ -36,7 +36,9 @@ No crees tablas manualmente. El pipeline aplicará las migraciones de `migration
 
 ## 4. Proteger el dashboard con Access
 
-En **Zero Trust**, completa la configuración de tu organización y guarda su dominio de equipo, por ejemplo `https://my-team.cloudflareaccess.com`.
+Desde el panel de tu cuenta de Cloudflare, abre **Zero Trust**. Si es tu primera vez, completa el asistente de configuración de la organización, elige un nombre de equipo y selecciona el plan que corresponda a tu instalación. Guarda el dominio de equipo que te asigna Cloudflare, por ejemplo `https://my-team.cloudflareaccess.com`. Si ya existe una organización, utiliza su dominio actual.
+
+**Access** es el servicio dentro de Zero Trust que protege el dashboard y muestra el inicio de sesión. Su política Allow es la regla donde autorizas tu correo; no es una configuración de GitHub ni de tu VPS.
 
 1. En los proveedores de identidad, habilita **One-time PIN** para iniciar sesión con un código enviado al correo.
 2. Abre **Access → Applications**, añade una aplicación **Self-hosted** y llámala `Monitor dashboard`.
@@ -100,6 +102,7 @@ En **Secrets → New repository secret**, crea:
 | `CLOUDFLARE_ACCOUNT_ID` | La misma cuenta de `wrangler.jsonc` |
 | `CLOUDFLARE_API_TOKEN` | El token del paso anterior |
 | `MONITOR_CONFIG_KEY` | Llave aleatoria de 32 bytes en hexadecimal: 64 caracteres |
+| `ACCESS_EMAIL` | El mismo correo autorizado en la política Allow de Access |
 
 Genera la llave en tu computadora:
 
@@ -109,13 +112,7 @@ node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 
 Guarda una copia segura de esta llave. Cifra credenciales y configuración de notificaciones: reemplazarla sin migrar los datos hace que los valores existentes no puedan descifrarse.
 
-En **Variables → New repository variable**, crea:
-
-| Variable | Valor |
-| --- | --- |
-| `ACCESS_EMAIL` | El mismo correo autorizado en la política Allow de Access |
-
-Las variables de GitHub no son secretos ni se enmascaran automáticamente. El correo queda fuera del código versionado; en Cloudflare se instala como Worker Secret `ACCESS_EMAIL`, junto con `CONFIG_KEY`. Si falta o no tiene formato válido, el despliegue se detiene antes de ejecutar migraciones.
+Los cuatro valores deben estar en **Repository secrets**, no en la pestaña Variables. El workflow lee `secrets.ACCESS_EMAIL`; un valor guardado solamente en Variables no se recibirá. El correo queda fuera del código versionado y se instala en Cloudflare como Worker Secret `ACCESS_EMAIL`, junto con `CONFIG_KEY`. Si falta o no tiene formato válido, el despliegue se detiene antes de ejecutar migraciones.
 
 No configures tokens de Postmark o Telegram en GitHub. Se guardan desde el dashboard, cifrados en D1. Los datos locales de `.dev.vars` no configuran producción.
 
@@ -167,8 +164,8 @@ Usa **Cerrar sesión** junto a los controles del encabezado del dashboard. Abre 
 Para cambiar el correo:
 
 1. Añade el correo nuevo a **Include → Emails** en la política Allow de tu aplicación de Access.
-2. Cambia la variable de GitHub `ACCESS_EMAIL` al correo nuevo.
-3. Vuelve a ejecutar el job de despliegue de un push anterior a `main` desde Actions, o publica tu siguiente cambio en `main`. Editar una variable por sí solo no despliega.
+2. Cambia el secreto del repositorio `ACCESS_EMAIL` en GitHub al correo nuevo.
+3. Vuelve a ejecutar el job de despliegue de un push anterior a `main` desde Actions, o publica tu siguiente cambio en `main`. Editar un secreto por sí solo no despliega.
 4. Cierra sesión e inicia con el correo nuevo; elimina el anterior de la política después de comprobar el acceso.
 
 El Worker admite solo el correo de la última configuración desplegada. Cambiarlo no modifica el destinatario de las alertas.
@@ -177,7 +174,7 @@ El Worker admite solo el correo de la última configuración desplegada. Cambiar
 
 Antes de actualizar, consulta las notas del Release y conserva tus IDs, dominio, configuración y secretos. Lleva el código de la versión elegida a una rama de trabajo, conserva los ajustes de tu instalación y promuévelo a `main`. El pipeline aplicará las migraciones pendientes. No edites migraciones ya aplicadas.
 
-Para el proyecto original, cada promoción a `main` llevará la versión de `package.json` y se publicará como Release con una etiqueta coincidente `vX.Y.Z`. Esa publicación identifica el código; no es un segundo disparador de despliegue ni genera un Release automáticamente con el workflow actual.
+Para el proyecto original, cada promoción a `main` llevará la versión de `package.json` y se publicará como Release con una etiqueta coincidente `X.Y.Z`. Esa publicación identifica el código; no es un segundo disparador de despliegue ni genera un Release automáticamente con el workflow actual.
 
 Para una recuperación rápida, puedes seleccionar un despliegue anterior sano desde el historial del Worker. Esto no revierte D1 ni restaura automáticamente los secretos. Comprueba la compatibilidad de la versión con el esquema actual y la llave de cifrado; una versión antigua puede necesitar una base independiente o una recuperación de datos. Consulta [D1 Time Travel](https://developers.cloudflare.com/d1/reference/time-travel/) antes de restaurar datos.
 

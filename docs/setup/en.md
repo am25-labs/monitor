@@ -14,7 +14,7 @@ Review limits and usage before choosing your plan. At one-minute intervals, 100 
 
 ## 2. Prepare your repository and choose a version
 
-Create a fork or your own repository containing the project code, public or private. For a specific version, obtain the code from its `vX.Y.Z` tag or download its archive from [Releases](https://github.com/am25-labs/monitor/releases). Prepare that version on a branch in your repository before moving it to `main`; do not mix files from different Releases.
+Create a fork or your own repository containing the project code, public or private. For a specific version, obtain the code from its `X.Y.Z` tag or download its archive from [Releases](https://github.com/am25-labs/monitor/releases). Prepare that version on a branch in your repository before moving it to `main`; do not mix files from different Releases.
 
 Clone your repository and enter its folder. Install dependencies:
 
@@ -36,7 +36,9 @@ Do not create tables manually. The pipeline will apply the migrations in `migrat
 
 ## 4. Protect the dashboard with Access
 
-In **Zero Trust**, complete your organization setup and save its team domain, such as `https://my-team.cloudflareaccess.com`.
+From your Cloudflare account dashboard, open **Zero Trust**. If this is your first time, complete the organization setup wizard, choose a team name, and select the plan appropriate for your installation. Save the team domain assigned by Cloudflare, such as `https://my-team.cloudflareaccess.com`. If an organization already exists, use its current domain.
+
+**Access** is the service within Zero Trust that protects the dashboard and displays the sign-in page. Its Allow policy is the rule where you authorize your email; it is not a GitHub or VPS setting.
 
 1. In identity providers, enable **One-time PIN** to sign in with a code sent by email.
 2. Open **Access → Applications**, add a **Self-hosted** application, and name it `Monitor dashboard`.
@@ -100,6 +102,7 @@ Under **Secrets → New repository secret**, create:
 | `CLOUDFLARE_ACCOUNT_ID` | The same account as in `wrangler.jsonc` |
 | `CLOUDFLARE_API_TOKEN` | The token from the previous step |
 | `MONITOR_CONFIG_KEY` | A random 32-byte hexadecimal key: 64 characters |
+| `ACCESS_EMAIL` | The same email authorized in the Access Allow policy |
 
 Generate the key on your computer:
 
@@ -109,13 +112,7 @@ node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 
 Keep a secure backup of this key. It encrypts credentials and notification settings: replacing it without migrating data makes existing values impossible to decrypt.
 
-Under **Variables → New repository variable**, create:
-
-| Variable | Value |
-| --- | --- |
-| `ACCESS_EMAIL` | The same email authorized in the Access Allow policy |
-
-GitHub variables are not secrets and are not automatically masked. The email stays outside versioned code; in Cloudflare it is installed as Worker Secret `ACCESS_EMAIL`, alongside `CONFIG_KEY`. If missing or incorrectly formatted, deployment stops before running migrations.
+All four values must be in **Repository secrets**, not the Variables tab. The workflow reads `secrets.ACCESS_EMAIL`; a value saved only in Variables will not be received. The email stays outside versioned code and is installed in Cloudflare as Worker Secret `ACCESS_EMAIL`, alongside `CONFIG_KEY`. If missing or incorrectly formatted, deployment stops before running migrations.
 
 Do not configure Postmark or Telegram tokens in GitHub. They are saved through the dashboard, encrypted in D1. Local `.dev.vars` values do not configure production.
 
@@ -167,8 +164,8 @@ Use **Sign out** next to the controls in the dashboard header. It opens the Acce
 To change the email:
 
 1. Add the new email to **Include → Emails** in your Access application's Allow policy.
-2. Change the GitHub variable `ACCESS_EMAIL` to the new email.
-3. Rerun the deployment job of a previous push to `main` from Actions, or publish your next change to `main`. Editing a variable alone does not deploy.
+2. Change the repository secret `ACCESS_EMAIL` in GitHub to the new email.
+3. Rerun the deployment job of a previous push to `main` from Actions, or publish your next change to `main`. Editing a secret alone does not deploy.
 4. Sign out and sign in with the new email; remove the previous one from the policy after checking access.
 
 The Worker only allows the email in the most recently deployed configuration. Changing it does not change the alert recipient.
@@ -177,7 +174,7 @@ The Worker only allows the email in the most recently deployed configuration. Ch
 
 Before updating, read the Release notes and preserve your IDs, domain, configuration, and secrets. Bring the chosen version's code into a working branch, preserve your installation changes, and promote it to `main`. The pipeline will apply pending migrations. Do not edit migrations already applied.
 
-For the original project, each promotion to `main` will carry the version in `package.json` and be published as a Release with a matching `vX.Y.Z` tag. That publication identifies the code; it is not a second deployment trigger and the current workflow does not generate a Release automatically.
+For the original project, each promotion to `main` will carry the version in `package.json` and be published as a Release with a matching `X.Y.Z` tag. That publication identifies the code; it is not a second deployment trigger and the current workflow does not generate a Release automatically.
 
 For quick recovery, you can select a previous healthy deployment from the Worker's history. This does not revert D1 or automatically restore secrets. Check the version's compatibility with the current schema and encryption key; an older version may require a separate database or data recovery. Consult [D1 Time Travel](https://developers.cloudflare.com/d1/reference/time-travel/) before restoring data.
 
