@@ -1,5 +1,5 @@
 import { useParams } from "react-router-dom";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun, RefreshCw } from "lucide-react";
 import { availability, date, useRefresh } from "../lib/api";
 import type { Status } from "../shared/types";
 import { Notice, Nothing, Panel, StatusBadge } from "../components/common";
@@ -126,7 +126,7 @@ export function PublicStatus({
   toggleTheme: () => void;
 }) {
   const { slug } = useParams(),
-    { data, error } = useRefresh<PublicData>(`public/${slug}`);
+    { data, error, refresh } = useRefresh<PublicData>(`public/${slug}`);
   const overall: Status = data?.monitors.some((m) => m.status === "down")
     ? "down"
     : data?.monitors.some(
@@ -150,15 +150,24 @@ export function PublicStatus({
           </h1>
           <p className="mt-2 text-muted-foreground">{data?.description}</p>
         </div>
-        <Button
-          variant="outline"
-          size="icon"
-          className="shrink-0"
-          aria-label="Cambiar tema"
-          onClick={toggleTheme}
-        >
-          {theme === "dark" ? <Sun /> : <Moon />}
-        </Button>
+        <div className="flex shrink-0 gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Actualizar"
+            onClick={() => void refresh()}
+          >
+            <RefreshCw />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Cambiar tema"
+            onClick={toggleTheme}
+          >
+            {theme === "dark" ? <Sun /> : <Moon />}
+          </Button>
+        </div>
       </header>
       <Notice message={error} destructive />
       {!data && !error && <Skeleton className="h-60 w-full" />}
