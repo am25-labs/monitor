@@ -61,7 +61,7 @@ describe("engine and persistence", () => {
         m.id
       );
       expect(jobs).toHaveLength(index + 1);
-      expect(jobs.at(-1)?.due_at).toBe(1020 + index * 60);
+      expect(jobs.at(-1)?.due_at).toBe(now);
       await sample(m.id, now, success);
     }
     const updated = (await first<Monitor>(
@@ -90,7 +90,90 @@ describe("engine and persistence", () => {
       "SELECT * FROM jobs WHERE monitor_id=? ORDER BY due_at",
       m.id
     );
-    expect(jobs.map((job) => job.due_at)).toEqual([1020, 1260]);
+    expect(jobs.map((job) => job.due_at)).toEqual([1234, 1261]);
+    expect(jobs.map((job) => job.id)).toEqual([
+      `${m.id}:1:1020`,
+      `${m.id}:1:1260`
+    ]);
+  });
+  it("runs a fresh HTTP check after cron misses several intervals", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const m = await createMonitor({ next_due: now - 240 });
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response("ok"));
+    try {
+      await tick(env, now);
+      await tick(env, now);
+      const jobs = await rows<Job>(
+        env.DB,
+        "SELECT * FROM jobs WHERE monitor_id=?",
+        m.id
+      );
+      expect(jobs).toHaveLength(1);
+      expect(jobs[0].due_at).toBe(now);
+      await runJob(env, jobs[0].id);
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(
+        (await first<Job>(env.DB, "SELECT * FROM jobs WHERE id=?", jobs[0].id))
+          ?.state
+      ).toBe("completed");
+      const updated = (await first<Monitor>(
+        env.DB,
+        "SELECT * FROM monitors WHERE id=?",
+        m.id
+      ))!;
+      expect(updated.last_checked).toBeGreaterThanOrEqual(now);
+      expect(displayStatus(updated, [], now)).toBe("up");
+      expect(updated.next_due).toBe(now + 60);
+    } finally {
+      fetch.mockRestore();
+    }
+  });
+  it("detects an overdue heartbeat after a delayed cron cycle", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const m = await createMonitor({
+      kind: "heartbeat",
+      created_at: now - 600,
+      next_due: now - 240
+    });
+    await tick(env, now);
+    const job = (await first<Job>(
+      env.DB,
+      "SELECT * FROM jobs WHERE monitor_id=?",
+      m.id
+    ))!;
+    await runJob(env, job.id);
+    expect(
+      (await first<Job>(env.DB, "SELECT * FROM jobs WHERE id=?", job.id))?.state
+    ).toBe("completed");
+    expect(
+      (await first<Monitor>(env.DB, "SELECT * FROM monitors WHERE id=?", m.id))
+        ?.failures
+    ).toBe(1);
+  });
+  it("ignores a missing heartbeat job when a fresh report arrives before execution", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const m = await createMonitor({
+      kind: "heartbeat",
+      created_at: now - 600,
+      next_due: now - 240
+    });
+    await tick(env, now);
+    const job = (await first<Job>(
+      env.DB,
+      "SELECT * FROM jobs WHERE monitor_id=?",
+      m.id
+    ))!;
+    await heartbeat(env, m, true);
+    await runJob(env, job.id);
+    expect(
+      (await first<Job>(env.DB, "SELECT * FROM jobs WHERE id=?", job.id))?.state
+    ).toBe("cancelled");
+    expect(
+      (await first<Monitor>(env.DB, "SELECT * FROM monitors WHERE id=?", m.id))
+        ?.failures
+    ).toBe(0);
   });
   it("opens after two failures, recovers after one success and deduplicates results", async () => {
     const m = await createMonitor();

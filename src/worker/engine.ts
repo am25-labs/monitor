@@ -434,8 +434,9 @@ export async function tick(env: Env, now = nowSeconds()) {
       await env.DB.batch([
         statement(
           env.DB,
-          "INSERT OR IGNORE INTO jobs(id,monitor_id,config_version,due_at) SELECT ?,id,config_version,next_due FROM monitors WHERE id=? AND config_version=? AND next_due=? AND paused=0",
+          "INSERT OR IGNORE INTO jobs(id,monitor_id,config_version,due_at) SELECT ?,id,config_version,? FROM monitors WHERE id=? AND config_version=? AND next_due=? AND paused=0",
           id,
+          now,
           m.id,
           m.config_version,
           m.next_due
