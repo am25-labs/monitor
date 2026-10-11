@@ -1,4 +1,17 @@
 export const english: Record<string, string> = {
+  "Modo de pruebas": "Test mode",
+  "Configuración guardada.": "Settings saved.",
+  "Habilitar herramientas para borrar el historial": "Enable history deletion tools",
+  "Guarda los cambios para habilitar estas herramientas. Al desactivar el modo, las opciones desaparecen.": "Save changes to enable these tools. Disabling test mode hides these options.",
+  "Borrar historial de pruebas": "Delete test history",
+  "Elimina comprobaciones, estadísticas, incidentes y sus registros de notificación. Conserva los monitores y su configuración. Esta acción no se puede deshacer.": "Deletes checks, statistics, incidents and their notification records. Keeps monitors and their configuration. This action cannot be undone.",
+  "Selecciona un monitor": "Select a monitor",
+  "Borrar historial del monitor": "Delete monitor history",
+  "Borrar todo el historial": "Delete all history",
+  "Borrar historial de {name}": "Delete history for {name}",
+  "Se eliminarán definitivamente las comprobaciones, estadísticas, incidentes y sus registros de notificación del alcance seleccionado. Los monitores volverán a pendiente hasta recibir una nueva comprobación. No se puede deshacer.": "Checks, statistics, incidents and their notification records in the selected scope will be permanently deleted. Active monitors will return to pending until a new check arrives. This cannot be undone.",
+  "Borrar historial": "Delete history",
+  "Activa el modo de pruebas para borrar el historial.": "Enable test mode to delete history.",
   "No hay notificaciones pendientes o fallidas.": "No pending or failed notifications.",
   "Hub de notificaciones": "Notification hub",
   "Activa uno o varios canales para tus alertas personales de caída y recuperación.":

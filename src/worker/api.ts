@@ -208,6 +208,49 @@ export async function admin(
     if (method === "PUT")
       return json(await saveGeneralSettings(env, await body(request)));
   }
+  if (
+    resource === "settings" && id === "history" && !action && method === "DELETE"
+  ) {
+    if (!(await generalSettings(env)).testMode)
+      throw new Response("Activa el modo de pruebas para borrar el historial.", {
+        status: 403
+      });
+    const input = z
+      .object({
+        monitorId: z.uuid().nullable(),
+        confirmation: z.literal("DELETE_HISTORY")
+      })
+      .parse(await body(request));
+    if (
+      input.monitorId &&
+      !(await first(env.DB, "SELECT id FROM monitors WHERE id=?", input.monitorId))
+    )
+      missing();
+    const enabled =
+      "EXISTS(SELECT 1 FROM app_settings WHERE id='general' AND json_extract(value,'$.testMode')=1)";
+    const scope = input.monitorId ? "monitor_id=?" : "1=1";
+    const values = input.monitorId ? [input.monitorId] : [];
+    await env.DB.batch([
+      statement(
+        env.DB,
+        `DELETE FROM notifications WHERE ${input.monitorId ? "incident_id IN (SELECT id FROM incidents WHERE monitor_id=?)" : "1=1"} AND ${enabled}`,
+        ...values
+      ),
+      ...[
+        "results", "daily_stats", "hourly_stats", "short_stats", "incidents", "jobs"
+      ].map((table) =>
+        statement(
+          env.DB, `DELETE FROM ${table} WHERE ${scope} AND ${enabled}`, ...values
+        )
+      ),
+      statement(
+        env.DB,
+        `UPDATE monitors SET config_version=config_version+1,failures=0,successes=0,status=CASE WHEN paused=1 THEN 'paused' ELSE 'pending' END,last_checked=NULL,last_success=NULL,last_latency=NULL,last_ok=NULL WHERE ${input.monitorId ? "id=?" : "1=1"} AND ${enabled}`,
+        ...values
+      )
+    ]);
+    return json({ ok: true });
+  }
   if (resource === "projects") {
     if (method === "POST" && !id) {
       const v = projectInput.parse(await body(request));

@@ -2,7 +2,10 @@ import { z } from "zod";
 
 export const languageInput = z.enum(["es", "en"]);
 export type Language = z.infer<typeof languageInput>;
-export const generalInput = z.object({ language: languageInput.default("es") });
+export const generalInput = z.object({
+  language: languageInput.default("es"),
+  testMode: z.boolean().default(false),
+});
 export type GeneralSettings = z.infer<typeof generalInput>;
 export const channels = ["email", "telegram", "pushover", "ntfy"] as const;
 export type NotificationChannel = (typeof channels)[number];

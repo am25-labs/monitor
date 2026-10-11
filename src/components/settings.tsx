@@ -15,6 +15,7 @@ import type {
   NotificationChannel,
 } from "../shared/settings";
 import { ChoiceSelect } from "./choice-select";
+import { ConfirmDialog } from "./confirm-dialog";
 import { FormField, Notice, Panel } from "./common";
 import { Checkbox } from "./ui/checkbox";
 import { Label } from "./ui/label";
@@ -577,13 +578,18 @@ function Notifications({
 
 function General({
   initial,
+  monitors,
   onChange,
 }: {
   initial: GeneralSettings;
+  monitors: Snapshot["monitors"];
   onChange: () => Promise<void>;
 }) {
   const { t } = useLocale();
   const [language, setLanguage] = useState(initial.language);
+  const [testMode, setTestMode] = useState(initial.testMode);
+  const [monitorId, setMonitorId] = useState("");
+  const [deletion, setDeletion] = useState<string | null | undefined>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
@@ -593,7 +599,10 @@ function General({
     setError("");
     setSaved(false);
     try {
-      await api<GeneralSettings>("admin/settings/general", "PUT", { language });
+      await api<GeneralSettings>("admin/settings/general", "PUT", {
+        language,
+        testMode,
+      });
       await onChange();
       setSaved(true);
     } catch (error) {
@@ -630,13 +639,100 @@ function General({
               ]}
             />
           </FormField>
+          <FormField id="test-mode" label={t("Modo de pruebas")}>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="test-mode"
+                checked={testMode}
+                disabled={busy}
+                onCheckedChange={(checked) => {
+                  setTestMode(checked === true);
+                  setSaved(false);
+                }}
+              />
+              <Label htmlFor="test-mode">
+                {t("Habilitar herramientas para borrar el historial")}
+              </Label>
+            </div>
+            <FieldDescription>
+              {t(
+                "Guarda los cambios para habilitar estas herramientas. Al desactivar el modo, las opciones desaparecen.",
+              )}
+            </FieldDescription>
+          </FormField>
         </FieldGroup>
         <Notice message={error} destructive />
-        {saved && <Notice message={t("Idioma guardado.")} />}
+        {saved && <Notice message={t("Configuración guardada.")} />}
         <Button type="submit" disabled={busy} className="self-end">
           {busy ? t("Guardando…") : t("Guardar cambios")}
         </Button>
       </form>
+      {initial.testMode && testMode && (
+        <div className="mt-6 flex flex-col gap-4">
+          <Separator />
+          <p className="font-medium">{t("Borrar historial de pruebas")}</p>
+          <p className="text-muted-foreground">
+            {t(
+              "Elimina comprobaciones, estadísticas, incidentes y sus registros de notificación. Conserva los monitores y su configuración. Esta acción no se puede deshacer.",
+            )}
+          </p>
+          <FormField id="history-monitor" label={t("Monitor")}>
+            <ChoiceSelect
+              id="history-monitor"
+              value={monitorId}
+              onValueChange={setMonitorId}
+              placeholder={t("Selecciona un monitor")}
+              options={monitors.map((monitor) => ({
+                value: monitor.id,
+                label: monitor.name,
+              }))}
+            />
+          </FormField>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="destructive"
+              disabled={!monitorId || busy}
+              onClick={() => setDeletion(monitorId)}
+            >
+              {t("Borrar historial del monitor")}
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={busy}
+              onClick={() => setDeletion(null)}
+            >
+              {t("Borrar todo el historial")}
+            </Button>
+          </div>
+          <ConfirmDialog
+            open={deletion !== undefined}
+            onOpenChange={(open) => {
+              if (!open) setDeletion(undefined);
+            }}
+            title={
+              deletion === null
+                ? t("Borrar todo el historial")
+                : t("Borrar historial de {name}", {
+                    name:
+                      monitors.find((monitor) => monitor.id === deletion)
+                        ?.name ?? "",
+                  })
+            }
+            description={t(
+              "Se eliminarán definitivamente las comprobaciones, estadísticas, incidentes y sus registros de notificación del alcance seleccionado. Los monitores volverán a pendiente hasta recibir una nueva comprobación. No se puede deshacer.",
+            )}
+            action={t("Borrar historial")}
+            destructive
+            onConfirm={async () => {
+              await api("admin/settings/history", "DELETE", {
+                monitorId: deletion,
+                confirmation: "DELETE_HISTORY",
+              });
+              await onChange();
+            }}
+          />
+        </div>
+      )}
     </Panel>
   );
 }
@@ -650,7 +746,7 @@ export function Settings({
 }) {
   const { t } = useLocale();
   return (
-    <div className="flex max-w-3xl flex-col gap-6 text-sm [&_[data-slot=card-title]]:text-sm">
+    <div className="flex w-full min-w-0 flex-col gap-6 text-sm [&_[data-slot=card-title]]:text-sm">
       <Card>
         <CardHeader>
           <CardTitle>{product.name}</CardTitle>
@@ -681,7 +777,7 @@ export function Settings({
           <TabsTrigger value="general">{t("General")}</TabsTrigger>
           <TabsTrigger value="notifications">{t("Notificaciones")}</TabsTrigger>
         </TabsList>
-        <TabsContent value="about" className="flex flex-col gap-6">
+        <TabsContent value="about" className="grid gap-6 lg:grid-cols-2">
           <Panel title={t("Licencia y autoría")}>
             <div className="flex flex-col gap-4 text-sm">
               <p>
@@ -726,7 +822,11 @@ export function Settings({
           </Panel>
         </TabsContent>
         <TabsContent value="general">
-          <General initial={data.settings.general} onChange={onChange} />
+          <General
+            initial={data.settings.general}
+            monitors={data.monitors}
+            onChange={onChange}
+          />
         </TabsContent>
         <TabsContent value="notifications">
           <Notifications

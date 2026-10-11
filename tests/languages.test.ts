@@ -21,7 +21,7 @@ const request = (path: string, method = "GET", body?: unknown) =>
 it("defaults the dashboard to Spanish and persists its language without altering encrypted notifications", async () => {
   expect(
     await (await worker.fetch(request("admin/settings/general"), env)).json(),
-  ).toEqual({ language: "es" });
+  ).toEqual({ language: "es", testMode: false });
   await saveNotifications(env, {
     email: {
       enabled: true,
@@ -40,7 +40,7 @@ it("defaults the dashboard to Spanish and persists its language without altering
     expect(saved.status).toBe(200);
     expect(
       await (await worker.fetch(request("admin/settings/general"), env)).json(),
-    ).toEqual({ language });
+    ).toEqual({ language, testMode: false });
     const snapshot = (await (
       await worker.fetch(request("admin/snapshot"), env)
     ).json()) as { settings: { general: { language: string } } };
@@ -71,7 +71,7 @@ it("protects general settings with Access and rejects unsupported languages", as
   ).toBe(401);
   expect(
     await (await worker.fetch(request("admin/settings/general"), env)).json(),
-  ).toEqual({ language: "es" });
+  ).toEqual({ language: "es", testMode: false });
   expect(
     (
       await worker.fetch(
