@@ -1,4 +1,5 @@
 import { useParams } from "react-router-dom";
+import { Moon, Sun } from "lucide-react";
 import { availability, date, useRefresh } from "../lib/api";
 import type { Status } from "../shared/types";
 import { Notice, Nothing, Panel, StatusBadge } from "../components/common";
@@ -22,7 +23,13 @@ interface PublicData {
     }[];
   }[];
 }
-export function PublicStatus({ toggleTheme }: { toggleTheme: () => void }) {
+export function PublicStatus({
+  theme,
+  toggleTheme
+}: {
+  theme: string;
+  toggleTheme: () => void;
+}) {
   const { slug } = useParams(),
     { data, error } = useRefresh<PublicData>(`public/${slug}`);
   const overall: Status = data?.monitors.some((m) => m.status === "down")
@@ -48,20 +55,28 @@ export function PublicStatus({ toggleTheme }: { toggleTheme: () => void }) {
           </h1>
           <p className="mt-2 text-muted-foreground">{data?.description}</p>
         </div>
-        <Button variant="outline" onClick={toggleTheme}>
-          Cambiar tema
+        <Button
+          variant="outline"
+          size="icon"
+          className="shrink-0"
+          aria-label="Cambiar tema"
+          onClick={toggleTheme}
+        >
+          {theme === "dark" ? <Sun /> : <Moon />}
         </Button>
       </header>
       <Notice message={error} destructive />
       {!data && !error && <Skeleton className="h-60 w-full" />}
       {data && (
         <>
-          <Panel
-            title="Estado general"
-            description={`Última actualización: ${date(data.updatedAt)}`}
-          >
-            <StatusBadge status={overall} />
-          </Panel>
+          {data.monitors.length > 0 && (
+            <Panel
+              title="Estado general"
+              description={`Última actualización: ${date(data.updatedAt)}`}
+            >
+              <StatusBadge status={overall} />
+            </Panel>
+          )}
           {data.monitors.length ? (
             data.monitors.map((m) => (
               <Panel key={m.id} title={m.name}>
@@ -104,14 +119,21 @@ export function PublicStatus({ toggleTheme }: { toggleTheme: () => void }) {
           ) : (
             <Nothing
               title="Sin servicios publicados"
-              description="El administrador todavía no ha incluido monitores."
+              description="No hay servicios disponibles para mostrar en esta página."
             />
           )}
-          <p className="text-center text-xs text-muted-foreground">
-            Actualización automática cada 30 segundos · AM25 Monitor
-          </p>
         </>
       )}
+      <footer className="mt-auto flex flex-col gap-2 border-t pt-6 text-center text-xs text-muted-foreground">
+        <p>AM25 Monitor · Estado público de los servicios</p>
+        <p>
+          Actualización automática cada 30 segundos · Fechas en tu hora local
+        </p>
+        <p>
+          La disponibilidad corresponde al tiempo observado durante los últimos
+          90 días. Excluye pausas, mantenimiento y períodos sin datos.
+        </p>
+      </footer>
     </main>
   );
 }

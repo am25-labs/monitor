@@ -34,7 +34,7 @@ function App() {
         />
         <Route
           path="/status/:slug"
-          element={<PublicStatus toggleTheme={toggleTheme} />}
+          element={<PublicStatus theme={theme} toggleTheme={toggleTheme} />}
         />
         <Route
           path="*"

@@ -174,7 +174,7 @@ export function ResourceForm({
                 key={`excluded-${project}`}
                 id="excluded_ids"
                 name="excluded_ids"
-                label="Monitores excluidos"
+                label="Monitores que se ocultarán"
                 options={data.monitors
                   .filter((m) => m.project_id === project)
                   .map((m) => ({ value: m.id, label: m.name }))}
@@ -184,6 +184,11 @@ export function ResourceForm({
                     : []
                 }
               />
+              <FieldDescription>
+                Marcá únicamente los monitores que no querés mostrar. Para
+                publicar todos los monitores de los grupos incluidos, dejá estas
+                casillas sin marcar.
+              </FieldDescription>
               <FormField label="Publicación" id="published">
                 <ChoiceSelect
                   id="published"
