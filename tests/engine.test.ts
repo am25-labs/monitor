@@ -211,6 +211,32 @@ describe("engine and persistence", () => {
         ?.failures
     ).toBe(0);
   });
+  it("suppresses failures globally until manual maintenance ends and then resumes incident detection", async () => {
+    const m = await createMonitor();
+    await statement(
+      env.DB,
+      "INSERT INTO maintenance VALUES('global','global',NULL,'Deploy',900,NULL)"
+    ).run();
+    await sample(m.id, 1000, failure);
+    await sample(m.id, 1060, failure);
+    expect(await rows(env.DB, "SELECT * FROM incidents")).toHaveLength(0);
+    expect(await rows(env.DB, "SELECT * FROM notifications")).toHaveLength(0);
+    expect(
+      await rows(env.DB, "SELECT * FROM daily_stats WHERE observed_seconds > 0")
+    ).toHaveLength(0);
+    expect(
+      await rows(env.DB, "SELECT * FROM results WHERE maintenance=1")
+    ).toHaveLength(2);
+    await statement(
+      env.DB,
+      "UPDATE maintenance SET ends_at=1100 WHERE id='global'"
+    ).run();
+    await tick(env, 1100);
+    await sample(m.id, 1120, failure);
+    expect(await rows(env.DB, "SELECT * FROM incidents")).toHaveLength(0);
+    await sample(m.id, 1180, failure);
+    expect(await rows(env.DB, "SELECT * FROM incidents")).toHaveLength(1);
+  });
   it("marks outdated data unknown and splits observed uptime across UTC dates", async () => {
     const m = await createMonitor({
       status: "up",

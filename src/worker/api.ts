@@ -496,11 +496,13 @@ export async function admin(
     if (["POST", "PUT"].includes(method)) {
       const v = maintenanceInput.parse(await body(request));
       const table = {
+        global: null,
         project: "projects",
         group: "groups",
         monitor: "monitors"
       }[v.scope];
       if (
+        table &&
         !(await first(
           env.DB,
           `SELECT id FROM ${table} WHERE id=?`,

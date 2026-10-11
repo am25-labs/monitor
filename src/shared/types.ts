@@ -71,11 +71,11 @@ export interface Incident {
 }
 export interface Window {
   id: string;
-  scope: "project" | "group" | "monitor";
-  target_id: string;
+  scope: "global" | "project" | "group" | "monitor";
+  target_id: string | null;
   title: string;
   starts_at: number;
-  ends_at: number;
+  ends_at: number | null;
 }
 export interface StatusPage {
   language: Language;

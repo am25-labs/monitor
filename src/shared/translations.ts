@@ -1,4 +1,18 @@
 export const english: Record<string, string> = {
+  Duración: "Duration",
+  "Finalizar mantenimiento global": "End global maintenance",
+  "Activar mantenimiento": "Enable maintenance",
+  "Mantenimiento de {name}": "Maintenance for {name}",
+  "Todos los monitores": "All monitors",
+  "Mantenimiento global": "Global maintenance",
+  "Activar mantenimiento global": "Enable global maintenance",
+  "Finalizar mantenimiento": "End maintenance",
+  "Hasta finalizar manualmente": "Until ended manually",
+  "Programar inicio y fin": "Schedule start and end",
+  "Desde ahora hasta finalizar manualmente": "From now until ended manually",
+  "El mantenimiento evita nuevas alertas y excluye ese tiempo de la disponibilidad.":
+    "Maintenance prevents new alerts and excludes that time from availability.",
+  "Elige un destino para el mantenimiento.": "Choose a maintenance target.",
   "Flujo de mensajes de Postmark": "Postmark Message Stream",
   "Los heartbeats reciben reportes.": "Heartbeats receive reports.",
   "Token inválido.": "Invalid token.",

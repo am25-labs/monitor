@@ -119,15 +119,19 @@ export const monitorInput = z
   });
 export const maintenanceInput = z
   .object({
-    scope: z.enum(["project", "group", "monitor"]),
-    target_id: id,
+    scope: z.enum(["global", "project", "group", "monitor"]),
+    target_id: id.nullable(),
     title: name,
     starts_at: z.number().int(),
-    ends_at: z.number().int()
+    ends_at: z.number().int().nullable()
   })
   .refine(
-    (v) => v.ends_at > v.starts_at,
+    (v) => v.ends_at === null || v.ends_at > v.starts_at,
     "El fin debe ser posterior al inicio."
+  )
+  .refine(
+    (v) => (v.scope === "global" ? v.target_id === null : v.target_id !== null),
+    "Elige un destino para el mantenimiento."
   );
 export const pageInput = z.object({
   language: languageInput.default("es"),

@@ -19,7 +19,7 @@ import {
   Settings as SettingsIcon
 } from "lucide-react";
 import { api, useRefresh, type Snapshot } from "../lib/api";
-import type { SafeMonitor } from "../shared/types";
+import type { SafeMonitor, Window } from "../shared/types";
 import { cn } from "../lib/utils";
 import { Notice, Nothing, Panel, StatusBadge } from "../components/common";
 import { MonitorForm } from "../components/monitor-form";
@@ -117,7 +117,42 @@ function DashboardView({
   function remove(resource: string, id: string) {
     setDeleteTarget({ resource, id });
   }
+  async function endMaintenance(windows: Window[]) {
+    setBusy(true);
+    try {
+      const now = Math.floor(Date.now() / 1000);
+      await Promise.all(
+        windows.map((w) =>
+          api(`admin/maintenance/${w.id}`, "PUT", {
+            ...w,
+            ends_at: Math.max(w.starts_at + 1, now)
+          })
+        )
+      );
+      await refresh();
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : t("Falló la operación."));
+    } finally {
+      setBusy(false);
+    }
+  }
   const selected = data?.monitors.find((m) => m.id === id);
+  const now = Math.floor(Date.now() / 1000);
+  const monitorMaintenance =
+    data?.maintenance.filter(
+      (w) =>
+        w.scope === "monitor" &&
+        w.target_id === selected?.id &&
+        w.starts_at <= now &&
+        (w.ends_at === null || w.ends_at > now)
+    ) ?? [];
+  const globalMaintenance =
+    data?.maintenance.filter(
+      (w) =>
+        w.scope === "global" &&
+        w.starts_at <= now &&
+        (w.ends_at === null || w.ends_at > now)
+    ) ?? [];
   const visible =
     data?.monitors.filter(
       (m) =>
@@ -310,6 +345,31 @@ function DashboardView({
                       }
                     >
                       {selected.paused ? t("Reactivar") : t("Pausar")}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={
+                        busy ||
+                        (selected.display_status === "maintenance" &&
+                          !monitorMaintenance.length)
+                      }
+                      onClick={() =>
+                        monitorMaintenance.length
+                          ? void endMaintenance(monitorMaintenance)
+                          : void mutate("maintenance", "POST", {
+                              scope: "monitor",
+                              target_id: selected.id,
+                              title: t("Mantenimiento de {name}", {
+                                name: selected.name
+                              }),
+                              ends_at: null,
+                              starts_at: Math.floor(Date.now() / 1000)
+                            }).catch(() => undefined)
+                      }
+                    >
+                      {monitorMaintenance.length
+                        ? t("Finalizar mantenimiento")
+                        : t("Activar mantenimiento")}
                     </Button>
                     {selected.kind !== "heartbeat" && (
                       <Button
@@ -658,31 +718,63 @@ function DashboardView({
             )}
             {section === "maintenance" && (
               <>
-                <Button
-                  className="self-start"
-                  disabled={!data.projects.length}
-                  onClick={() => setEditor({ resource: "maintenance" })}
-                >
-                  {t("Programar mantenimiento")}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    onClick={() => setEditor({ resource: "maintenance" })}
+                  >
+                    {t("Programar mantenimiento")}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() =>
+                      globalMaintenance.length
+                        ? void endMaintenance(globalMaintenance)
+                        : void mutate("maintenance", "POST", {
+                            scope: "global",
+                            title: t("Mantenimiento global"),
+                            target_id: null,
+                            ends_at: null,
+                            starts_at: Math.floor(Date.now() / 1000)
+                          }).catch(() => undefined)
+                    }
+                  >
+                    {globalMaintenance.length
+                      ? t("Finalizar mantenimiento global")
+                      : t("Activar mantenimiento global")}
+                  </Button>
+                </div>
                 {data.maintenance.length ? (
                   data.maintenance.map((w) => (
                     <Panel
                       key={w.id}
                       title={w.title}
-                      description={`${date(w.starts_at)} → ${date(w.ends_at)}`}
+                      description={`${date(w.starts_at)} → ${w.ends_at === null ? t("Hasta finalizar manualmente") : date(w.ends_at)}`}
                     >
                       <div className="flex flex-wrap gap-2">
                         <span>
-                          {w.scope === "project"
-                            ? data.projects.find((p) => p.id === w.target_id)
-                                ?.name
-                            : w.scope === "group"
-                              ? data.groups.find((g) => g.id === w.target_id)
+                          {w.scope === "global"
+                            ? t("Todos los monitores")
+                            : w.scope === "project"
+                              ? data.projects.find((p) => p.id === w.target_id)
                                   ?.name
-                              : data.monitors.find((m) => m.id === w.target_id)
-                                  ?.name}
+                              : w.scope === "group"
+                                ? data.groups.find((g) => g.id === w.target_id)
+                                    ?.name
+                                : data.monitors.find(
+                                    (m) => m.id === w.target_id
+                                  )?.name}
                         </span>
+                        {w.starts_at <= now &&
+                          (w.ends_at === null || w.ends_at > now) && (
+                            <Button
+                              variant="outline"
+                              disabled={busy}
+                              onClick={() => void endMaintenance([w])}
+                            >
+                              {t("Finalizar mantenimiento")}
+                            </Button>
+                          )}
                         <Button
                           variant="outline"
                           onClick={() =>

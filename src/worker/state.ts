@@ -2,23 +2,28 @@ import type { Monitor, Status, Window } from "../shared/types";
 
 export function isMaintenance(m: Monitor, windows: Window[], now: number) {
   return windows.some(
-    (w) => w.starts_at <= now && w.ends_at > now && applies(m, w)
+    (w) =>
+      w.starts_at <= now &&
+      (w.ends_at === null || w.ends_at > now) &&
+      applies(m, w)
   );
 }
 export function applies(m: Monitor, w: Window) {
-  return w.scope === "monitor"
-    ? w.target_id === m.id
-    : w.scope === "group"
-      ? w.target_id === m.group_id
-      : w.target_id === m.project_id;
+  return w.scope === "global"
+    ? true
+    : w.scope === "monitor"
+      ? w.target_id === m.id
+      : w.scope === "group"
+        ? w.target_id === m.group_id
+        : w.target_id === m.project_id;
 }
 export function displayStatus(
   m: Monitor,
   windows: Window[],
   now: number
 ): Status {
-  if (m.paused) return "paused";
   if (isMaintenance(m, windows, now)) return "maintenance";
+  if (m.paused) return "paused";
   if (
     m.last_checked &&
     now - m.last_checked >
@@ -79,8 +84,16 @@ export function observation(
     const midnight = (Math.floor(start / bucketSeconds) + 1) * bucketSeconds,
       end = Math.min(now, midnight);
     const spans = windows
-      .filter((w) => applies(m, w) && w.starts_at < end && w.ends_at > start)
-      .map((w) => [Math.max(start, w.starts_at), Math.min(end, w.ends_at)])
+      .filter(
+        (w) =>
+          applies(m, w) &&
+          w.starts_at < end &&
+          (w.ends_at === null || w.ends_at > start)
+      )
+      .map((w) => [
+        Math.max(start, w.starts_at),
+        Math.min(end, w.ends_at ?? end)
+      ])
       .sort((a, b) => a[0] - b[0]);
     let excluded = 0,
       until = start;

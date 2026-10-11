@@ -36,6 +36,9 @@ export function ResourceForm({
     (value?.included_ids as string[] | undefined) ?? []
   );
   const [language, setLanguage] = useState(String(value?.language ?? "es"));
+  const [timing, setTiming] = useState(
+    value?.ends_at === null ? "manual" : "scheduled"
+  );
   const eligible = pageMonitors(data.monitors, project, groups);
   const [scope, setScope] = useState(String(value?.scope ?? "project")),
     [busy, setBusy] = useState(false),
@@ -79,17 +82,28 @@ export function ResourceForm({
             : {
                 title: f.get("title"),
                 scope,
-                target_id: f.get("target_id"),
-                starts_at: Math.floor(
-                  new Date(String(f.get("starts_at"))).getTime() / 1000
-                ),
-                ends_at: Math.floor(
-                  new Date(String(f.get("ends_at"))).getTime() / 1000
-                )
+                target_id: scope === "global" ? null : f.get("target_id"),
+                starts_at:
+                  timing === "manual"
+                    ? Number(
+                        value?.ends_at === null && value?.starts_at
+                          ? value.starts_at
+                          : Math.floor(Date.now() / 1000)
+                      )
+                    : Math.floor(
+                        new Date(String(f.get("starts_at"))).getTime() / 1000
+                      ),
+                ends_at:
+                  timing === "manual"
+                    ? null
+                    : Math.floor(
+                        new Date(String(f.get("ends_at"))).getTime() / 1000
+                      )
               };
     try {
       if (
         resource === "maintenance" &&
+        timing === "scheduled" &&
         (!f.get("starts_at") || !f.get("ends_at"))
       )
         throw new Error(
@@ -243,44 +257,74 @@ export function ResourceForm({
                   value={scope}
                   onValueChange={(value) => setScope(value)}
                   options={[
+                    { value: "global", label: t("Todos los monitores") },
                     { value: "project", label: t("Proyecto") },
                     { value: "group", label: t("Grupo") },
                     { value: "monitor", label: t("Monitor") }
                   ]}
                 />
               </FormField>
-              <FormField label={t("Destino")} id="target_id">
+              {scope !== "global" && (
+                <FormField label={t("Destino")} id="target_id">
+                  <ChoiceSelect
+                    key={scope}
+                    id="target_id"
+                    name="target_id"
+                    required
+                    defaultValue={
+                      value?.scope === scope && value?.target_id
+                        ? String(value?.target_id)
+                        : targets[0]?.id
+                    }
+                    options={[
+                      ...targets.map((item) => ({
+                        value: item.id,
+                        label:
+                          scope === "monitor"
+                            ? `${item.name} · ${data.projects.find((p) => p.id === data.monitors.find((m) => m.id === item.id)?.project_id)?.name ?? ""}`
+                            : item.name
+                      }))
+                    ]}
+                  />
+                </FormField>
+              )}
+              <FormField label={t("Duración")} id="maintenance-timing">
                 <ChoiceSelect
-                  key={scope}
-                  id="target_id"
-                  name="target_id"
-                  required
-                  defaultValue={
-                    value?.scope === scope
-                      ? String(value?.target_id)
-                      : targets[0]?.id
-                  }
+                  id="maintenance-timing"
+                  value={timing}
+                  onValueChange={setTiming}
                   options={[
-                    ...targets.map((t) => ({ value: t.id, label: t.name }))
+                    { value: "scheduled", label: t("Programar inicio y fin") },
+                    {
+                      value: "manual",
+                      label: t("Desde ahora hasta finalizar manualmente")
+                    }
                   ]}
                 />
+                <FieldDescription>
+                  {t(
+                    "El mantenimiento evita nuevas alertas y excluye ese tiempo de la disponibilidad."
+                  )}
+                </FieldDescription>
               </FormField>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FormField label={t("Inicio (hora local)")} id="starts_at">
-                  <DateTimePicker
-                    id="starts_at"
-                    name="starts_at"
-                    defaultValue={datetime(value?.starts_at)}
-                  />
-                </FormField>
-                <FormField label={t("Fin (hora local)")} id="ends_at">
-                  <DateTimePicker
-                    id="ends_at"
-                    name="ends_at"
-                    defaultValue={datetime(value?.ends_at)}
-                  />
-                </FormField>
-              </div>
+              {timing === "scheduled" && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField label={t("Inicio (hora local)")} id="starts_at">
+                    <DateTimePicker
+                      id="starts_at"
+                      name="starts_at"
+                      defaultValue={datetime(value?.starts_at)}
+                    />
+                  </FormField>
+                  <FormField label={t("Fin (hora local)")} id="ends_at">
+                    <DateTimePicker
+                      id="ends_at"
+                      name="ends_at"
+                      defaultValue={datetime(value?.ends_at)}
+                    />
+                  </FormField>
+                </div>
+              )}
             </>
           )}
           <Notice message={error} destructive />

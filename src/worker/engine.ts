@@ -35,9 +35,13 @@ export async function record(
     maintenance = isMaintenance(m, activeWindows, now);
   const ended = Boolean(
     m.last_checked &&
-    activeWindows.some(
-      (w) => applies(m, w) && w.ends_at > m.last_checked! && w.ends_at <= now
-    )
+      activeWindows.some(
+        (w) =>
+          applies(m, w) &&
+          w.ends_at !== null &&
+          w.ends_at > m.last_checked! &&
+          w.ends_at <= now
+      )
   );
   const baseline =
     ended || (!maintenance && m.maintenance_active)
