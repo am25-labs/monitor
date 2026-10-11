@@ -4,7 +4,7 @@ import type { Snapshot } from "../lib/api";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
-import { NativeSelect } from "./ui/native-select";
+import { ChoiceSelect } from "./choice-select";
 import { FieldDescription, FieldGroup } from "./ui/field";
 import { FormField, Notice, Panel } from "./common";
 
@@ -96,49 +96,44 @@ export function MonitorForm({
           </FormField>
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField label="Proyecto" id="project">
-              <NativeSelect
+              <ChoiceSelect
                 id="project"
                 value={project}
-                onChange={(e) => {
-                  setProject(e.target.value);
+                onValueChange={(value) => {
+                  setProject(value);
                   setGroup("");
                 }}
                 required
-              >
-                {data.projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </NativeSelect>
+                options={[
+                  ...data.projects.map((p) => ({ value: p.id, label: p.name }))
+                ]}
+              />
             </FormField>
             <FormField label="Grupo" id="group">
-              <NativeSelect
+              <ChoiceSelect
                 id="group"
                 value={group}
-                onChange={(e) => setGroup(e.target.value)}
-              >
-                <option value="">Sin grupo</option>
-                {data.groups
-                  .filter((g) => g.project_id === project)
-                  .map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.name}
-                    </option>
-                  ))}
-              </NativeSelect>
+                onValueChange={(value) => setGroup(value)}
+                options={[
+                  { value: "", label: "Sin grupo" },
+                  ...data.groups
+                    .filter((g) => g.project_id === project)
+                    .map((g) => ({ value: g.id, label: g.name }))
+                ]}
+              />
             </FormField>
           </div>
           <FormField label="Tipo de monitor" id="kind">
-            <NativeSelect
+            <ChoiceSelect
               id="kind"
               value={kind}
-              onChange={(e) => setKind(e.target.value as typeof kind)}
-            >
-              <option value="http">HTTP / HTTPS</option>
-              <option value="tcp">Conexión TCP</option>
-              <option value="heartbeat">Heartbeat</option>
-            </NativeSelect>
+              onValueChange={(value) => setKind(value as typeof kind)}
+              options={[
+                { value: "http", label: "HTTP / HTTPS" },
+                { value: "tcp", label: "Conexión TCP" },
+                { value: "heartbeat", label: "Heartbeat" }
+              ]}
+            />
           </FormField>
           {kind === "http" && (
             <>
@@ -154,14 +149,15 @@ export function MonitorForm({
               </FormField>
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField label="Método" id="method">
-                  <NativeSelect
+                  <ChoiceSelect
                     id="method"
                     name="method"
                     defaultValue={http?.method ?? "GET"}
-                  >
-                    <option>GET</option>
-                    <option>HEAD</option>
-                  </NativeSelect>
+                    options={[
+                      { value: "GET", label: "GET" },
+                      { value: "HEAD", label: "HEAD" }
+                    ]}
+                  />
                 </FormField>
                 <FormField label="Códigos aceptados" id="codes">
                   <Input
@@ -174,14 +170,15 @@ export function MonitorForm({
                 </FormField>
               </div>
               <FormField label="Seguir redirecciones" id="follow">
-                <NativeSelect
+                <ChoiceSelect
                   id="follow"
                   name="follow"
                   defaultValue={String(http?.followRedirects ?? false)}
-                >
-                  <option value="false">No</option>
-                  <option value="true">Sí</option>
-                </NativeSelect>
+                  options={[
+                    { value: "false", label: "No" },
+                    { value: "true", label: "Sí" }
+                  ]}
+                />
               </FormField>
               <FormField label="Headers de la comprobación (JSON)" id="headers">
                 <Textarea
@@ -196,28 +193,36 @@ export function MonitorForm({
               </FormField>
               {monitor?.hasCredentials && (
                 <FormField label="Headers existentes" id="keep">
-                  <NativeSelect id="keep" name="keep" defaultValue="true">
-                    <option value="true">
-                      Conservar y combinar con los nuevos
-                    </option>
-                    <option value="false">
-                      Reemplazar por los indicados arriba
-                    </option>
-                  </NativeSelect>
+                  <ChoiceSelect
+                    id="keep"
+                    name="keep"
+                    defaultValue="true"
+                    options={[
+                      {
+                        value: "true",
+                        label: "Conservar y combinar con los nuevos"
+                      },
+                      {
+                        value: "false",
+                        label: "Reemplazar por los indicados arriba"
+                      }
+                    ]}
+                  />
                 </FormField>
               )}
               <FormField label="Validación del contenido" id="assertion">
-                <NativeSelect
+                <ChoiceSelect
                   id="assertion"
                   value={assertion}
-                  onChange={(e) =>
-                    setAssertion(e.target.value as typeof assertion)
+                  onValueChange={(value) =>
+                    setAssertion(value as typeof assertion)
                   }
-                >
-                  <option value="none">Solo código HTTP</option>
-                  <option value="text">Contiene un texto</option>
-                  <option value="json">Valor JSON esperado</option>
-                </NativeSelect>
+                  options={[
+                    { value: "none", label: "Solo código HTTP" },
+                    { value: "text", label: "Contiene un texto" },
+                    { value: "json", label: "Valor JSON esperado" }
+                  ]}
+                />
               </FormField>
               {assertion === "text" && (
                 <FormField label="Texto esperado" id="text">

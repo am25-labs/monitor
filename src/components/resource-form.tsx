@@ -4,7 +4,9 @@ import { FormField, Notice, Panel } from "./common";
 import { FieldDescription, FieldGroup } from "./ui/field";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
-import { NativeSelect } from "./ui/native-select";
+import { ChoiceSelect } from "./choice-select";
+import { CheckboxList } from "./checkbox-list";
+import { DateTimePicker } from "./date-picker";
 import { Button } from "./ui/button";
 
 export type Resource = "projects" | "groups" | "pages" | "maintenance";
@@ -72,6 +74,11 @@ export function ResourceForm({
                 )
               };
     try {
+      if (
+        resource === "maintenance" &&
+        (!f.get("starts_at") || !f.get("ends_at"))
+      )
+        throw new Error("Elegí las fechas de inicio y fin del mantenimiento.");
       await onSave(resource, payload, value?.id as string | undefined);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Revisá los datos.");
@@ -119,19 +126,16 @@ export function ResourceForm({
           )}
           {(resource === "groups" || resource === "pages") && (
             <FormField label="Proyecto" id="resource-project">
-              <NativeSelect
+              <ChoiceSelect
                 id="resource-project"
                 value={project}
-                onChange={(e) => setProject(e.target.value)}
+                onValueChange={(value) => setProject(value)}
                 disabled={resource === "groups" && Boolean(value)}
                 required
-              >
-                {data.projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </NativeSelect>
+                options={[
+                  ...data.projects.map((p) => ({ value: p.id, label: p.name }))
+                ]}
+              />
             </FormField>
           )}
           {resource === "pages" && (
@@ -149,81 +153,66 @@ export function ResourceForm({
                   Se publicará en /status/identificador.
                 </FieldDescription>
               </FormField>
-              <FormField label="Grupos incluidos" id="group_ids">
-                <NativeSelect
-                  key={`groups-${project}`}
-                  id="group_ids"
-                  name="group_ids"
-                  multiple
-                  defaultValue={
-                    project === value?.project_id
-                      ? (value?.group_ids as string[])
-                      : []
-                  }
-                  className="w-full"
-                >
-                  {data.groups
-                    .filter((g) => g.project_id === project)
-                    .map((g) => (
-                      <option key={g.id} value={g.id}>
-                        {g.name}
-                      </option>
-                    ))}
-                </NativeSelect>
-                <FieldDescription>
-                  Sin selección incluye todo el proyecto. Usá Ctrl o Cmd para
-                  seleccionar varios.
-                </FieldDescription>
-              </FormField>
-              <FormField label="Monitores excluidos" id="excluded_ids">
-                <NativeSelect
-                  key={`excluded-${project}`}
-                  id="excluded_ids"
-                  name="excluded_ids"
-                  multiple
-                  defaultValue={
-                    project === value?.project_id
-                      ? (value?.excluded_ids as string[])
-                      : []
-                  }
-                  className="w-full"
-                >
-                  {data.monitors
-                    .filter((m) => m.project_id === project)
-                    .map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name}
-                      </option>
-                    ))}
-                </NativeSelect>
-              </FormField>
+              <CheckboxList
+                key={`groups-${project}`}
+                id="group_ids"
+                name="group_ids"
+                label="Grupos incluidos"
+                options={data.groups
+                  .filter((g) => g.project_id === project)
+                  .map((g) => ({ value: g.id, label: g.name }))}
+                defaultValue={
+                  project === value?.project_id
+                    ? (value?.group_ids as string[] | undefined)
+                    : []
+                }
+              />
+              <FieldDescription>
+                Sin selección incluye todo el proyecto.
+              </FieldDescription>
+              <CheckboxList
+                key={`excluded-${project}`}
+                id="excluded_ids"
+                name="excluded_ids"
+                label="Monitores excluidos"
+                options={data.monitors
+                  .filter((m) => m.project_id === project)
+                  .map((m) => ({ value: m.id, label: m.name }))}
+                defaultValue={
+                  project === value?.project_id
+                    ? (value?.excluded_ids as string[] | undefined)
+                    : []
+                }
+              />
               <FormField label="Publicación" id="published">
-                <NativeSelect
+                <ChoiceSelect
                   id="published"
                   name="published"
                   defaultValue={String(value?.published ?? false)}
-                >
-                  <option value="false">Borrador</option>
-                  <option value="true">Pública</option>
-                </NativeSelect>
+                  options={[
+                    { value: "false", label: "Borrador" },
+                    { value: "true", label: "Pública" }
+                  ]}
+                />
               </FormField>
             </>
           )}
           {resource === "maintenance" && (
             <>
               <FormField label="Aplicar a" id="scope">
-                <NativeSelect
+                <ChoiceSelect
                   id="scope"
                   value={scope}
-                  onChange={(e) => setScope(e.target.value)}
-                >
-                  <option value="project">Proyecto</option>
-                  <option value="group">Grupo</option>
-                  <option value="monitor">Monitor</option>
-                </NativeSelect>
+                  onValueChange={(value) => setScope(value)}
+                  options={[
+                    { value: "project", label: "Proyecto" },
+                    { value: "group", label: "Grupo" },
+                    { value: "monitor", label: "Monitor" }
+                  ]}
+                />
               </FormField>
               <FormField label="Destino" id="target_id">
-                <NativeSelect
+                <ChoiceSelect
                   key={scope}
                   id="target_id"
                   name="target_id"
@@ -233,30 +222,23 @@ export function ResourceForm({
                       ? String(value?.target_id)
                       : targets[0]?.id
                   }
-                >
-                  {targets.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </NativeSelect>
+                  options={[
+                    ...targets.map((t) => ({ value: t.id, label: t.name }))
+                  ]}
+                />
               </FormField>
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField label="Inicio (hora local)" id="starts_at">
-                  <Input
+                  <DateTimePicker
                     id="starts_at"
                     name="starts_at"
-                    type="datetime-local"
-                    required
                     defaultValue={datetime(value?.starts_at)}
                   />
                 </FormField>
                 <FormField label="Fin (hora local)" id="ends_at">
-                  <Input
+                  <DateTimePicker
                     id="ends_at"
                     name="ends_at"
-                    type="datetime-local"
-                    required
                     defaultValue={datetime(value?.ends_at)}
                   />
                 </FormField>

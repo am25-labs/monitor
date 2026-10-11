@@ -1,3 +1,5 @@
+import { DatePicker } from "./date-picker";
+import { ConfirmDialog } from "./confirm-dialog";
 import { useState } from "react";
 import { api, availability, date, useRefresh } from "../lib/api";
 import type { Result, SafeMonitor, Stat } from "../shared/types";
@@ -41,9 +43,9 @@ export function History({ monitor }: { monitor: SafeMonitor }) {
   );
   const [token, setToken] = useState(""),
     [notice, setNotice] = useState(""),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [confirmOpen, setConfirmOpen] = useState(false);
   async function regenerate() {
-    if (!confirm("Esto invalida el token anterior. ¿Regenerar?")) return;
     setBusy(true);
     try {
       setToken(
@@ -67,6 +69,15 @@ export function History({ monitor }: { monitor: SafeMonitor }) {
   }
   return (
     <div className="flex flex-col gap-6">
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="¿Regenerar el token?"
+        description="El token anterior dejará de funcionar. Actualizá el servicio que envía tus heartbeats con el token nuevo."
+        action="Regenerar token"
+        onConfirm={regenerate}
+      />
+
       {monitor.kind === "heartbeat" && (
         <Panel
           title="Reportar heartbeat"
@@ -83,7 +94,7 @@ export function History({ monitor }: { monitor: SafeMonitor }) {
             <p className="font-mono text-xs">{'{"ok":true}'}</p>
             <Button
               variant="outline"
-              onClick={() => void regenerate()}
+              onClick={() => setConfirmOpen(true)}
               disabled={busy}
             >
               Regenerar token
@@ -106,23 +117,21 @@ export function History({ monitor }: { monitor: SafeMonitor }) {
         <div className="flex flex-col gap-4">
           <FieldGroup className="grid gap-4 sm:grid-cols-2">
             <FormField label="Desde" id="history-from">
-              <Input
+              <DatePicker
                 id="history-from"
-                type="date"
                 value={from}
-                onChange={(e) => {
-                  setFrom(e.target.value);
+                onChange={(value) => {
+                  setFrom(value);
                   reset();
                 }}
               />
             </FormField>
             <FormField label="Hasta" id="history-to">
-              <Input
+              <DatePicker
                 id="history-to"
-                type="date"
                 value={to}
-                onChange={(e) => {
-                  setTo(e.target.value);
+                onChange={(value) => {
+                  setTo(value);
                   reset();
                 }}
               />

@@ -1,3 +1,5 @@
+import { Overview } from "../components/overview";
+import { ConfirmDialog } from "../components/confirm-dialog";
 import { useState } from "react";
 import { Link, NavLink, useNavigate, useParams } from "react-router-dom";
 import {
@@ -11,7 +13,7 @@ import {
   Plus,
   ArrowLeft
 } from "lucide-react";
-import { api, availability, date, useRefresh, type Snapshot } from "../lib/api";
+import { api, date, useRefresh, type Snapshot } from "../lib/api";
 import type { SafeMonitor } from "../shared/types";
 import { cn } from "../lib/utils";
 import { Notice, Nothing, Panel, StatusBadge } from "../components/common";
@@ -29,7 +31,7 @@ import {
   TableHeader,
   TableRow
 } from "../components/ui/table";
-import { NativeSelect } from "../components/ui/native-select";
+import { ChoiceSelect } from "../components/choice-select";
 
 type Editor =
   | { resource: Resource; value?: Record<string, unknown> }
@@ -46,7 +48,11 @@ export function Dashboard({
   const { data, error, refresh } = useRefresh<Snapshot>("admin/snapshot");
   const [editor, setEditor] = useState<Editor | null>(null),
     [notice, setNotice] = useState(""),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [deleteTarget, setDeleteTarget] = useState<{
+      resource: string;
+      id: string;
+    } | null>(null);
   const [filter, setFilter] = useState(""),
     [project, setProject] = useState(""),
     [group, setGroup] = useState("");
@@ -81,8 +87,7 @@ export function Dashboard({
     setEditor(null);
   }
   function remove(resource: string, id: string) {
-    if (confirm("¿Eliminar este registro? Esta acción no se puede deshacer."))
-      void mutate(`${resource}/${id}`, "DELETE").catch(() => undefined);
+    setDeleteTarget({ resource, id });
   }
   const selected = data?.monitors.find((m) => m.id === id);
   const visible =
@@ -152,9 +157,14 @@ export function Dashboard({
       <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-5 md:p-8">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              {selected?.name ?? titles[section] ?? "Monitor"}
-            </h1>
+            <div className="flex min-w-0 flex-wrap items-center gap-3">
+              <h1 className="text-2xl font-semibold tracking-tight">
+                {selected?.name ?? titles[section] ?? "Monitor"}
+              </h1>
+              {section === "monitors" && selected && (
+                <StatusBadge status={selected.display_status} />
+              )}
+            </div>
             <p className="text-sm text-muted-foreground">
               {data?.settings.environment === "local"
                 ? "Entorno local · correos interceptados"
@@ -210,195 +220,75 @@ export function Dashboard({
                 />
               ))}
             {section === "overview" && (
-              <>
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                  {[
-                    { title: "Monitores", value: data.monitors.length },
-                    {
-                      title: "Operativos",
-                      value: data.monitors.filter(
-                        (m) => m.display_status === "up"
-                      ).length
-                    },
-                    {
-                      title: "Incidentes abiertos",
-                      value: data.incidents.filter((i) => !i.closed_at).length
-                    },
-                    {
-                      title: "Disponibilidad · 30 días",
-                      value: availability(data.stats)
-                    }
-                  ].map((s) => (
-                    <Panel key={s.title} title={s.title}>
-                      <p className="text-3xl font-semibold">{s.value}</p>
-                    </Panel>
-                  ))}
-                </div>
-                <Panel title="Salud del motor">
-                  <dl className="grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <dt className="text-muted-foreground">
-                        Último ciclo completado
-                      </dt>
-                      <dd>{date(data.engine.last_finished)}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-muted-foreground">
-                        Trabajos pendientes
-                      </dt>
-                      <dd>
-                        {data.backlog.total} · más antiguo:{" "}
-                        {date(data.backlog.oldest)}
-                      </dd>
-                    </div>
-                  </dl>
-                  {data.engine.last_error && (
-                    <Notice message={data.engine.last_error} destructive />
-                  )}
-                  {data.engine.last_finished &&
-                    Date.now() / 1000 - data.engine.last_finished > 180 && (
-                      <Notice
-                        message="El motor no ha completado un ciclo recientemente. Los estados pueden estar desactualizados."
-                        destructive
-                      />
-                    )}
-                </Panel>
-                <Panel title="Incidentes recientes">
-                  {data.incidents.length ? (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Monitor</TableHead>
-                          <TableHead>Inicio</TableHead>
-                          <TableHead>Recuperación</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {data.incidents.map((i) => (
-                          <TableRow key={i.id}>
-                            <TableCell>
-                              <Link to={`/app/monitors/${i.monitor_id}`}>
-                                {i.monitor_name}
-                              </Link>
-                            </TableCell>
-                            <TableCell>{date(i.opened_at)}</TableCell>
-                            <TableCell>
-                              {i.closed_at ? date(i.closed_at) : "Abierto"}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  ) : (
-                    <Nothing
-                      title="Sin incidentes"
-                      description="Los incidentes aparecerán cuando se alcance el umbral de fallos."
-                    />
-                  )}
-                </Panel>
-                <Panel
-                  title="Alertas personales"
-                  description={`Destinatario: ${data.settings.ownerEmail} · remitente: ${data.settings.from}`}
-                >
-                  {data.notifications.length ? (
-                    <div className="flex flex-col gap-3">
-                      {data.notifications.map((n) => (
-                        <div
-                          key={n.id}
-                          className="flex flex-wrap items-center justify-between gap-2"
-                        >
-                          <span>
-                            {n.monitor_name} ·{" "}
-                            {n.state === "failed"
-                              ? "Entrega fallida"
-                              : "Pendiente"}{" "}
-                            · {n.attempts} intentos
-                          </span>
-                          {n.state === "failed" && (
-                            <Button
-                              variant="outline"
-                              disabled={busy}
-                              onClick={() =>
-                                void mutate(
-                                  `notifications/${n.id}/retry`,
-                                  "POST",
-                                  {}
-                                ).catch(() => undefined)
-                              }
-                            >
-                              Reintentar
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-muted-foreground">
-                      No hay correos pendientes o fallidos.
-                    </p>
-                  )}
-                </Panel>
-              </>
+              <Overview
+                data={data}
+                busy={busy}
+                onRetry={async (id) => {
+                  await mutate(`notifications/${id}/retry`, "POST", {});
+                }}
+              />
             )}
             {section === "monitors" && selected && (
               <>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <Button
-                    variant="outline"
+                    variant="ghost"
+                    className="self-start"
                     onClick={() => navigate("/app/monitors")}
                   >
                     <ArrowLeft data-icon="inline-start" />
                     Volver
                   </Button>
-                  <StatusBadge status={selected.display_status} />
-                  <Button
-                    onClick={() =>
-                      setEditor({ resource: "monitors", monitor: selected })
-                    }
-                  >
-                    Editar
-                  </Button>
-                  <Button
-                    variant="outline"
-                    disabled={busy}
-                    onClick={() =>
-                      void mutate(`monitors/${selected.id}/pause`, "POST", {
-                        paused: !selected.paused
-                      }).catch(() => undefined)
-                    }
-                  >
-                    {selected.paused ? "Reactivar" : "Pausar"}
-                  </Button>
-                  {selected.kind !== "heartbeat" && (
+                  <div className="grid grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap">
+                    <Button
+                      onClick={() =>
+                        setEditor({ resource: "monitors", monitor: selected })
+                      }
+                    >
+                      Editar
+                    </Button>
                     <Button
                       variant="outline"
                       disabled={busy}
-                      onClick={() => {
-                        setBusy(true);
-                        void api<{
-                          diagnostic: string;
-                          latency: number | null;
-                        }>(`admin/monitors/${selected.id}/test`, "POST", {})
-                          .then((r) =>
-                            setNotice(
-                              `${r.diagnostic}${r.latency !== null ? ` · ${r.latency} ms` : ""}`
+                      onClick={() =>
+                        void mutate(`monitors/${selected.id}/pause`, "POST", {
+                          paused: !selected.paused
+                        }).catch(() => undefined)
+                      }
+                    >
+                      {selected.paused ? "Reactivar" : "Pausar"}
+                    </Button>
+                    {selected.kind !== "heartbeat" && (
+                      <Button
+                        variant="outline"
+                        disabled={busy}
+                        onClick={() => {
+                          setBusy(true);
+                          void api<{
+                            diagnostic: string;
+                            latency: number | null;
+                          }>(`admin/monitors/${selected.id}/test`, "POST", {})
+                            .then((r) =>
+                              setNotice(
+                                `${r.diagnostic}${r.latency !== null ? ` · ${r.latency} ms` : ""}`
+                              )
                             )
-                          )
-                          .catch((e) => setNotice(String(e.message)))
-                          .finally(() => setBusy(false));
+                            .catch((e) => setNotice(String(e.message)))
+                            .finally(() => setBusy(false));
+                        }}
+                      >
+                        Probar sin registrar
+                      </Button>
+                    )}
+                    <Button
+                      variant="destructive"
+                      onClick={() => {
+                        remove("monitors", selected.id);
                       }}
                     >
-                      Probar sin registrar
+                      Eliminar
                     </Button>
-                  )}
-                  <Button
-                    variant="destructive"
-                    onClick={() => {
-                      remove("monitors", selected.id);
-                    }}
-                  >
-                    Eliminar
-                  </Button>
+                  </div>
                 </div>
                 <Panel title="Resumen del monitor">
                   <dl className="grid gap-4 sm:grid-cols-3">
@@ -435,35 +325,32 @@ export function Dashboard({
                     value={filter}
                     onChange={(e) => setFilter(e.target.value)}
                   />
-                  <NativeSelect
+                  <ChoiceSelect
                     aria-label="Filtrar por proyecto"
                     value={project}
-                    onChange={(e) => {
-                      setProject(e.target.value);
+                    onValueChange={(value) => {
+                      setProject(value);
                       setGroup("");
                     }}
-                  >
-                    <option value="">Todos los proyectos</option>
-                    {data.projects.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </NativeSelect>
-                  <NativeSelect
+                    options={[
+                      { value: "", label: "Todos los proyectos" },
+                      ...data.projects.map((p) => ({
+                        value: p.id,
+                        label: p.name
+                      }))
+                    ]}
+                  />
+                  <ChoiceSelect
                     aria-label="Filtrar por grupo"
                     value={group}
-                    onChange={(e) => setGroup(e.target.value)}
-                  >
-                    <option value="">Todos los grupos</option>
-                    {data.groups
-                      .filter((g) => !project || g.project_id === project)
-                      .map((g) => (
-                        <option key={g.id} value={g.id}>
-                          {g.name}
-                        </option>
-                      ))}
-                  </NativeSelect>
+                    onValueChange={(value) => setGroup(value)}
+                    options={[
+                      { value: "", label: "Todos los grupos" },
+                      ...data.groups
+                        .filter((g) => !project || g.project_id === project)
+                        .map((g) => ({ value: g.id, label: g.name }))
+                    ]}
+                  />
                   <Button
                     disabled={
                       !data.projects.length || data.monitors.length >= 100
@@ -746,6 +633,23 @@ export function Dashboard({
             )}
           </>
         )}
+        <ConfirmDialog
+          open={Boolean(deleteTarget)}
+          onOpenChange={(open) => {
+            if (!open) setDeleteTarget(null);
+          }}
+          title="¿Eliminar este registro?"
+          description="Esta acción no se puede deshacer. Se eliminarán los datos asociados a este registro."
+          action="Eliminar"
+          destructive
+          onConfirm={async () => {
+            if (deleteTarget)
+              await mutate(
+                `${deleteTarget.resource}/${deleteTarget.id}`,
+                "DELETE"
+              );
+          }}
+        />
       </main>
     </div>
   );
