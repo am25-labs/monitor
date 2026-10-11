@@ -42,6 +42,7 @@ export function Overview({
   const down = data.monitors.filter((m) => m.display_status === "down").length;
   const open = data.incidents.filter((i) => !i.closed_at).length;
   const allUp = data.monitors.length > 0 && up === data.monitors.length;
+  const needsAttention = data.monitors.length > 0 && !allUp && down === 0;
   const failed = data.notifications.filter((n) => n.state === "failed").length;
   const states = [
     {
@@ -80,6 +81,7 @@ export function Overview({
               className={cn(
                 "size-4",
                 allUp && "text-success",
+                needsAttention && "text-warning",
                 down > 0 && "text-destructive"
               )}
             />
@@ -97,10 +99,10 @@ export function Overview({
           </CardDescription>
           <CardAction className="col-start-1 row-start-3 justify-self-start sm:col-start-2 sm:row-start-1 sm:justify-self-end">
             <Badge
-              variant="outline"
+              variant={down > 0 ? "destructive" : "outline"}
               className={cn(
                 allUp && "text-success",
-                down > 0 && "text-destructive"
+                needsAttention && "text-warning"
               )}
             >
               {up} de {data.monitors.length} operativos
