@@ -4,6 +4,71 @@
 
 Esta guía instala AM25 Monitor en tu cuenta de Cloudflare usando GitHub Actions. Los ejemplos usan `monitor.example.com` y `owner@example.com`: reemplázalos por tus datos. No copies los identificadores de la instalación de AM25 que pueda contener la configuración del repositorio.
 
+## Instalación asistida con un agente (opcional)
+
+Puedes realizar esta guía con tu agente de programación preferido. Recomendamos instalar su plugin de Cloudflare o conectar un servidor MCP oficial compatible y autenticarlo con tu cuenta. Consulta las [opciones oficiales de conexión de Cloudflare](https://developers.cloudflare.com/agents/model-context-protocol/cloudflare/servers-for-cloudflare/). La forma de instalarlo depende del agente; esta opción no exige usar Codex.
+
+Abre el repositorio en el agente, conecta Cloudflare y copia el siguiente prompt. El agente debe pedir tus datos y comprobar sus herramientas y permisos: algunos conectores solo consultan documentación o no administran Access. Autenticar el plugin tampoco configura automáticamente las credenciales del pipeline de GitHub.
+
+```text
+Ayúdame a instalar AM25 Monitor en mi propia cuenta siguiendo docs/setup/es.md.
+Lee primero las instrucciones del repositorio, la guía completa y la configuración
+actual. No reutilices los IDs, dominios ni correos de la instalación original.
+
+Antes de cambiar recursos, pídeme los datos que falten:
+- Repositorio de GitHub y carpeta local donde trabajaremos.
+- Versión X.Y.Z que quiero instalar, sin prefijo v, y rama de trabajo.
+- Cuenta de Cloudflare: ayúdame a identificar su nombre y Account ID.
+- Zona DNS y hostname dedicado de Monitor; verifica que la zona esté activa.
+- Correo que autorizaré para iniciar sesión; no asumas que será el de las alertas.
+- Nombres para el Worker, D1, cola y aplicación de Access, o si quiero reutilizar
+  recursos existentes dedicados a esta instalación.
+- Si ya tengo organización de Zero Trust y One-time PIN configurados.
+- Canal de notificaciones (Postmark o Telegram) y los datos no secretos necesarios
+  para configurarlo, si quiero activarlo durante la instalación.
+
+Usa el plugin o MCP de Cloudflare autenticado. Comprueba la cuenta seleccionada,
+los permisos y las operaciones disponibles antes de actuar. Consulta la documentación
+oficial actual para los pasos de Cloudflare. Muéstrame los recursos que vas a crear
+o reutilizar y confirma conmigo la cuenta y el dominio de destino. No elimines ni
+modifiques recursos compartidos o de otros servicios. Si hay un conflicto de DNS
+u otro cambio destructivo, explica el conflicto y solicita autorización específica.
+
+Con mis datos, completa los pasos de la guía que tus herramientas permitan:
+1. Crea o identifica D1 y la cola de esta instalación.
+2. Prepara Zero Trust y One-time PIN. Si hay un asistente de plan, contratación
+   o autorización que deba completar yo, guíame y espera a que lo termine.
+3. Crea la aplicación de Access con las cuatro rutas privadas de la guía y una
+   política Allow / Include / Emails con mi correo. Mantén públicas las rutas
+   de estado y heartbeats. Si ya existe, verifica su configuración sin duplicarla.
+4. Obtén el dominio de equipo y los AUD reales. Actualiza wrangler.jsonc con mis
+   recursos y Custom Domain; conserva bindings, cron y configuración de seguridad.
+5. Ayúdame a configurar los cuatro Repository secrets de GitHub:
+   CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN, MONITOR_CONFIG_KEY y ACCESS_EMAIL.
+   ACCESS_EMAIL debe coincidir con la política de Access y no quedar en archivos.
+   Usa una entrada segura de secretos o indícame dónde pegarlos personalmente;
+   no me pidas tokens ni la llave en el chat y no los imprimas en logs, archivos
+   versionados o informes. Explica cómo generar y respaldar la llave de cifrado.
+   El token del plugin no sustituye al token de despliegue de GitHub Actions.
+6. Verifica los cambios con pnpm check y revisa el diff. No ejecutes un build
+   de producción local ni migraciones remotas como validación de desarrollo.
+7. Entrégame el resumen de recursos configurados y los pasos que falten. No
+   hagas staging, commits, pushes, promociones a main ni Releases por mí.
+   Yo publicaré en main para que GitHub Actions migre y despliegue.
+8. Después de que te confirme el despliegue, verifica dominio, acceso privado,
+   página pública, cron y heartbeat. Ayúdame a guardar el canal de alertas en
+   el dashboard mediante entrada segura. Pídeme autorización antes de provocar
+   caídas de prueba o enviar notificaciones reales al destinatario que yo indique.
+
+Si falta una herramienta o permiso, no afirmes que el paso se completó: dime qué
+operación está pendiente y guíame por las pantallas exactas para hacerla manualmente.
+No cambies de cuenta, plan o método de despliegue sin consultarme. Conserva la misma
+llave al reutilizar datos cifrados. En el informe final omite mi correo real y los
+secretos. Distingue lo configurado de lo verificado y de lo pendiente.
+```
+
+El agente puede ayudar a preparar toda la instalación, pero la selección de plan, las autorizaciones de cuenta y las operaciones que el conector no soporte requieren tu intervención. Los pasos numerados siguientes siguen siendo la referencia para instalar manualmente y revisar el trabajo del agente.
+
 ## 1. Preparar las cuentas y el dominio
 
 Necesitas una cuenta de GitHub con Actions habilitado, una cuenta de Cloudflare con Workers, D1, Queues y Zero Trust disponibles, y un dominio cuya zona DNS esté activa en la misma cuenta de Cloudflare.
@@ -36,29 +101,82 @@ No crees tablas manualmente. El pipeline aplicará las migraciones de `migration
 
 ## 4. Proteger el dashboard con Access
 
-Desde el panel de tu cuenta de Cloudflare, abre **Zero Trust**. Si es tu primera vez, completa el asistente de configuración de la organización, elige un nombre de equipo y selecciona el plan que corresponda a tu instalación. Guarda el dominio de equipo que te asigna Cloudflare, por ejemplo `https://my-team.cloudflareaccess.com`. Si ya existe una organización, utiliza su dominio actual.
+Completa este paso antes del primer despliegue. El pipeline crea el Worker, pero no crea la organización de Zero Trust, el método de inicio de sesión ni la política de Access.
 
-**Access** es el servicio dentro de Zero Trust que protege el dashboard y muestra el inicio de sesión. Su política Allow es la regla donde autorizas tu correo; no es una configuración de GitHub ni de tu VPS.
+**Zero Trust** es el panel de seguridad de Cloudflare. **Access** es el servicio dentro de ese panel que muestra el inicio de sesión del dashboard. Una **aplicación** indica qué dominio y rutas proteger; una **política Allow** indica qué correo puede entrar. Estos recursos se configuran en Cloudflare, no en GitHub ni en tu VPS.
 
-1. En los proveedores de identidad, habilita **One-time PIN** para iniciar sesión con un código enviado al correo.
-2. Abre **Access → Applications**, añade una aplicación **Self-hosted** y llámala `Monitor dashboard`.
-3. Añade entradas del mismo hostname `monitor.example.com` para estas rutas:
+### 4.1. Entrar a Zero Trust y preparar la organización
 
-   | Rutas protegidas |
-   | --- |
-   | `/app` |
-   | `/app/*` |
-   | `/api/v1/admin` |
-   | `/api/v1/admin/*` |
+1. Abre el [panel de Cloudflare](https://dash.cloudflare.com/) e inicia sesión.
+2. Selecciona la misma cuenta donde creaste D1 y la cola en el paso 3. Si tienes varias cuentas, comprueba el nombre y el Account ID antes de continuar.
+3. En el menú de esa cuenta, abre **Zero Trust**. También puedes acceder al [panel de Cloudflare One](https://one.dash.cloudflare.com/) y seleccionar esa cuenta.
+4. Si aparece un asistente de bienvenida, crea tu organización: elige un nombre de equipo, selecciona el plan adecuado y completa los datos de contratación que solicite Cloudflare. El asistente puede pedir datos de pago incluso para el plan gratuito.
+5. Si ya aparece el panel de Zero Trust, utiliza la organización existente; no necesitas crear otra.
+6. En **Zero Trust → Settings**, identifica el nombre de equipo. Guarda su URL completa, por ejemplo `https://my-team.cloudflareaccess.com`: este será el valor de `ACCESS_TEAM_DOMAIN`. No es el dominio público de Monitor.
 
-4. Añade una política **Allow** con **Include → Emails** y el correo que usarás para entrar. Selecciona One-time PIN como método de acceso.
-5. Guarda la aplicación y copia su **Application Audience (AUD) Tag**.
+Al terminar debes poder abrir el panel de Zero Trust y conocer tu dominio de equipo. Consulta la [configuración inicial de Zero Trust](https://developers.cloudflare.com/cloudflare-one/setup/).
 
-Usa una sola aplicación con esas entradas cuando sea posible, para compartir audiencia y sesión. Si utilizas aplicaciones separadas, copia todas sus audiencias, separadas por comas, en `ACCESS_AUDIENCES`.
+### 4.2. Activar el inicio de sesión por correo
 
-No protejas el hostname completo ni uses una protección de todo el Worker: las páginas públicas y los heartbeats deben quedar accesibles sin sesión. Mantén fuera de las reglas `/status/*`, `/api/v1/public/*`, `/api/v1/heartbeats/*`, `/assets/*` y los endpoints de Cloudflare `/cdn-cgi/access/*`. Access verifica la política; el Worker también valida el JWT y admite un único correo configurado.
+1. Dentro de Zero Trust, abre **Integrations → Identity providers**.
+2. En **Your identity providers**, selecciona **Add new identity provider**.
+3. Elige **One-time PIN** y completa su creación. Si ya está en la lista, reutilízalo.
 
-Consulta las guías oficiales de [aplicaciones de Access](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/self-hosted-public-app/) y [One-time PIN](https://developers.cloudflare.com/cloudflare-one/integrations/identity-providers/one-time-pin/).
+One-time PIN envía un código al correo autorizado cuando intentas entrar al dashboard. Las organizaciones nuevas pueden traer el proveedor Cloudflare como predeterminado; eso no significa que One-time PIN ya esté activo. Este método no requiere configurar Postmark: las alertas de Monitor se configuran por separado. Consulta [One-time PIN](https://developers.cloudflare.com/cloudflare-one/integrations/identity-providers/one-time-pin/).
+
+### 4.3. Crear la aplicación del dashboard
+
+1. Dentro de Zero Trust, abre **Access controls → Applications**. En interfaces anteriores puede aparecer como **Access → Applications**.
+2. Selecciona **Create new application** o **Add an application**, según la interfaz.
+3. Elige **Self-hosted and private** (o **Self-hosted**) y asigna el nombre `Monitor dashboard`.
+4. Usa **Add public hostname** para añadir el dominio que elegiste, por ejemplo `monitor.example.com`, con cada una de estas rutas. Todas deben pertenecer a esta aplicación:
+
+   | Hostname | Path |
+   | --- | --- |
+   | `monitor.example.com` | `/app` |
+   | `monitor.example.com` | `/app/*` |
+   | `monitor.example.com` | `/api/v1/admin` |
+   | `monitor.example.com` | `/api/v1/admin/*` |
+
+   Si Cloudflare separa el hostname en campos, usa `monitor` como subdominio y `example.com` como dominio. El campo Path contiene la ruta; no escribas una URL completa en él.
+
+5. En los métodos de autenticación de la aplicación, selecciona **One-time PIN**. No dejes seleccionados todos los proveedores si solo quieres entrar mediante código al correo.
+6. Continúa con la política del siguiente apartado antes de guardar la aplicación.
+
+No añadas una entrada sin Path que proteja todo el hostname ni actives la protección de todo el Worker. Las páginas públicas y los heartbeats deben funcionar sin sesión. Mantén fuera de estas reglas `/status/*`, `/api/v1/public/*`, `/api/v1/heartbeats/*`, `/assets/*` y `/cdn-cgi/access/*`. Consulta [aplicaciones de Access](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/self-hosted-public-app/).
+
+### 4.4. Autorizar el correo y guardar la audiencia
+
+1. En **Access policies** de la aplicación, crea una política. Puedes llamarla `Monitor owner`.
+2. En **Action**, elige **Allow**.
+3. Añade una regla **Include** y selecciona **Emails** como selector.
+4. Introduce únicamente el correo con el que entrarás, por ejemplo `owner@example.com`. No elijas Everyone ni un dominio de correo completo para esta instalación de un solo propietario.
+5. Guarda la política y comprueba que esté asociada a `Monitor dashboard`. Termina de guardar la aplicación.
+6. Abre la configuración o los detalles de la aplicación y copia **Application Audience (AUD) Tag**. Guarda ese valor para `ACCESS_AUDIENCES`; no copies el ID de la política ni el ID de la aplicación en su lugar.
+
+El mismo correo debe guardarse después como secreto `ACCESS_EMAIL` en GitHub, en el paso 7. Son dos comprobaciones distintas:
+
+| Lugar | Qué configurar | Ejemplo |
+| --- | --- | --- |
+| Cloudflare, política de Access | **Allow → Include → Emails** | `owner@example.com` |
+| GitHub, Repository secrets | **ACCESS_EMAIL** | `owner@example.com` |
+
+Access admite el acceso según la política; el Worker valida además el JWT y comprueba que el correo coincida con `ACCESS_EMAIL`. Configurarlo en un solo lugar no completa la instalación. El destinatario de las alertas puede ser otro correo.
+
+Usa una sola aplicación con las cuatro rutas para compartir audiencia y sesión. Si ya tienes aplicaciones separadas, utiliza la misma política para el propietario y copia sus audiencias en `ACCESS_AUDIENCES`, separadas por comas. Consulta [políticas de Access](https://developers.cloudflare.com/cloudflare-one/access-controls/policies/).
+
+Antes de continuar debes tener tres datos: la URL del equipo, el AUD de la aplicación y el correo autorizado. La aplicación puede configurarse antes de publicar el Worker; probar el inicio de sesión corresponde al paso 8.
+
+### 4.5. Encontrar una aplicación ya configurada
+
+Si Monitor ya solicita un código al entrar, primero busca su configuración existente:
+
+1. Abre Cloudflare, selecciona la cuenta correcta y entra a **Zero Trust → Access controls → Applications**.
+2. Busca `Monitor dashboard` o la aplicación cuyo hostname coincida con tu dominio de Monitor. El nombre puede ser distinto si lo elegiste durante la instalación.
+3. Ábrela para editar y entra a **Policies / Access policies**.
+4. Abre la política con acción **Allow** y revisa **Include → Emails**. Ahí está el correo autorizado.
+
+Si no ves la aplicación, revisa la cuenta seleccionada y el hostname antes de crear otra. El paso 11 explica cómo cambiar el correo sin perder acceso.
 
 ## 5. Configurar el Worker y el dominio
 
@@ -163,9 +281,9 @@ Usa **Cerrar sesión** junto a los controles del encabezado del dashboard. Abre 
 
 Para cambiar el correo:
 
-1. Añade el correo nuevo a **Include → Emails** en la política Allow de tu aplicación de Access.
+1. Encuentra tu aplicación y su política siguiendo el apartado 4.5. Añade el correo nuevo a **Allow → Include → Emails** sin eliminar todavía el anterior.
 2. Cambia el secreto del repositorio `ACCESS_EMAIL` en GitHub al correo nuevo.
-3. Vuelve a ejecutar el job de despliegue de un push anterior a `main` desde Actions, o publica tu siguiente cambio en `main`. Editar un secreto por sí solo no despliega.
+3. Vuelve a ejecutar el job de despliegue de un push anterior a `main` desde Actions, o publica tu siguiente cambio en `main`. Editar un secreto por sí solo no despliega. Si reejecutas un job, elige una ejecución cuyo workflow ya lea `secrets.ACCESS_EMAIL`: reejecutar una ejecución antigua no actualiza su archivo de workflow.
 4. Cierra sesión e inicia con el correo nuevo; elimina el anterior de la política después de comprobar el acceso.
 
 El Worker admite solo el correo de la última configuración desplegada. Cambiarlo no modifica el destinatario de las alertas.
