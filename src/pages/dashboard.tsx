@@ -1,3 +1,4 @@
+import { Incidents } from "../components/incidents";
 import { useLocale } from "../lib/locale";
 import { Settings } from "../components/settings";
 import { LocaleProvider } from "../lib/locale";
@@ -165,6 +166,7 @@ function DashboardView({
     monitors: t("Monitores"),
     projects: t("Proyectos y grupos"),
     pages: t("Páginas públicas"),
+    incidents: t("Incidentes"),
     maintenance: t("Mantenimiento"),
     settings: t("Ajustes")
   };
@@ -173,6 +175,7 @@ function DashboardView({
     { to: "monitors", label: t("Monitores"), icon: Activity },
     { to: "projects", label: t("Proyectos y grupos"), icon: Folder },
     { to: "pages", label: t("Páginas públicas"), icon: Globe },
+    { to: "incidents", label: t("Incidentes"), icon: Activity },
     { to: "maintenance", label: t("Mantenimiento"), icon: Wrench },
     { to: "settings", label: t("Ajustes"), icon: SettingsIcon }
   ];
@@ -304,6 +307,7 @@ function DashboardView({
                   onCancel={() => setEditor(null)}
                 />
               ))}
+            {section === "incidents" && <Incidents data={data} />}
             {section === "settings" && (
               <Settings data={data} onChange={refresh} />
             )}
@@ -328,6 +332,7 @@ function DashboardView({
                     {t("Volver")}
                   </Button>
                   <div className="grid grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap">
+                    <Button variant="outline" onClick={() => navigate(`/app/incidents?monitor=${selected.id}`)}>{t("Incidentes")}</Button>
                     <Button
                       onClick={() =>
                         setEditor({ resource: "monitors", monitor: selected })

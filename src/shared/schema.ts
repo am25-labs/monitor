@@ -95,12 +95,19 @@ export const monitorInput = z
     config: z.unknown(),
     interval_seconds: z.number().int().min(60).max(604800).default(60),
     grace_seconds: z.number().int().min(0).max(86400).default(60),
+    latency_threshold: z.number().int().min(1).max(30000).nullable().default(null),
+    degradation_threshold: z.number().int().min(1).max(20).default(3),
+    latency_recovery_threshold: z.number().int().min(1).max(20).default(2),
     failure_threshold: z.number().int().min(1).max(20).default(2),
     recovery_threshold: z.number().int().min(1).max(20).default(1),
     paused: z.boolean().default(false),
     keepCredentials: z.boolean().default(true)
   })
   .transform((v, ctx) => {
+    if (v.kind === "heartbeat" && v.latency_threshold !== null) {
+      ctx.addIssue({ code: "custom", message: "Los heartbeats no admiten degradación por latencia." });
+      return z.NEVER;
+    }
     let config: CheckConfig;
     try {
       config =

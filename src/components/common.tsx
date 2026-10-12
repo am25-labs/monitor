@@ -18,6 +18,7 @@ export const statusLabels: Record<Status, string> = {
   pending: "Pendiente",
   up: "Operativo",
   down: "Caído",
+  degraded: "Degradado",
   unknown: "Sin datos",
   paused: "Pausado",
   maintenance: "Mantenimiento"
@@ -30,7 +31,7 @@ export function StatusBadge({ status }: { status: Status }) {
       className={cn(
         status === "up" && "text-success",
         status === "down" && "text-destructive",
-        status === "maintenance" && "text-warning"
+        (status === "maintenance" || status === "degraded") && "text-warning"
       )}
     >
       <span className="size-1.5 rounded-full bg-current" />

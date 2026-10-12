@@ -30,7 +30,7 @@ export function displayStatus(
       m.interval_seconds * 2 + (m.kind === "heartbeat" ? m.grace_seconds : 0)
   )
     return "unknown";
-  return m.status;
+  return m.status === "up" && m.degraded ? "degraded" : m.status;
 }
 export function transition(m: Monitor, ok: boolean, maintenance: boolean) {
   if (maintenance || m.paused)
@@ -117,4 +117,16 @@ export function observation(
     start = end;
   }
   return segments;
+}
+
+export function latencyState(m: Monitor, result: { ok: boolean; latency: number | null }, maintenance: boolean) {
+  if (maintenance || m.paused || m.kind === "heartbeat" || m.latency_threshold === null)
+    return { slow: 0, fast: 0, degraded: 0 };
+  if (!result.ok) return { slow: 0, fast: 0, degraded: m.degraded };
+  if (result.latency === null) return { slow: 0, fast: 0, degraded: m.degraded };
+  const slow = result.latency > m.latency_threshold ? m.slow_checks + 1 : 0;
+  const fast = slow ? 0 : m.fast_checks + 1;
+  const degraded = slow >= m.degradation_threshold ? 1
+    : fast >= m.latency_recovery_threshold ? 0 : m.degraded;
+  return { slow, fast, degraded };
 }

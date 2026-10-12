@@ -169,7 +169,7 @@ export function History({ monitor }: { monitor: SafeMonitor }) {
                           {date(r.checked_at)}
                         </TableCell>
                         <TableCell>
-                          {r.ok ? t("Éxito") : t("Fallo")}
+                          {r.ok ? r.degraded ? t("Degradado") : t("Éxito") : t("Fallo")}
                           {r.maintenance ? t(" · mantenimiento") : ""}
                         </TableCell>
                         <TableCell>

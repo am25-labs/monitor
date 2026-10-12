@@ -1,7 +1,7 @@
 import type { Language } from "./settings";
 
 export type Status =
-  "pending" | "up" | "down" | "unknown" | "paused" | "maintenance";
+  "pending" | "up" | "degraded" | "down" | "unknown" | "paused" | "maintenance";
 export interface HttpConfig {
   url: string;
   method: "GET" | "HEAD";
@@ -30,6 +30,12 @@ export interface Monitor {
   config_version: number;
   interval_seconds: number;
   grace_seconds: number;
+  latency_threshold: number | null;
+  degradation_threshold: number;
+  latency_recovery_threshold: number;
+  slow_checks: number;
+  fast_checks: number;
+  degraded: number;
   failure_threshold: number;
   recovery_threshold: number;
   failures: number;
@@ -90,6 +96,7 @@ export interface StatusPage {
   published: boolean;
 }
 export interface Result {
+  degraded: number;
   id: number;
   checked_at: number;
   ok: number;
@@ -100,6 +107,7 @@ export interface Result {
   maintenance: number;
 }
 export interface Stat {
+  degraded_count?: number;
   monitor_id: string;
   day: string;
   observed_seconds: number;

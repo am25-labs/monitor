@@ -1,3 +1,6 @@
+import { overallStatus, historyStatus, type PublicIncidentView } from "../shared/incidents";
+import { IncidentCard } from "../components/incident-card";
+import { IncidentArchive } from "../components/incident-archive";
 import { useLocale, LocaleProvider } from "../lib/locale";
 import { useState } from "react";
 import type { Language } from "../shared/settings";
@@ -12,6 +15,7 @@ import { Skeleton } from "../components/ui/skeleton";
 import { cn } from "../lib/utils";
 
 interface PublicData {
+  incidents: PublicIncidentView[];
   language: Language;
   title: string;
   description: string;
@@ -21,9 +25,9 @@ interface PublicData {
     name: string;
     status: Status;
     lastChecked: number | null;
-    stats: { day: string; observed_seconds: number; up_seconds: number }[];
-    short: { slot: string; observed_seconds: number; up_seconds: number }[];
-    hourly: { hour: string; observed_seconds: number; up_seconds: number }[];
+    stats: { day: string; observed_seconds: number; up_seconds: number; degraded_count?: number }[];
+    short: { slot: string; observed_seconds: number; up_seconds: number; degraded_count?: number }[];
+    hourly: { hour: string; observed_seconds: number; up_seconds: number; degraded_count?: number }[];
     incidents: {
       opened_at: number;
       closed_at: number | null;
@@ -67,13 +71,7 @@ function History({
       .toISOString()
       .slice(0, range === "24h" ? 16 : range === "7d" ? 13 : 10);
     const stat = byDay.get(day);
-    const state = !stat?.observed_seconds
-      ? "none"
-      : stat.up_seconds === stat.observed_seconds
-        ? "up"
-        : stat.up_seconds === 0
-          ? "down"
-          : "partial";
+    const state = historyStatus(stat);
     return { day, start, stat, state };
   });
   const observed = days.flatMap(({ stat }) =>
@@ -83,7 +81,7 @@ function History({
     none: t("Sin registros"),
     up: t("Sin interrupciones registradas"),
     down: t("Interrupción durante todo el tiempo observado"),
-    partial: t("Hubo interrupciones")
+    degraded: t("Hubo degradación por latencia")
   };
   return (
     <div className="flex flex-col gap-3">
@@ -124,8 +122,7 @@ function History({
                   state === "none" && "bg-muted",
                   state === "up" && "bg-success",
                   state === "down" && "bg-destructive",
-                  state === "partial" &&
-                    (granular ? "bg-destructive" : "bg-warning")
+                  state === "degraded" && "bg-warning"
                 )}
               />
             );
@@ -139,11 +136,8 @@ function History({
       <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
         {[
           ["bg-success", t("Sin interrupciones")],
-          ...(!granular ? [["bg-warning", t("Con interrupciones")]] : []),
-          [
-            "bg-destructive",
-            granular ? t("Con interrupciones") : t("Sin disponibilidad")
-          ],
+          ["bg-warning", t("Con degradación")],
+          ["bg-destructive", t("Con interrupciones")],
           ["bg-muted", t("Sin registros")]
         ].map(([color, label]) => (
           <span key={label} className="flex items-center gap-1.5">
@@ -172,7 +166,7 @@ function History({
         )}
         {granular
           ? t(
-              " Lee de izquierda a derecha. Cualquier interrupción pinta todo el segmento de rojo, sin importar su duración; el gris indica que no hay registros."
+              " Lee de izquierda a derecha. Rojo indica interrupciones; amarillo, degradación por latencia; verde, sin afectación; gris, sin registros. Cada segmento tiene un solo color."
             )
           : t(" El historial puede incluir incidentes ya resueltos.")}{" "}
         {t("El segmento actual está en curso.")}
@@ -210,17 +204,8 @@ function StatusView({
 }) {
   const { t, date, availability } = useLocale();
   const [range, setRange] = useState<HistoryRange>("7d");
-  const overall: Status = data?.monitors.some((m) => m.status === "down")
-    ? "down"
-    : data?.monitors.some(
-          (m) => m.status === "unknown" || m.status === "pending"
-        )
-      ? "unknown"
-      : data?.monitors.some((m) => m.status === "maintenance")
-        ? "maintenance"
-        : data?.monitors.length && data.monitors.every((m) => m.status === "up")
-          ? "up"
-          : "pending";
+  const { slug = "" } = useParams();
+  const overall = overallStatus(data?.monitors.map(m => m.status) ?? []);
   return (
     <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-6 p-6 md:py-12">
       <header className="flex items-start justify-between gap-4">
@@ -279,13 +264,12 @@ function StatusView({
               </div>
             </Panel>
           )}
+          {data.incidents.some(i => i.closed_at === null) && <section className="flex flex-col gap-4" aria-labelledby="active-incidents">
+            <h2 id="active-incidents" className="text-lg font-semibold">{t("Incidentes activos")}</h2>
+            {data.incidents.filter(i => i.closed_at === null).map(i => <IncidentCard key={i.id} incident={i} />)}
+          </section>}
           {data.monitors.length ? (
             data.monitors.map((m) => {
-              const incidents = m.incidents.filter(
-                (incident) =>
-                  incident.closed_at === null ||
-                  incident.closed_at >= data.updatedAt - 86400
-              );
               return (
                 <Panel key={m.id} title={m.name}>
                   <div className="flex flex-col gap-4">
@@ -305,24 +289,7 @@ function StatusView({
                     <p className="text-xs text-muted-foreground">
                       {t("Última comprobación:")} {date(m.lastChecked)}
                     </p>
-                    {incidents.length > 0 && (
-                      <div className="flex flex-col gap-3 border-t pt-3">
-                        <p className="text-sm font-medium">
-                          {t("Incidentes recientes")}
-                        </p>
-                        {incidents.map((i) => (
-                          <div key={i.opened_at} className="text-sm">
-                            <p>{t(i.message)}</p>
-                            <p className="text-muted-foreground">
-                              {date(i.opened_at)}
-                              {i.closed_at
-                                ? ` → ${date(i.closed_at)}`
-                                : t(" · En curso")}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+
                   </div>
                 </Panel>
               );
@@ -337,6 +304,12 @@ function StatusView({
           )}
         </>
       )}
+      {data && <section className="flex flex-col gap-4" aria-labelledby="resolved-incidents">
+        <h2 id="resolved-incidents" className="text-lg font-semibold">{t("Incidentes resueltos · últimas 24 horas")}</h2>
+        {data.incidents.filter(i => i.closed_at !== null).map(i => <IncidentCard key={i.id} incident={i} />)}
+        {!data.incidents.some(i => i.closed_at !== null) && <p className="text-sm text-muted-foreground">{t("No hay incidentes resueltos en las últimas 24 horas.")}</p>}
+        <IncidentArchive key={slug} slug={slug} />
+      </section>}
       <footer className="mt-auto flex flex-col gap-2 border-t pt-6 text-center text-xs text-muted-foreground">
         <p>{t("AM25 Monitor · Estado público de los servicios")}</p>
         <p>

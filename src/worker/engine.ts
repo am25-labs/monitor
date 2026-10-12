@@ -14,8 +14,10 @@ import {
   isMaintenance,
   observation,
   sixMonthsAgo,
-  transition
+  transition,
+  latencyState
 } from "./state";
+import { automaticStatements } from "./incidents";
 import { deliverNotifications } from "./mail";
 
 export async function windows(env: Env) {
@@ -45,9 +47,10 @@ export async function record(
   );
   const baseline =
     ended || (!maintenance && m.maintenance_active)
-      ? { ...m, failures: 0, successes: 0 }
+      ? { ...m, failures: 0, successes: 0, slow_checks: 0, fast_checks: 0, degraded: 0 }
       : m;
   const next = transition(baseline, result.ok, maintenance);
+  const latency = latencyState(baseline, result, maintenance);
   const segments = observation(m, activeWindows, now, maintenance);
   const observed = segments.reduce((sum, s) => sum + s.seconds, 0),
     up = segments.reduce((sum, s) => sum + s.up, 0);
@@ -152,6 +155,21 @@ export async function record(
       lease
     )
   );
+  batch.push(
+    statement(env.DB, `UPDATE monitors SET slow_checks=?,fast_checks=?,degraded=? WHERE id=? AND ${guarded}`,
+      latency.slow, latency.fast, latency.degraded, m.id, job.id, now, lease),
+    statement(env.DB, `UPDATE results SET degraded=? WHERE job_id=? AND ${guarded}`,
+      +(result.ok && next.status === "up" && Boolean(latency.degraded)), job.id, job.id, now, lease)
+  );
+  for (const [table, column, stride] of [["daily_stats", "day", 86400], ["hourly_stats", "hour", 3600], ["short_stats", "slot", 300]] as const) {
+    if (m.degraded && m.last_ok && !maintenance)
+      for (const segment of observation(m, activeWindows, now, maintenance, stride))
+        batch.push(statement(env.DB, `INSERT INTO ${table}(monitor_id,${column},degraded_count) SELECT ?,?,1 WHERE ${guarded} ON CONFLICT(monitor_id,${column}) DO UPDATE SET degraded_count=degraded_count+1`, m.id, segment.day, job.id, now, lease));
+    if (result.ok && latency.degraded && next.status === "up" && !maintenance) {
+      const bucket = new Date(Math.floor(now / stride) * stride * 1000).toISOString().slice(0, stride === 86400 ? 10 : stride === 3600 ? 13 : 16);
+      batch.push(statement(env.DB, `INSERT INTO ${table}(monitor_id,${column},degraded_count) SELECT ?,?,1 WHERE ${guarded} ON CONFLICT(monitor_id,${column}) DO UPDATE SET degraded_count=degraded_count+1`, m.id, bucket, job.id, now, lease));
+    }
+  }
   const incidentId = crypto.randomUUID();
   if (!maintenance && !m.paused) {
     batch.push(
@@ -208,6 +226,8 @@ export async function record(
       )
     );
   }
+  if (!maintenance && !m.paused)
+    batch.push(...await automaticStatements(env, m, next.status, latency.degraded, now, job.id, lease));
   batch.push(
     statement(
       env.DB,
@@ -393,6 +413,7 @@ export async function cleanup(env: Env, now: number) {
       "DELETE FROM hourly_stats WHERE rowid IN (SELECT rowid FROM hourly_stats WHERE hour<? LIMIT 1000)",
       new Date((now - 8 * 86400) * 1000).toISOString().slice(0, 13)
     ),
+    statement(env.DB, "DELETE FROM public_incidents WHERE id IN (SELECT id FROM public_incidents WHERE closed_at<? LIMIT 1000)", annual),
     statement(
       env.DB,
       "DELETE FROM incidents WHERE id IN (SELECT id FROM incidents WHERE closed_at<? LIMIT 1000)",
@@ -417,7 +438,7 @@ export async function tick(env: Env, now = nowSeconds()) {
         changes.push(
           statement(
             env.DB,
-            "UPDATE monitors SET maintenance_active=?,failures=0,successes=0,last_checked=NULL,last_ok=NULL WHERE id=?",
+            "UPDATE monitors SET maintenance_active=?,failures=0,successes=0,slow_checks=0,fast_checks=0,degraded=0,last_checked=NULL,last_ok=NULL WHERE id=?",
             active,
             m.id
           )

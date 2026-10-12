@@ -72,6 +72,9 @@ export function MonitorForm({
           grace_seconds: Number(f.get("grace") ?? 60),
           failure_threshold: Number(f.get("failures")),
           recovery_threshold: Number(f.get("recoveries")),
+          latency_threshold: kind === "heartbeat" || f.get("latency-enabled") !== "true" ? null : Number(f.get("latency-threshold")),
+          degradation_threshold: Number(f.get("slow-checks") ?? 3),
+          latency_recovery_threshold: Number(f.get("fast-checks") ?? 2),
           paused: Boolean(monitor?.paused),
           keepCredentials: f.get("keep") !== "false"
         },
@@ -356,6 +359,23 @@ export function MonitorForm({
               />
             </FormField>
           </div>
+          {kind !== "heartbeat" && <FieldGroup>
+            <FormField id="latency-enabled" label={t("Detectar degradación por latencia")}>
+              <ChoiceSelect id="latency-enabled" name="latency-enabled" defaultValue={monitor?.latency_threshold ? "true" : "false"}
+                options={[{value:"false",label:t("Desactivado")},{value:"true",label:t("Activado")}]} />
+            </FormField>
+            <FieldGroup className="grid gap-4 sm:grid-cols-3">
+              <FormField id="latency-threshold" label={t("Umbral de latencia (ms)")}>
+                <Input id="latency-threshold" name="latency-threshold" type="number" min={1} max={30000} defaultValue={monitor?.latency_threshold ?? 1000} required />
+              </FormField>
+              <FormField id="slow-checks" label={t("Respuestas lentas para degradar")}>
+                <Input id="slow-checks" name="slow-checks" type="number" min={1} max={20} defaultValue={monitor?.degradation_threshold ?? 3} required />
+              </FormField>
+              <FormField id="fast-checks" label={t("Respuestas normales para recuperar")}>
+                <Input id="fast-checks" name="fast-checks" type="number" min={1} max={20} defaultValue={monitor?.latency_recovery_threshold ?? 2} required />
+              </FormField>
+            </FieldGroup>
+          </FieldGroup>}
           <Notice message={error} destructive />
           <div className="flex gap-2">
             <Button type="submit" disabled={busy || !project}>

@@ -427,7 +427,7 @@ it("publishes only explicitly included monitors within the selected groups", asy
   const hour = new Date().toISOString().slice(0, 13);
   await statement(
     env.DB,
-    "INSERT INTO hourly_stats VALUES(?,?,?,?)",
+    "INSERT INTO hourly_stats(monitor_id,hour,observed_seconds,up_seconds) VALUES(?,?,?,?)",
     visible.id,
     hour,
     60,
@@ -438,17 +438,17 @@ it("publishes only explicitly included monitors within the selected groups", asy
     .slice(0, 16);
   await statement(
     env.DB,
-    "INSERT INTO short_stats VALUES(?,?,?,?)",
+    "INSERT INTO short_stats(monitor_id,slot,observed_seconds,up_seconds) VALUES(?,?,?,?)",
     visible.id,
     slot,
     300,
     240,
   ).run();
   expect((await read()).monitors[0].short).toEqual([
-    { slot, observed_seconds: 300, up_seconds: 240 },
+    { slot, observed_seconds: 300, up_seconds: 240, degraded_count: 0 },
   ]);
   expect((await read()).monitors[0].hourly).toEqual([
-    { hour, observed_seconds: 60, up_seconds: 60 },
+    { hour, observed_seconds: 60, up_seconds: 60, degraded_count: 0 },
   ]);
   expect(
     pageMonitors([visible, hidden, foreign], projectId, [group]).map(

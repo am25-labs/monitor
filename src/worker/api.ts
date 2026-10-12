@@ -1,3 +1,5 @@
+import { incidentDetail, incidentList, saveIncident, publishIncident, addUpdate, validatePageIncidents, publicIncidents } from "./incidents";
+import { publicStatus } from "../shared/incidents";
 import {
   safeNotifications,
   saveNotifications,
@@ -124,6 +126,17 @@ export async function admin(
   const [resource, id, action] = path.split("/").filter(Boolean),
     method = request.method,
     now = nowSeconds();
+  if (resource === "incidents") {
+    if (method === "GET") return json(id ? await incidentDetail(env, id) : await incidentList(env, new URL(request.url).searchParams.get("monitor") ?? undefined));
+    if (method === "POST" && action === "publish" && id) {
+      await publishIncident(env, id, now); return json({ ok: true });
+    }
+    if (method === "POST" && action === "updates" && id) {
+      await addUpdate(env, id, await body(request), now); return json({ ok: true });
+    }
+    if ((method === "POST" && !id) || (method === "PUT" && id && !action))
+      return json(await saveIncident(env, await body(request), now, id), id ? 200 : 201);
+  }
   if (resource === "snapshot" && method === "GET") {
     const [
       projects,
@@ -231,6 +244,8 @@ export async function admin(
     const scope = input.monitorId ? "monitor_id=?" : "1=1";
     const values = input.monitorId ? [input.monitorId] : [];
     await env.DB.batch([
+      statement(env.DB, `DELETE FROM public_incidents WHERE ${input.monitorId ? "id IN (SELECT incident_id FROM incident_monitors WHERE monitor_id=?) AND (SELECT COUNT(*) FROM incident_monitors WHERE incident_id=public_incidents.id)=1" : "1=1"} AND ${enabled}`, ...values),
+      ...(input.monitorId ? [statement(env.DB, `DELETE FROM incident_monitors WHERE monitor_id=? AND ${enabled}`, input.monitorId)] : []),
       statement(
         env.DB,
         `DELETE FROM notifications WHERE ${input.monitorId ? "incident_id IN (SELECT id FROM incidents WHERE monitor_id=?)" : "1=1"} AND ${enabled}`,
@@ -245,7 +260,7 @@ export async function admin(
       ),
       statement(
         env.DB,
-        `UPDATE monitors SET config_version=config_version+1,failures=0,successes=0,status=CASE WHEN paused=1 THEN 'paused' ELSE 'pending' END,last_checked=NULL,last_success=NULL,last_latency=NULL,last_ok=NULL WHERE ${input.monitorId ? "id=?" : "1=1"} AND ${enabled}`,
+        `UPDATE monitors SET config_version=config_version+1,failures=0,successes=0,slow_checks=0,fast_checks=0,degraded=0,status=CASE WHEN paused=1 THEN 'paused' ELSE 'pending' END,last_checked=NULL,last_success=NULL,last_latency=NULL,last_ok=NULL WHERE ${input.monitorId ? "id=?" : "1=1"} AND ${enabled}`,
         ...values
       )
     ]);
@@ -370,7 +385,7 @@ export async function admin(
       const m = await monitor(env, id);
       await statement(
         env.DB,
-        "UPDATE monitors SET paused=?,config_version=config_version+1,failures=0,successes=0,last_checked=NULL,last_ok=NULL,next_due=? WHERE id=?",
+        "UPDATE monitors SET paused=?,config_version=config_version+1,failures=0,successes=0,slow_checks=0,fast_checks=0,degraded=0,last_checked=NULL,last_ok=NULL,next_due=? WHERE id=?",
         +v.paused,
         now +
           (m.kind === "heartbeat" ? m.interval_seconds + m.grace_seconds : 0),
@@ -394,6 +409,9 @@ export async function admin(
       await requireProject(env, v.project_id);
       await requireGroup(env, v.group_id, v.project_id);
       const old = id ? await monitor(env, id) : null;
+      if (old && old.project_id !== v.project_id && await first(env.DB,
+        "SELECT incident_id FROM incident_monitors WHERE monitor_id=? LIMIT 1", id))
+        throw new Response("Borra el historial del monitor antes de cambiarlo de proyecto.", { status: 409 });
       if (
         old &&
         (old.project_id !== v.project_id || old.group_id !== v.group_id)
@@ -437,7 +455,7 @@ export async function admin(
       if (old)
         await statement(
           env.DB,
-          `UPDATE monitors SET project_id=?,group_id=?,name=?,kind=?,config=?,config_version=config_version+1,interval_seconds=?,grace_seconds=?,failure_threshold=?,recovery_threshold=?,paused=?,failures=0,successes=0,last_checked=NULL,last_ok=NULL,next_due=?,last_heartbeat=NULL,heartbeat_hash=?,status=CASE WHEN status='down' THEN 'down' ELSE 'pending' END WHERE id=?`,
+          `UPDATE monitors SET project_id=?,group_id=?,name=?,kind=?,config=?,config_version=config_version+1,interval_seconds=?,grace_seconds=?,failure_threshold=?,recovery_threshold=?,latency_threshold=?,degradation_threshold=?,latency_recovery_threshold=?,paused=?,failures=0,successes=0,slow_checks=0,fast_checks=0,degraded=0,last_checked=NULL,last_ok=NULL,next_due=?,last_heartbeat=NULL,heartbeat_hash=?,status=CASE WHEN status='down' THEN 'down' ELSE 'pending' END WHERE id=?`,
           v.project_id,
           v.group_id,
           v.name,
@@ -447,6 +465,9 @@ export async function admin(
           v.grace_seconds,
           v.failure_threshold,
           v.recovery_threshold,
+          v.latency_threshold,
+          v.degradation_threshold,
+          v.latency_recovery_threshold,
           +v.paused,
           next,
           secret
@@ -459,7 +480,7 @@ export async function admin(
       else
         await statement(
           env.DB,
-          `INSERT INTO monitors(id,project_id,group_id,name,kind,config,interval_seconds,grace_seconds,failure_threshold,recovery_threshold,paused,next_due,heartbeat_hash,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          `INSERT INTO monitors(id,project_id,group_id,name,kind,config,interval_seconds,grace_seconds,failure_threshold,recovery_threshold,latency_threshold,degradation_threshold,latency_recovery_threshold,paused,next_due,heartbeat_hash,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
           key,
           v.project_id,
           v.group_id,
@@ -470,6 +491,9 @@ export async function admin(
           v.grace_seconds,
           v.failure_threshold,
           v.recovery_threshold,
+          v.latency_threshold,
+          v.degradation_threshold,
+          v.latency_recovery_threshold,
           +v.paused,
           next,
           secret ? await digest(secret) : null,
@@ -482,6 +506,9 @@ export async function admin(
     }
     if (method === "DELETE" && id) {
       await env.DB.batch([
+        statement(env.DB,
+          "DELETE FROM public_incidents WHERE id IN (SELECT incident_id FROM incident_monitors WHERE monitor_id=?) AND (SELECT COUNT(*) FROM incident_monitors WHERE incident_id=public_incidents.id)=1",
+          id),
         statement(
           env.DB,
           "DELETE FROM maintenance WHERE scope='monitor' AND target_id=?",
@@ -549,6 +576,7 @@ export async function admin(
             }
           );
       }
+      await validatePageIncidents(env, v);
       const excludedIds =
         v.included_ids === undefined
           ? v.excluded_ids
@@ -601,7 +629,7 @@ export async function admin(
   return json({ error: "Ruta no encontrada." }, 404);
 }
 
-export async function publicPage(env: Env, slug: string) {
+export async function publicPage(env: Env, slug: string, query = new URLSearchParams()) {
   const page = await first<{
     language: StatusPage["language"];
     title: string;
@@ -628,11 +656,19 @@ export async function publicPage(env: Env, slug: string) {
   const included = pageMonitors(all, page.project_id, groups).filter((m) =>
     selected === null ? !excluded.includes(m.id) : selected.includes(m.id)
   );
+  const archive = query.get("archive") === "1";
+  const cursorTime = query.get("before");
+  const cursorId = query.get("id");
+  if ((cursorTime === null) !== (cursorId === null) || (cursorTime !== null && (!/^\d+$/.test(cursorTime) || !Number.isSafeInteger(Number(cursorTime)))) || (cursorId && cursorId.length > 250))
+    throw new Response("Cursor inválido.", { status: 400 });
+  const reports = await publicIncidents(env, page.project_id, included, page.language, now, archive,
+    cursorTime !== null && cursorId !== null ? { time:Number(cursorTime), id:cursorId } : undefined);
+  if (archive) return json(reports);
   const monitors = await Promise.all(
     included.map(async (m) => {
       const stats = await rows<Stat>(
         env.DB,
-        "SELECT day,observed_seconds,up_seconds FROM daily_stats WHERE monitor_id=? AND day>=? ORDER BY day",
+        "SELECT day,observed_seconds,up_seconds,degraded_count FROM daily_stats WHERE monitor_id=? AND day>=? ORDER BY day",
         m.id,
         new Date((now - 90 * 86400) * 1000).toISOString().slice(0, 10)
       );
@@ -640,9 +676,10 @@ export async function publicPage(env: Env, slug: string) {
         hour: string;
         observed_seconds: number;
         up_seconds: number;
+        degraded_count: number;
       }>(
         env.DB,
-        "SELECT hour,observed_seconds,up_seconds FROM hourly_stats WHERE monitor_id=? AND hour>=? ORDER BY hour",
+        "SELECT hour,observed_seconds,up_seconds,degraded_count FROM hourly_stats WHERE monitor_id=? AND hour>=? ORDER BY hour",
         m.id,
         new Date((now - 167 * 3600) * 1000).toISOString().slice(0, 13)
       );
@@ -650,9 +687,10 @@ export async function publicPage(env: Env, slug: string) {
         slot: string;
         observed_seconds: number;
         up_seconds: number;
+        degraded_count: number;
       }>(
         env.DB,
-        "SELECT slot,observed_seconds,up_seconds FROM short_stats WHERE monitor_id=? AND slot>=? ORDER BY slot",
+        "SELECT slot,observed_seconds,up_seconds,degraded_count FROM short_stats WHERE monitor_id=? AND slot>=? ORDER BY slot",
         m.id,
         new Date((Math.floor(now / 300) * 300 - 287 * 300) * 1000)
           .toISOString()
@@ -667,7 +705,7 @@ export async function publicPage(env: Env, slug: string) {
       return {
         id: m.id,
         name: m.name,
-        status: displayStatus(m, activeWindows, now),
+        status: publicStatus(displayStatus(m, activeWindows, now), reports.incidents.filter(i => i.origin === "manual" && i.closed_at === null && i.monitors.some(target => target.id === m.id)).map(i => i.impact)),
         lastChecked: m.last_checked,
         stats,
         hourly,
@@ -683,6 +721,7 @@ export async function publicPage(env: Env, slug: string) {
     })
   );
   return json({
+    incidents: reports.incidents,
     title: page.title,
     language: page.language,
     description: page.description,

@@ -555,7 +555,7 @@ it("splits hourly observations and excludes overlapping maintenance and stale da
   ).toBe(30);
   await statement(
     env.DB,
-    "INSERT INTO hourly_stats VALUES(?,?,?,?)",
+    "INSERT INTO hourly_stats(monitor_id,hour,observed_seconds,up_seconds) VALUES(?,?,?,?)",
     m.id,
     "1969-12-20T00",
     60,
@@ -585,7 +585,7 @@ it("records five-minute slots across boundaries without expanding a brief outage
   ]);
   await statement(
     env.DB,
-    "INSERT INTO short_stats VALUES(?,?,?,?)",
+    "INSERT INTO short_stats(monitor_id,slot,observed_seconds,up_seconds) VALUES(?,?,?,?)",
     m.id,
     "1969-12-29T00:00",
     60,

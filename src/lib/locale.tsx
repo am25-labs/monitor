@@ -6,14 +6,16 @@ import { date, availability } from "./api";
 const LocaleContext = createContext<Language>("es");
 export function LocaleProvider({
   language,
-  children
+  children,
+  documentLanguage = true
 }: {
   language: Language;
   children: ReactNode;
+  documentLanguage?: boolean;
 }) {
   useEffect(() => {
-    document.documentElement.lang = language;
-  }, [language]);
+    if (documentLanguage) document.documentElement.lang = language;
+  }, [language, documentLanguage]);
   return (
     <LocaleContext.Provider value={language}>{children}</LocaleContext.Provider>
   );

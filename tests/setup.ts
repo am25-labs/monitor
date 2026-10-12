@@ -17,6 +17,7 @@ export async function setup() {
       "notification_deliveries",
       "notifications",
       "app_settings",
+      "public_incidents",
       "incidents",
       "results",
       "jobs",

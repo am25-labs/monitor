@@ -32,7 +32,7 @@ async function route(request: Request, env: Env) {
   if (heartbeat && request.method === "POST")
     return receiveHeartbeat(request, env, heartbeat[1]);
   const page = path.match(/^\/api\/v1\/public\/([a-z0-9-]+)$/);
-  if (page && request.method === "GET") return publicPage(env, page[1]);
+  if (page && request.method === "GET") return publicPage(env, page[1], url.searchParams);
   if (path.startsWith("/api/"))
     return json({ error: "Ruta no encontrada." }, 404);
   if (env.ENVIRONMENT === "local")
