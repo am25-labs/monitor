@@ -8,6 +8,8 @@ import { useState } from "react";
 import { Link, NavLink, useNavigate, useParams } from "react-router-dom";
 import {
   Activity,
+  LayoutDashboard,
+  TriangleAlert,
   Folder,
   Globe,
   Moon,
@@ -171,11 +173,11 @@ function DashboardView({
     settings: t("Ajustes")
   };
   const nav = [
-    { to: "overview", label: t("Resumen"), icon: Activity },
+    { to: "overview", label: t("Resumen"), icon: LayoutDashboard },
     { to: "monitors", label: t("Monitores"), icon: Activity },
     { to: "projects", label: t("Proyectos y grupos"), icon: Folder },
     { to: "pages", label: t("Páginas públicas"), icon: Globe },
-    { to: "incidents", label: t("Incidentes"), icon: Activity },
+    { to: "incidents", label: t("Incidentes"), icon: TriangleAlert },
     { to: "maintenance", label: t("Mantenimiento"), icon: Wrench },
     { to: "settings", label: t("Ajustes"), icon: SettingsIcon }
   ];
