@@ -43,7 +43,7 @@ function SoftwareNotices() {
 export function AboutDialog() {
   const { t } = useLocale();
   return (
-    <Card className="w-full border text-center">
+    <Card className="w-full text-center">
       <CardHeader className="flex flex-col items-center gap-5">
         <AboutLogo />
         <div className="flex flex-col gap-2">
