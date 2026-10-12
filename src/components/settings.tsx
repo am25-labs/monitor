@@ -15,6 +15,7 @@ import type {
   NotificationChannel,
 } from "../shared/settings";
 import { ChoiceSelect } from "./choice-select";
+import { AboutDialog } from "./about-dialog";
 import { ConfirmDialog } from "./confirm-dialog";
 import { FormField, Notice, Panel } from "./common";
 import { Checkbox } from "./ui/checkbox";
@@ -778,51 +779,7 @@ export function Settings({
           <TabsTrigger value="notifications">{t("Notificaciones")}</TabsTrigger>
         </TabsList>
         <TabsContent value="about" className="grid gap-6 lg:grid-cols-2">
-          <Panel title={t("Licencia y autoría")}>
-            <div className="flex flex-col gap-4 text-sm">
-              <p>
-                {product.name} {t("está disponible bajo")}{" "}
-                <a
-                  href={`${product.repository}/blob/main/LICENSE`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="underline underline-offset-4"
-                >
-                  Apache License 2.0
-                </a>
-                .
-              </p>
-              <p className="text-muted-foreground">
-                {t(
-                  "La licencia permite usar, modificar y distribuir el código bajo sus condiciones. Consulta el texto completo en el repositorio. Las dependencias conservan sus propias licencias.",
-                )}
-              </p>
-              <Separator />
-              <div className="flex flex-col gap-1">
-                <p>
-                  {t("Autor:")}{" "}
-                  <a
-                    href="https://alemartir.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline underline-offset-4"
-                  >
-                    {product.author}
-                  </a>
-                </p>
-                <p>
-                  <a
-                    href="https://am25.work"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline underline-offset-4"
-                  >
-                    © {new Date().getFullYear()} AM25
-                  </a>
-                </p>
-              </div>
-            </div>
-          </Panel>
+          <AboutDialog />
           <Panel title={t("Datos y privacidad")}>
             <div className="flex flex-col gap-3 text-sm text-muted-foreground">
               <p>

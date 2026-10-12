@@ -1,0 +1,130 @@
+{
+  "dependencies": [
+    {
+      "name": "@base-ui/react",
+      "version": "1.9.0",
+      "license": "MIT"
+    },
+    {
+      "name": "@cloudflare/vitest-plugin",
+      "version": "1.4.0",
+      "license": "MIT"
+    },
+    {
+      "name": "@tailwindcss/vite",
+      "version": "4.3.3",
+      "license": "MIT"
+    },
+    {
+      "name": "@types/node",
+      "version": "22.20.5",
+      "license": "MIT"
+    },
+    {
+      "name": "@types/react",
+      "version": "19.3.0",
+      "license": "MIT"
+    },
+    {
+      "name": "@types/react-dom",
+      "version": "19.3.0",
+      "license": "MIT"
+    },
+    {
+      "name": "@vitejs/plugin-react",
+      "version": "5.2.0",
+      "license": "MIT"
+    },
+    {
+      "name": "class-variance-authority",
+      "version": "0.7.1",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "clsx",
+      "version": "2.1.1",
+      "license": "MIT"
+    },
+    {
+      "name": "date-fns",
+      "version": "4.4.0",
+      "license": "MIT"
+    },
+    {
+      "name": "jose",
+      "version": "6.2.12",
+      "license": "MIT"
+    },
+    {
+      "name": "lucide-react",
+      "version": "0.544.0",
+      "license": "ISC"
+    },
+    {
+      "name": "react",
+      "version": "19.3.0",
+      "license": "MIT"
+    },
+    {
+      "name": "react-day-picker",
+      "version": "10.0.2",
+      "license": "MIT"
+    },
+    {
+      "name": "react-dom",
+      "version": "19.3.0",
+      "license": "MIT"
+    },
+    {
+      "name": "react-email",
+      "version": "6.11.1",
+      "license": "MIT"
+    },
+    {
+      "name": "react-router-dom",
+      "version": "7.18.4",
+      "license": "MIT"
+    },
+    {
+      "name": "tailwind-merge",
+      "version": "3.7.0",
+      "license": "MIT"
+    },
+    {
+      "name": "tailwindcss",
+      "version": "4.3.3",
+      "license": "MIT"
+    },
+    {
+      "name": "tw-animate-css",
+      "version": "1.4.0",
+      "license": "MIT"
+    },
+    {
+      "name": "typescript",
+      "version": "5.9.3",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "vite",
+      "version": "8.3.4",
+      "license": "MIT"
+    },
+    {
+      "name": "vitest",
+      "version": "4.1.11",
+      "license": "MIT"
+    },
+    {
+      "name": "wrangler",
+      "version": "4.149.0",
+      "license": "MIT OR Apache-2.0"
+    },
+    {
+      "name": "zod",
+      "version": "4.6.5",
+      "license": "MIT"
+    }
+  ],
+  "packageCount": 328
+}

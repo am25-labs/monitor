@@ -2,6 +2,29 @@
 @import "tw-animate-css";
 @custom-variant dark (&:is(.dark *));
 
+.monitor-about-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgb(0 0 0 / 20%);
+  backdrop-filter: blur(4px);
+}
+
+.monitor-about-popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 50;
+  width: min(42rem, calc(100% - 2rem));
+  max-height: min(850px, calc(100dvh - 2rem));
+  overflow-y: auto;
+  transform: translate(-50%, -50%);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--card-foreground);
+  box-shadow: 0 4px 20px rgb(0 0 0 / 15%);
+}
+
 :root {
   --background: oklch(0.985 0 0);
   --foreground: oklch(0.2 0 0);

@@ -8,6 +8,7 @@
     "node": ">=22.14.0"
   },
   "scripts": {
+    "about:licenses": "node scripts/maintenance/generate-third-party-notices.mjs",
     "dev": "node scripts/dev.mjs",
     "dev:ui": "vite --host 127.0.0.1",
     "dev:worker": "wrangler dev --config wrangler.local.jsonc --local --test-scheduled",
