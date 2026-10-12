@@ -4,7 +4,7 @@ import type {
   Language
 } from "../shared/settings";
 import { locales, translate } from "../shared/i18n";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   Group,
   Incident,
@@ -47,15 +47,32 @@ export interface Snapshot {
 export async function api<T>(
   path: string,
   method = "GET",
-  payload?: unknown
+  payload?: unknown,
+  signal?: AbortSignal
 ): Promise<T> {
-  const response = await fetch(`/api/v1/${path}`, {
+  const options: RequestInit = {
     method,
     credentials: "same-origin",
     headers:
       payload === undefined ? {} : { "Content-Type": "application/json" },
-    body: payload === undefined ? undefined : JSON.stringify(payload)
-  });
+    body: payload === undefined ? undefined : JSON.stringify(payload),
+    signal
+  };
+  let response: Response | undefined;
+  const attempts = method === "GET" ? 2 : 1;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    try {
+      signal?.throwIfAborted();
+      response = await fetch(`/api/v1/${path}`, options);
+      break;
+    } catch (error) {
+      if (signal?.aborted) throw error;
+      if (attempt === attempts - 1)
+        throw new Error("No se pudo conectar con Monitor. Revisa tu conexión e intenta actualizar nuevamente.");
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  }
+  if (!response) throw new Error("Falló la consulta.");
   if (response.status === 401) {
     if (path.startsWith("admin")) location.assign("/app/");
     throw new Error("Tu sesión expiró. Vuelve a entrar.");
@@ -79,19 +96,50 @@ export async function api<T>(
 export function useRefresh<T>(path: string) {
   const [data, setData] = useState<T | null>(null),
     [error, setError] = useState("");
-  const refresh = useCallback(async () => {
-    try {
-      setData(await api<T>(path));
-      setError("");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Falló la consulta.");
-    }
+  const active = useRef<{
+    path: string;
+    controller: AbortController;
+    promise: Promise<void>;
+  } | null>(null);
+  const refresh = useCallback(() => {
+    if (active.current?.path === path) return active.current.promise;
+    active.current?.controller.abort();
+    const controller = new AbortController();
+    const request = { path, controller, promise: Promise.resolve() };
+    active.current = request;
+    request.promise = (async () => {
+      let timedOut = false;
+      const timeout = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, 20000);
+      try {
+        const result = await api<T>(path, "GET", undefined, controller.signal);
+        if (active.current !== request || controller.signal.aborted) return;
+        setData(result);
+        setError("");
+      } catch (e) {
+        if (active.current !== request || (controller.signal.aborted && !timedOut)) return;
+        setError(timedOut
+          ? "La actualización tardó demasiado. Se volverá a intentar automáticamente."
+          : e instanceof Error ? e.message : "Falló la consulta.");
+      } finally {
+        clearTimeout(timeout);
+        if (active.current === request) active.current = null;
+      }
+    })();
+    return request.promise;
   }, [path]);
   useEffect(() => {
     setData(null);
+    setError("");
     void refresh();
     const timer = setInterval(() => void refresh(), 30000);
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      active.current?.controller.abort();
+      active.current = null;
+    };
   }, [refresh]);
   return { data, error, refresh };
 }

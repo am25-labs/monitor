@@ -1,4 +1,6 @@
 export const english: Record<string, string> = {
+  "No se pudo conectar con Monitor. Revisa tu conexión e intenta actualizar nuevamente.": "Could not connect to Monitor. Check your connection and try refreshing again.",
+  "La actualización tardó demasiado. Se volverá a intentar automáticamente.": "The update took too long. It will be retried automatically.",
   Cerrar: "Close",
   "Software de terceros": "Third-party software",
   "Ver todas las licencias": "View all licenses",
