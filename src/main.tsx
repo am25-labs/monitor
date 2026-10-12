@@ -1,51 +1,83 @@
 import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useLocation
+} from "react-router-dom";
 import { Dashboard } from "./pages/dashboard";
 import { PublicStatus } from "./pages/status";
 import "./styles.css";
 
 function App() {
-  const [theme, setTheme] = useState(
+  const { pathname } = useLocation();
+  const storageKey = pathname.startsWith("/status/")
+    ? "monitor-public-theme"
+    : "monitor-theme";
+  return <ThemedApp key={storageKey} storageKey={storageKey} />;
+}
+
+function ThemedApp({ storageKey }: { storageKey: string }) {
+  const [preference, setPreference] = useState(() => {
+    const stored = localStorage.getItem(storageKey);
+    if (stored === "dark" || stored === "light") return stored;
+    return storageKey === "monitor-theme"
+      ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+      : null;
+  });
+  const [systemTheme, setSystemTheme] = useState(
     () =>
-      localStorage.getItem("monitor-theme") ??
-      (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+      matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
   );
+  const theme = preference ?? systemTheme;
+  useEffect(() => {
+    const media = matchMedia("(prefers-color-scheme: dark)");
+    const update = () => setSystemTheme(media.matches ? "dark" : "light");
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
-    localStorage.setItem("monitor-theme", theme);
-  }, [theme]);
-  const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
+    if (storageKey === "monitor-theme") localStorage.setItem(storageKey, theme);
+  }, [storageKey, theme]);
+  const toggleTheme = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    localStorage.setItem(storageKey, next);
+    setPreference(next);
+  };
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Navigate to="/app/" replace />} />
-        <Route
-          path="/app/"
-          element={<Dashboard theme={theme} toggleTheme={toggleTheme} />}
-        />
-        <Route
-          path="/app/:section"
-          element={<Dashboard theme={theme} toggleTheme={toggleTheme} />}
-        />
-        <Route
-          path="/app/:section/:id"
-          element={<Dashboard theme={theme} toggleTheme={toggleTheme} />}
-        />
-        <Route
-          path="/status/:slug"
-          element={<PublicStatus theme={theme} toggleTheme={toggleTheme} />}
-        />
-        <Route
-          path="*"
-          element={<main className="p-8">Página no encontrada.</main>}
-        />
-      </Routes>
-    </BrowserRouter>
+    <Routes>
+      <Route path="/" element={<Navigate to="/app/" replace />} />
+      <Route
+        path="/app/"
+        element={<Dashboard theme={theme} toggleTheme={toggleTheme} />}
+      />
+      <Route
+        path="/app/:section"
+        element={<Dashboard theme={theme} toggleTheme={toggleTheme} />}
+      />
+      <Route
+        path="/app/:section/:id"
+        element={<Dashboard theme={theme} toggleTheme={toggleTheme} />}
+      />
+      <Route
+        path="/status/:slug"
+        element={<PublicStatus theme={theme} toggleTheme={toggleTheme} />}
+      />
+      <Route
+        path="*"
+        element={<main className="p-8">Página no encontrada.</main>}
+      />
+    </Routes>
   );
 }
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
   </StrictMode>
 );
