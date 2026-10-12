@@ -20,6 +20,14 @@ import {
 import { automaticStatements } from "./incidents";
 import { deliverNotifications } from "./mail";
 
+class JobBusyError extends Error {}
+
+class JobExecutionError extends Error {
+  constructor(readonly stage: string, cause: unknown) {
+    super("Check execution failed", { cause });
+  }
+}
+
 export async function windows(env: Env) {
   return rows<Window>(env.DB, "SELECT * FROM maintenance");
 }
@@ -260,30 +268,31 @@ export async function runJob(env: Env, id: string) {
       id
     );
     if (existing && ["pending", "running"].includes(existing.state))
-      throw new Error("Job busy");
+      throw new JobBusyError("Job busy");
     return;
   }
-  const m = await first<Monitor>(
-    env.DB,
-    "SELECT * FROM monitors WHERE id=?",
-    job.monitor_id
-  );
-  if (
-    !m ||
-    m.paused ||
-    m.config_version !== job.config_version ||
-    now - job.due_at > m.interval_seconds * 2
-  ) {
-    await statement(
-      env.DB,
-      "UPDATE jobs SET state='cancelled',completed_at=?,lease_until=NULL WHERE id=? AND lease_token=?",
-      now,
-      id,
-      lease
-    ).run();
-    return;
-  }
+  let stage = "monitor_lookup";
   try {
+    const m = await first<Monitor>(
+      env.DB,
+      "SELECT * FROM monitors WHERE id=?",
+      job.monitor_id
+    );
+    if (
+      !m ||
+      m.paused ||
+      m.config_version !== job.config_version ||
+      now - job.due_at > m.interval_seconds * 2
+    ) {
+      await statement(
+        env.DB,
+        "UPDATE jobs SET state='cancelled',completed_at=?,lease_until=NULL WHERE id=? AND lease_token=?",
+        now,
+        id,
+        lease
+      ).run();
+      return;
+    }
     let result: CheckResult;
     if (m.kind === "heartbeat") {
       if (
@@ -308,11 +317,13 @@ export async function runJob(env: Env, id: string) {
         reason: "heartbeat_missing",
         diagnostic: reasons.heartbeat_missing
       };
-    } else
-      result = await check(
-        m.kind,
-        await unseal<CheckConfig>(m.config, env.CONFIG_KEY, m.id)
-      );
+    } else {
+      stage = "configuration";
+      const config = await unseal<CheckConfig>(m.config, env.CONFIG_KEY, m.id);
+      stage = "check";
+      result = await check(m.kind, config);
+    }
+    stage = "persistence";
     await record(env, job, m, result, lease, nowSeconds());
   } catch (error) {
     await statement(
@@ -321,7 +332,7 @@ export async function runJob(env: Env, id: string) {
       id,
       lease
     ).run();
-    throw error;
+    throw new JobExecutionError(stage, error);
   }
 }
 
@@ -452,6 +463,10 @@ export async function tick(env: Env, now = nowSeconds()) {
     );
     for (const m of due) {
       const id = `${m.id}:${m.config_version}:${m.next_due}`;
+      const scheduled =
+        m.kind !== "heartbeat" && m.interval_seconds % 60 === 0
+          ? Math.floor(m.next_due / 60) * 60
+          : m.next_due;
       await env.DB.batch([
         statement(
           env.DB,
@@ -465,8 +480,8 @@ export async function tick(env: Env, now = nowSeconds()) {
         statement(
           env.DB,
           "UPDATE monitors SET next_due=? WHERE id=? AND config_version=? AND next_due=?",
-          m.next_due +
-            (Math.floor((now - m.next_due) / m.interval_seconds) + 1) *
+          scheduled +
+            (Math.floor((now - scheduled) / m.interval_seconds) + 1) *
               m.interval_seconds,
           m.id,
           m.config_version,
@@ -524,13 +539,24 @@ export async function consume(batch: MessageBatch<JobMessage>, env: Env) {
       try {
         await runJob(env, message.body.id);
         message.ack();
-      } catch {
-        console.error(
-          JSON.stringify({
-            event: "check_execution_failure",
-            jobId: message.body.id
-          })
-        );
+      } catch (error) {
+        const cause = error instanceof JobExecutionError ? error.cause : error;
+        if (!(error instanceof JobBusyError))
+          console.error(
+            JSON.stringify({
+              event: "check_execution_failure",
+              jobId: message.body.id,
+              stage:
+                error instanceof JobExecutionError
+                  ? error.stage
+                  : "lease_acquisition",
+              errorType: cause instanceof Error ? cause.name : "UnknownError",
+              errorCode:
+                cause instanceof Error
+                  ? cause.message.match(/\b(?:D1|SQLITE)_[A-Z_]+\b/)?.[0]
+                  : undefined
+            })
+          );
         message.retry({ delaySeconds: 30 });
       }
     })

@@ -2,10 +2,10 @@ import { beforeEach, describe, it, expect, vi } from "vitest";
 import { env } from "cloudflare:test";
 import { setup, createProject, createMonitor } from "./setup";
 import { first, rows, statement } from "../src/worker/db";
-import { cleanup, heartbeat, record, runJob, tick } from "../src/worker/engine";
+import { cleanup, consume, heartbeat, record, runJob, tick } from "../src/worker/engine";
 import { displayStatus, observation, sixMonthsAgo } from "../src/worker/state";
 import { deliverNotifications } from "../src/worker/mail";
-import type { CheckResult, Job, Monitor, Window } from "../src/shared/types";
+import type { CheckResult, Job, JobMessage, Monitor, Window } from "../src/shared/types";
 
 const failure: CheckResult = {
   ok: false,
@@ -50,6 +50,58 @@ async function sample(id: string, now: number, result: CheckResult) {
   return job;
 }
 describe("engine and persistence", () => {
+  it("releases a lease after a database lookup fails and retries without exposing error details", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const m = await createMonitor();
+    await statement(env.DB, "INSERT INTO jobs(id,monitor_id,config_version,due_at) VALUES('retryable',?,1,?)", m.id, now).run();
+    const faulty = {
+      ...env,
+      DB: {
+        prepare(sql: string) {
+          if (sql === "SELECT * FROM monitors WHERE id=?")
+            throw new Error("D1_ERROR: private-token");
+          return env.DB.prepare(sql);
+        }
+      } as D1Database
+    };
+    const ack = vi.fn(), retry = vi.fn();
+    const batch = { messages: [{ body: { id: "retryable" }, ack, retry }] } as unknown as MessageBatch<JobMessage>;
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const fetch = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("ok"));
+    try {
+      await consume(batch, faulty);
+      const job = await first<Job>(env.DB, "SELECT * FROM jobs WHERE id='retryable'");
+      expect(job?.state).toBe("pending");
+      expect(job?.lease_until).toBeNull();
+      expect(retry).toHaveBeenCalledWith({ delaySeconds: 30 });
+      expect(ack).not.toHaveBeenCalled();
+      expect(JSON.parse(log.mock.calls[0][0])).toMatchObject({ stage: "monitor_lookup", errorCode: "D1_ERROR" });
+      expect(JSON.stringify(log.mock.calls)).not.toContain("private-token");
+      await consume(batch, env);
+      expect(ack).toHaveBeenCalledOnce();
+      expect((await first<Job>(env.DB, "SELECT * FROM jobs WHERE id='retryable'"))?.state).toBe("completed");
+    } finally {
+      log.mockRestore();
+      fetch.mockRestore();
+    }
+  });
+  it("keeps minute checks running when their original due time falls late in the minute", async () => {
+    const m = await createMonitor({ next_due: 1066 });
+    for (const [index, now] of [1078, 1083, 1149, 1201, 1266, 1322].entries()) {
+      await tick(env, now);
+      expect(await rows(env.DB, "SELECT id FROM jobs WHERE monitor_id=?", m.id))
+        .toHaveLength(index + 1);
+    }
+  });
+  it("aligns longer minute intervals while preserving heartbeat deadlines", async () => {
+    const poll = await createMonitor({ next_due: 1066, interval_seconds: 120 });
+    const pulse = await createMonitor({ kind: "heartbeat", next_due: 1066 });
+    await tick(env, 1078);
+    expect((await first<Monitor>(env.DB, "SELECT * FROM monitors WHERE id=?", poll.id))?.next_due).toBe(1140);
+    expect((await first<Monitor>(env.DB, "SELECT * FROM monitors WHERE id=?", pulse.id))?.next_due).toBe(1126);
+    await tick(env, 1083);
+    expect(await rows(env.DB, "SELECT id FROM jobs WHERE monitor_id=?", poll.id)).toHaveLength(1);
+  });
   it("keeps the check cadence when cron delivery times fluctuate", async () => {
     const m = await createMonitor({ next_due: 1020 });
     const executions = [1028, 1083, 1149, 1201, 1266, 1322];
@@ -125,7 +177,7 @@ describe("engine and persistence", () => {
       ))!;
       expect(updated.last_checked).toBeGreaterThanOrEqual(now);
       expect(displayStatus(updated, [], now)).toBe("up");
-      expect(updated.next_due).toBe(now + 60);
+      expect(updated.next_due).toBe(Math.floor(now / 60) * 60 + 60);
     } finally {
       fetch.mockRestore();
     }
@@ -428,6 +480,16 @@ it("recovers expired reservations and blocks overlapping jobs for the same monit
     now
   ).run();
   await expect(runJob(env, "waiting")).rejects.toThrow("Job busy");
+  const ack = vi.fn(), retry = vi.fn();
+  const log = vi.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    await consume({ messages: [{ body: { id: "waiting" }, ack, retry }] } as unknown as MessageBatch<JobMessage>, env);
+    expect(retry).toHaveBeenCalledWith({ delaySeconds: 30 });
+    expect(ack).not.toHaveBeenCalled();
+    expect(log).not.toHaveBeenCalled();
+  } finally {
+    log.mockRestore();
+  }
   expect(
     (await first<Job>(env.DB, "SELECT * FROM jobs WHERE id='waiting'"))?.state
   ).toBe("pending");
