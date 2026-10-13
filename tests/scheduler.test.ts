@@ -51,20 +51,20 @@ it.each([25, 100])("schedules %i monitors and keeps running without additional c
   await scheduler.ensure();
   await runInDurableObject(scheduler, async (instance, state) => {
     const bindings = (instance as unknown as { env: Env }).env;
-    const publish = vi.spyOn(bindings.CHECKS, "sendBatch").mockResolvedValue({ metadata: { metrics: { backlogCount: 0, backlogBytes: 0 } } });
+    const publish = vi.spyOn(bindings.CHECK_RUNNERS, "getByName").mockReturnValue({ enqueue: vi.fn().mockResolvedValue(undefined) } as unknown as ReturnType<Env["CHECK_RUNNERS"]["getByName"]>);
     try {
       await instance.alarm();
-      expect(publish.mock.calls.flatMap(([messages]) => [...messages])).toHaveLength(count);
+      expect(publish).toHaveBeenCalledTimes(count);
       expect(await first(env.DB, "SELECT COUNT(*) AS count FROM jobs WHERE dispatched_at IS NOT NULL")).toEqual({ count });
       expect(await state.storage.getAlarm()).toBeGreaterThan(Date.now());
       await instance.alarm();
       expect(await first(env.DB, "SELECT COUNT(*) AS count FROM jobs")).toEqual({ count });
-      expect(publish).toHaveBeenCalledOnce();
+      expect(publish).toHaveBeenCalledTimes(count);
       const clock = vi.spyOn(Date, "now").mockReturnValue((now + 60) * 1000);
       try {
         await instance.alarm();
         expect(await first(env.DB, "SELECT COUNT(*) AS count FROM jobs")).toEqual({ count: count * 2 });
-        expect(publish).toHaveBeenCalledTimes(2);
+        expect(publish).toHaveBeenCalledTimes(count * 2);
       } finally {
         clock.mockRestore();
       }
@@ -75,14 +75,15 @@ it.each([25, 100])("schedules %i monitors and keeps running without additional c
   expect(log.mock.calls.map(([value]) => JSON.parse(value)).filter((entry) => entry.event === "engine_cycle").every((entry) => entry.scheduler === "alarm")).toBe(true);
 });
 
-it("keeps a retry alarm after publication fails and dispatches the same job on recovery", async () => {
+it("keeps a retry alarm after a runner fails and dispatches the same job on recovery", async () => {
   await createMonitor({ next_due: Math.floor(Date.now() / 1000) });
   vi.spyOn(console, "error").mockImplementation(() => {});
   vi.spyOn(console, "log").mockImplementation(() => {});
   await scheduler.ensure();
   await runInDurableObject(scheduler, async (instance, state) => {
     const bindings = (instance as unknown as { env: Env }).env;
-    const publish = vi.spyOn(bindings.CHECKS, "sendBatch").mockResolvedValue({ metadata: { metrics: { backlogCount: 0, backlogBytes: 0 } } }).mockRejectedValueOnce(new Error("unavailable"));
+    const enqueue = vi.fn().mockRejectedValueOnce(new Error("unavailable")).mockResolvedValue(undefined);
+    const publish = vi.spyOn(bindings.CHECK_RUNNERS, "getByName").mockReturnValue({ enqueue } as unknown as ReturnType<Env["CHECK_RUNNERS"]["getByName"]>);
     try {
       await instance.alarm();
       const retry = await state.storage.getAlarm();

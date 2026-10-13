@@ -2,30 +2,32 @@
 
 [Español](es.md)
 
-The 100-monitor limit is a configuration capacity, not a guarantee that every check finishes exactly every 60 seconds. Timing depends on scheduler alarms, Queues delivery, D1, and the monitored service's timeout.
+The 100-monitor limit is a configuration capacity, not a guarantee that every check finishes exactly every 60 seconds. Timing depends on scheduler and runner alarms, D1, and the monitored service's timeout.
 
 ## Cycle scheduling
 
-A Durable Object maintains a minute alarm and arms the next one before running the cycle. Cron starts the first alarm after deployment and recovers a missing alarm or one delayed by more than two minutes; it does not run checks directly. A failed cycle schedules a retry within 15 seconds. The normal deployment creates the scheduler binding and migration, without additional variables.
+A Durable Object maintains a minute alarm and arms the next one before running the cycle. Cron starts the first alarm after deployment and recovers a missing alarm or one delayed by more than two minutes; it does not run checks directly. A failed cycle schedules a retry within 15 seconds. The normal deployment creates the scheduler and runner bindings and migrations, without additional variables.
+
+Each monitor has an independent Durable Object runner. The scheduler passes the job identifier through RPC, and the runner persists it before arming its alarm. Normal checks do not wait for Queues. An internal failure retains the job and schedules a retry after 30 seconds; existing leases and identifiers prevent duplicate results. The queue remains available to drain messages from earlier versions.
 
 Alarms can also be delayed; this change reduces reliance on cron but requires production measurements. History retains solid colors based on observed checks; partial coverage for completed segments is available in the tooltip. “No data” indicates unconfirmed status, not service degradation.
 
 ## Engine protections
 
-- Schedules a cycle's jobs in one transaction and publishes them in a batch of up to 100 messages.
+- Schedules a cycle's jobs in one transaction and hands them to up to 100 independent runners.
 - Claims dispatch atomically to prevent duplicate publications between concurrent cycles.
 - Releases dispatch if publication fails. An ambiguous delivery may be repeated; job identifiers and leases still protect results.
 - Cancels expired jobs before dispatch so an old backlog cannot block current checks. Cancelling a job does not check the service or create historical results.
-- Allows up to 20 consumers of five messages, with concurrent checks inside each batch. This is a maximum; Cloudflare adjusts concurrency automatically.
+- Isolates checks per monitor: a slow response does not occupy another monitor’s runner. The Queues consumer retains its limits for earlier messages.
 - Preserves only the valid part of the previous result in history. Time after expiration remains unobserved.
 
 ## Local tests
 
-Run `pnpm exec vitest run tests/engine.test.ts tests/scheduler.test.ts tests/history.test.ts` and `pnpm typecheck`.
+Run `pnpm exec vitest run tests/engine.test.ts tests/scheduler.test.ts tests/runner.test.ts tests/history.test.ts` and `pnpm typecheck`.
 
 Tests cover 25 and 100 monitors, concurrent cycles, recovery after publication failures, an expired backlog, retries without duplicate results, and 100 simultaneous 30-second timeouts. The last test requires persisting all 100 failures within 60 seconds after starting their consumers.
 
-These tests use local D1 and Workers, and simulated HTTP responses. They do not reproduce production Queues delivery times or automatic scaling.
+These tests use local D1 and Workers, and simulated HTTP responses. They do not reproduce production alarm timing or network conditions.
 
 ## Production measurements
 
@@ -33,15 +35,15 @@ After the usual deployment, open **Workers & Pages → your Worker → Observabi
 
 | Event | Fields | Measurement |
 | --- | --- | --- |
-| `engine_cycle` | `schedulerDelaySeconds` | Delay between the scheduled time and the actual cycle start. |
+| `engine_cycle` | `scheduler`, `dispatch`, `schedulerDelaySeconds` | Scheduler type, dispatch path, and delay between the scheduled time and the actual cycle start. |
 | `engine_cycle` | `schedulingMs`, `dispatchMs`, `due`, `dispatched`, `cancelled` | Scheduler time, publication, and jobs discarded due to expiration, pauses, or configuration changes. |
 | `engine_cycle` | `notificationsMs`, `cleanupMs`, `totalMs` | Time spent on the cycle's remaining operations. |
-| `check_completed` | `jobAgeSeconds` | Time from the start of the cycle that created the job to its consumer start; includes scheduling and delivery. |
+| `check_completed` | `jobAgeSeconds` | Time from the start of the cycle that created the job to its consumer start; includes scheduling and runner activation. |
 | `check_completed` | `checkGapSeconds` | Time between a monitor's results, measured when the check finishes and before persistence. |
 | `check_completed` | `checkMs`, `persistenceMs`, `totalMs` | Check, write, and consumer execution durations. |
 | `check_cancelled` | `reason`, `jobAgeSeconds` | Job that reached the consumer and was discarded. |
 | `check_superseded` | `jobId` | Check whose result was not saved because another result, lease, or configuration change superseded it. |
-| `check_execution_failure`, `engine_failure` | `stage`, when present | Internal failures requiring investigation. |
+| `check_execution_failure`, `engine_failure`, `runner_retry`, `scheduler_retry` | `stage`, when present | Internal failures requiring investigation. |
 
 Logs do not include URLs, credentials, response bodies, or private diagnostics. Identifiers let you correlate jobs with their results in D1.
 

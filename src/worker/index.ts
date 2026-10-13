@@ -1,4 +1,5 @@
 export { MonitorScheduler } from "./scheduler";
+export { MonitorRunner } from "./runner";
 import { ZodError } from "zod";
 import type { JobMessage } from "../shared/types";
 import { admin, json, publicPage, receiveHeartbeat } from "./api";

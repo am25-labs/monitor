@@ -806,3 +806,16 @@ it("records five-minute slots across boundaries without expanding a brief outage
   await cleanup(env, 1290);
   expect((await rows(env.DB, "SELECT * FROM short_stats")).length).toBe(2);
 });
+
+it("keeps complete five-minute coverage when independent checks finish with normal jitter", async () => {
+  const start = Date.parse("2026-10-13T21:00:00Z") / 1000;
+  const m = await createMonitor({ last_checked: start, last_ok: 1 });
+  for (const elapsed of [61, 125, 182, 245, 306, 364, 428, 485, 543, 605])
+    await sample(m.id, start + elapsed, success);
+  expect(await rows(env.DB,
+    "SELECT slot,observed_seconds,up_seconds FROM short_stats WHERE monitor_id=? AND slot<'2026-10-13T21:10' ORDER BY slot", m.id))
+    .toEqual([
+      { slot: "2026-10-13T21:00", observed_seconds: 300, up_seconds: 300 },
+      { slot: "2026-10-13T21:05", observed_seconds: 300, up_seconds: 300 }
+    ]);
+});

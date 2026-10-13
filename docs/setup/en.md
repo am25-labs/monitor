@@ -75,7 +75,7 @@ You need a GitHub account with Actions enabled, a Cloudflare account with Worker
 
 Choose a dedicated subdomain, such as `monitor.example.com`, that does not serve another application. You do not need a VPS to host Monitor. For the local steps, install Git, Node.js 22.14 or later, and the pnpm version specified in `package.json`.
 
-Review limits and usage before choosing your plan. At one-minute intervals, 100 monitors produce around 144,000 checks per day and around 26 million over six months, plus indexes and aggregates. See the [D1 limits](https://developers.cloudflare.com/d1/platform/limits/) and [Queues pricing](https://developers.cloudflare.com/queues/platform/pricing/).
+Review limits and usage before choosing your plan. At one-minute intervals, 100 monitors produce around 144,000 checks per day and around 26 million over six months, plus indexes and aggregates. See the [D1 limits](https://developers.cloudflare.com/d1/platform/limits/), [Durable Objects pricing](https://developers.cloudflare.com/durable-objects/platform/pricing/), and [Queues pricing](https://developers.cloudflare.com/queues/platform/pricing/).
 
 ## 2. Prepare your repository and choose a version
 
@@ -197,7 +197,7 @@ Edit `wrangler.jsonc`, replacing the original installation values:
 | `queues.producers[0].queue` | Your queue name |
 | `queues.consumers[0].queue` | The same queue name |
 
-Keep the `DB`, `CHECKS`, `ASSETS`, and `SCHEDULER` bindings, `migrations_dir`, `run_worker_first`, the every-minute cron, and consumer limits. Keep `workers_dev` and `preview_urls` set to `false`. Do not add your email to `vars`: `ACCESS_EMAIL` is supplied from GitHub.
+Keep the `DB`, `CHECKS`, `ASSETS`, `SCHEDULER`, and `CHECK_RUNNERS` bindings, `migrations_dir`, `run_worker_first`, the every-minute cron, and consumer limits. Keep `workers_dev` and `preview_urls` set to `false`. Do not add your email to `vars`: `ACCESS_EMAIL` is supplied from GitHub.
 
 The Custom Domain is connected during deployment. Cloudflare manages its DNS and certificate; you do not need to point it to your VPS IP address. If that hostname already has a CNAME, resolve the conflict before publishing, without affecting other services' records. See [Custom Domains](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/).
 
@@ -240,7 +240,7 @@ Review your values and move the changes to `main` in your repository. That push 
 
 The workflow installs with the lockfile, checks TypeScript, runs tests, builds the interface, applies D1 migrations, and deploys the Worker, assets, and secrets. An error stops subsequent steps; a failed migration prevents publishing the Worker. Deployments run sequentially.
 
-Wait for Actions to finish successfully. In Cloudflare, check that your Worker has its Custom Domain, cron, the `SCHEDULER` binding, database, and queue attached. Open `https://monitor.example.com/app/`, sign in with the authorized email, and confirm the overview shows a recent engine execution.
+Wait for Actions to finish successfully. In Cloudflare, check that your Worker has its Custom Domain, cron, the `SCHEDULER` and `CHECK_RUNNERS` bindings, database, and queue attached. Open `https://monitor.example.com/app/`, sign in with the authorized email, and confirm the overview shows a recent engine execution.
 
 ## 9. Enable notifications
 
@@ -314,7 +314,7 @@ pnpm dev
 
 Open `http://localhost:5173/app/`. `pnpm dev` creates `.dev.vars` from the example if it does not exist. The database, queue, and access are local; all notification channels are intercepted. HTTP/TCP targets still receive checks: use test services. Sign out is hidden because there is no Access session.
 
-Trigger the local cron manually to start the scheduler; alarms continue subsequent cycles. Also preserve `durable_objects` and `migrations` in Wrangler. Deployment creates the Durable Object automatically, without additional secrets. Validation does not require a production build:
+Trigger the local cron manually to start the scheduler; alarms continue subsequent cycles. Also preserve `durable_objects` and `migrations` in Wrangler. Deployment creates the Durable Object scheduler and runners automatically, without additional secrets. Validation does not require a production build:
 
 ```sh
 curl http://localhost:8787/__scheduled

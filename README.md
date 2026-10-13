@@ -16,7 +16,7 @@ AM25 Monitor te permite supervisar tus sitios, APIs y procesos en segundo plano 
 - Páginas públicas con selección de servicios e historial de 24 horas, 7 días o 90 días.
 - Dashboard y páginas públicas en español o inglés, con tema claro y oscuro.
 
-React, Vite, TypeScript y shadcn/ui forman la interfaz. Cloudflare Workers ejecuta la aplicación; D1 almacena los datos; Queues distribuye las comprobaciones; un Durable Object programa los ciclos; Access protege el dashboard. No necesitas alojarlo en tu VPS ni configurar R2. El despliegue configura el Durable Object automáticamente.
+React, Vite, TypeScript y shadcn/ui forman la interfaz. Cloudflare Workers ejecuta la aplicación; D1 almacena los datos; Durable Objects programan los ciclos y ejecutan las comprobaciones por monitor; Queues permite procesar mensajes pendientes de versiones anteriores; Access protege el dashboard. No necesitas alojarlo en tu VPS ni configurar R2. El despliegue configura los Durable Objects automáticamente.
 
 ### Instalar
 
@@ -56,7 +56,7 @@ AM25 Monitor lets you monitor websites, APIs, and background processes from Clou
 - Public pages with selected services and 24-hour, 7-day, or 90-day history.
 - Dashboard and public pages in Spanish or English, with light and dark themes.
 
-React, Vite, TypeScript, and shadcn/ui power the interface. Cloudflare Workers runs the application; D1 stores data; Queues distributes checks; a Durable Object schedules cycles; Access protects the dashboard. You do not need to host it on your VPS or configure R2. Deployment configures the Durable Object automatically.
+React, Vite, TypeScript, and shadcn/ui power the interface. Cloudflare Workers runs the application; D1 stores data; Durable Objects schedule cycles and run checks per monitor; Queues can process pending messages from earlier versions; Access protects the dashboard. You do not need to host it on your VPS or configure R2. Deployment configures the Durable Objects automatically.
 
 ### Install
 

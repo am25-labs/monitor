@@ -451,7 +451,7 @@ export async function cleanup(env: Env, now: number) {
   ]);
 }
 
-async function dispatchJobs(env: Env, now: number) {
+async function dispatchJobs(env: Env, now: number, direct: boolean) {
   const [cancelled, claimed] = await env.DB.batch<Job>([
     statement(env.DB,
       `UPDATE jobs SET state='cancelled',completed_at=?,lease_until=NULL
@@ -470,7 +470,15 @@ async function dispatchJobs(env: Env, now: number) {
   const jobs = claimed.results;
   if (!jobs.length) return { dispatched: 0, cancelled: cancelled.meta.changes };
   try {
-    await env.CHECKS.sendBatch(jobs.map((job) => ({ body: { id: job.id } })), { delaySeconds: 0 });
+    if (direct) {
+      const dispatched = await Promise.allSettled(jobs.map((job) =>
+        env.CHECK_RUNNERS.getByName(job.monitor_id).enqueue(job.id)
+      ));
+      const failed = dispatched.find((result) => result.status === "rejected");
+      if (failed?.status === "rejected") throw failed.reason;
+    } else {
+      await env.CHECKS.sendBatch(jobs.map((job) => ({ body: { id: job.id } })), { delaySeconds: 0 });
+    }
   } catch (error) {
     await env.DB.batch(jobs.map((job) => statement(env.DB,
       "UPDATE jobs SET dispatched_at=NULL WHERE id=? AND dispatched_at=?",
@@ -540,7 +548,7 @@ export async function tick(env: Env, now = nowSeconds(), scheduledAt = now, sche
     if (schedule.length) await env.DB.batch(schedule);
     const schedulingMs = Date.now() - started;
     const dispatchStarted = Date.now();
-    const dispatch = await dispatchJobs(env, now);
+    const dispatch = await dispatchJobs(env, now, scheduler === "alarm");
     const dispatchMs = Date.now() - dispatchStarted;
     const notificationsStarted = Date.now();
     await deliverNotifications(env, now);
@@ -554,7 +562,7 @@ export async function tick(env: Env, now = nowSeconds(), scheduledAt = now, sche
       nowSeconds()
     ).run();
     console.log(JSON.stringify({
-      event: "engine_cycle", scheduler, schedulerDelaySeconds: Math.max(0, now - scheduledAt),
+      event: "engine_cycle", scheduler, dispatch: scheduler === "alarm" ? "durable" : "queue", schedulerDelaySeconds: Math.max(0, now - scheduledAt),
       cronDelaySeconds: scheduler === "cron" ? Math.max(0, now - scheduledAt) : undefined,
       due: due.length, ...dispatch, schedulingMs, dispatchMs,
       notificationsMs, cleanupMs, totalMs: Date.now() - started

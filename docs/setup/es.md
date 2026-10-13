@@ -75,7 +75,7 @@ Necesitas una cuenta de GitHub con Actions habilitado, una cuenta de Cloudflare 
 
 Elige un subdominio dedicado, por ejemplo `monitor.example.com`, que no sirva otra aplicación. No necesitas un VPS para alojar Monitor. Para los pasos locales, instala Git, Node.js 22.14 o superior y la versión de pnpm indicada en `package.json`.
 
-Revisa los límites y el consumo antes de elegir tu plan. A un minuto, 100 monitores generan unas 144,000 comprobaciones diarias y unos 26 millones en seis meses, además de índices y agregados. Consulta los [límites de D1](https://developers.cloudflare.com/d1/platform/limits/) y los [precios de Queues](https://developers.cloudflare.com/queues/platform/pricing/).
+Revisa los límites y el consumo antes de elegir tu plan. A un minuto, 100 monitores generan unas 144,000 comprobaciones diarias y unos 26 millones en seis meses, además de índices y agregados. Consulta los [límites de D1](https://developers.cloudflare.com/d1/platform/limits/), los [precios de Durable Objects](https://developers.cloudflare.com/durable-objects/platform/pricing/) y los [precios de Queues](https://developers.cloudflare.com/queues/platform/pricing/).
 
 ## 2. Preparar tu repositorio y elegir una versión
 
@@ -197,7 +197,7 @@ Edita `wrangler.jsonc` reemplazando los valores de la instalación original:
 | `queues.producers[0].queue` | Nombre de tu cola |
 | `queues.consumers[0].queue` | El mismo nombre de cola |
 
-Conserva los bindings `DB`, `CHECKS`, `ASSETS` y `SCHEDULER`, `migrations_dir`, `run_worker_first`, el cron por minuto y los límites de consumidores. Mantén `workers_dev` y `preview_urls` en `false`. No añadas el correo a `vars`: `ACCESS_EMAIL` se suministra desde GitHub.
+Conserva los bindings `DB`, `CHECKS`, `ASSETS`, `SCHEDULER` y `CHECK_RUNNERS`, `migrations_dir`, `run_worker_first`, el cron por minuto y los límites de consumidores. Mantén `workers_dev` y `preview_urls` en `false`. No añadas el correo a `vars`: `ACCESS_EMAIL` se suministra desde GitHub.
 
 El Custom Domain se conecta durante el despliegue. Cloudflare administra su DNS y certificado; no necesitas apuntarlo a la IP de tu VPS. Si hay un CNAME existente en ese hostname, resuelve el conflicto antes de publicar, sin afectar registros de otros servicios. Consulta [Custom Domains](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/).
 
@@ -240,7 +240,7 @@ Revisa los valores y lleva los cambios a `main` en tu repositorio. Ese push acti
 
 El workflow instala con el lockfile, verifica TypeScript, ejecuta pruebas, compila la interfaz, aplica migraciones D1 y despliega Worker, assets y secretos. Un error detiene los pasos siguientes; un fallo de migración impide publicar el Worker. Los despliegues se ejecutan en serie.
 
-Espera a que Actions termine correctamente. En Cloudflare, comprueba que tu Worker tiene el Custom Domain, el cron, el binding `SCHEDULER`, la base y la cola asociados. Abre `https://monitor.example.com/app/`, inicia sesión con el correo autorizado y confirma que el overview muestra una ejecución reciente del motor.
+Espera a que Actions termine correctamente. En Cloudflare, comprueba que tu Worker tiene el Custom Domain, el cron, los bindings `SCHEDULER` y `CHECK_RUNNERS`, la base y la cola asociados. Abre `https://monitor.example.com/app/`, inicia sesión con el correo autorizado y confirma que el overview muestra una ejecución reciente del motor.
 
 ## 9. Activar las notificaciones
 
@@ -314,7 +314,7 @@ pnpm dev
 
 Abre `http://localhost:5173/app/`. `pnpm dev` crea `.dev.vars` desde el ejemplo si no existe. La base, la cola y el acceso son locales; todos los canales de notificaciones se interceptan. Los destinos HTTP/TCP sí reciben comprobaciones: usa servicios de prueba. El logout no aparece porque no hay sesión de Access.
 
-El cron local se activa manualmente para iniciar el programador; las alarmas continúan los ciclos. Conserva también `durable_objects` y `migrations` en Wrangler. El despliegue crea el Durable Object automáticamente, sin secretos adicionales. La validación no requiere un build de producción:
+El cron local se activa manualmente para iniciar el programador; las alarmas continúan los ciclos. Conserva también `durable_objects` y `migrations` en Wrangler. El despliegue crea el programador y los ejecutores Durable Object automáticamente, sin secretos adicionales. La validación no requiere un build de producción:
 
 ```sh
 curl http://localhost:8787/__scheduled

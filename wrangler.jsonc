@@ -71,6 +71,10 @@
       {
         "name": "SCHEDULER",
         "class_name": "MonitorScheduler"
+      },
+      {
+        "name": "CHECK_RUNNERS",
+        "class_name": "MonitorRunner"
       }
     ]
   },
@@ -79,6 +83,12 @@
       "tag": "scheduler-1",
       "new_sqlite_classes": [
         "MonitorScheduler"
+      ]
+    },
+    {
+      "tag": "runners-1",
+      "new_sqlite_classes": [
+        "MonitorRunner"
       ]
     }
   ]
