@@ -137,6 +137,12 @@ export async function admin(
     if ((method === "POST" && !id) || (method === "PUT" && id && !action))
       return json(await saveIncident(env, await body(request), now, id), id ? 200 : 201);
   }
+  if (resource === "monitor-history" && method === "GET") {
+    return json({
+      updatedAt: now,
+      short: await rows(env.DB, "SELECT monitor_id,slot,observed_seconds,up_seconds,degraded_count FROM short_stats WHERE slot>=? ORDER BY slot", new Date((Math.floor(now / 300) * 300 - 11 * 300) * 1000).toISOString().slice(0, 16))
+    });
+  }
   if (resource === "snapshot" && method === "GET") {
     const [
       projects,
@@ -337,6 +343,15 @@ export async function admin(
     }
   }
   if (resource === "monitors") {
+    if (action === "history" && method === "GET") {
+      await monitor(env, id);
+      const [stats, hourly, short] = await Promise.all([
+        rows(env.DB, "SELECT day,observed_seconds,up_seconds,degraded_count FROM daily_stats WHERE monitor_id=? AND day>=? ORDER BY day", id, new Date((now - 89 * 86400) * 1000).toISOString().slice(0, 10)),
+        rows(env.DB, "SELECT hour,observed_seconds,up_seconds,degraded_count FROM hourly_stats WHERE monitor_id=? AND hour>=? ORDER BY hour", id, new Date((now - 167 * 3600) * 1000).toISOString().slice(0, 13)),
+        rows(env.DB, "SELECT slot,observed_seconds,up_seconds,degraded_count FROM short_stats WHERE monitor_id=? AND slot>=? ORDER BY slot", id, new Date((Math.floor(now / 300) * 300 - 287 * 300) * 1000).toISOString().slice(0, 16))
+      ]);
+      return json({ updatedAt: now, stats, hourly, short });
+    }
     if (action === "results" && method === "GET") {
       await monitor(env, id);
       const params = new URL(request.url).searchParams,

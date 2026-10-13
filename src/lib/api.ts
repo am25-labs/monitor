@@ -133,6 +133,7 @@ export function useRefresh<T>(path: string) {
   useEffect(() => {
     setData(null);
     setError("");
+    if (!path) return;
     void refresh();
     const timer = setInterval(() => void refresh(), 30000);
     return () => {

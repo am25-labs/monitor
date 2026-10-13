@@ -1,4 +1,6 @@
-import { overallStatus, historyStatus, type PublicIncidentView } from "../shared/incidents";
+import { HistoryStrip } from "../components/monitor-timeline";
+import { historySegments } from "../shared/history";
+import { overallStatus, type PublicIncidentView } from "../shared/incidents";
 import { IncidentCard } from "../components/incident-card";
 import { IncidentArchive } from "../components/incident-archive";
 import { useLocale, LocaleProvider } from "../lib/locale";
@@ -53,36 +55,12 @@ function History({
   range: HistoryRange;
   updatedAt: number;
 }) {
-  const { t, date, availability } = useLocale();
+  const { t, availability } = useLocale();
   const granular = range !== "90d";
-  const count = range === "24h" ? 288 : range === "7d" ? 168 : 90;
-  const stride = range === "24h" ? 300000 : range === "7d" ? 3600000 : 86400000;
-  const last = Math.floor((updatedAt * 1000) / stride) * stride;
-  const source =
-    range === "24h"
-      ? short.map((stat) => ({ ...stat, day: stat.slot }))
-      : range === "7d"
-        ? hourly.map((stat) => ({ ...stat, day: stat.hour }))
-        : stats;
-  const byDay = new Map(source.map((stat) => [stat.day, stat]));
-  const days = Array.from({ length: count }, (_, index) => {
-    const start = last - (count - 1 - index) * stride;
-    const day = new Date(start)
-      .toISOString()
-      .slice(0, range === "24h" ? 16 : range === "7d" ? 13 : 10);
-    const stat = byDay.get(day);
-    const state = historyStatus(stat);
-    return { day, start, stat, state };
-  });
-  const observed = days.flatMap(({ stat }) =>
-    stat?.observed_seconds ? [stat] : []
-  );
-  const labels: Record<string, string> = {
-    none: t("Sin registros"),
-    up: t("Sin interrupciones registradas"),
-    down: t("Interrupción durante todo el tiempo observado"),
-    degraded: t("Hubo degradación por latencia")
-  };
+  const history = { stats, hourly, short, updatedAt };
+  const days = historySegments(history, range);
+  const count = days.length;
+  const observed = days.flatMap(({ stat }) => stat?.observed_seconds ? [stat] : []);
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
@@ -99,36 +77,7 @@ function History({
           {t("Disponibilidad observada:")} {availability(observed)}
         </p>
       </div>
-      <div className="overflow-x-auto">
-        <div
-          className={cn("grid", granular ? "gap-px" : "gap-0.5")}
-          style={{
-            gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))`,
-            minWidth: granular ? count * 2 : undefined
-          }}
-          role="list"
-          aria-label={t("Historial, de más antiguo a más reciente")}
-        >
-          {days.map(({ day, start, stat, state }) => {
-            const label = `${granular ? date(start / 1000) : `${day} (UTC)`}: ${labels[state]}${stat?.observed_seconds ? ` · ${availability([stat])} · ${t("{outage} s de interrupción / {observed} s observados", { outage: Math.round(stat.observed_seconds - stat.up_seconds), observed: Math.round(stat.observed_seconds) })}` : ""}`;
-            return (
-              <span
-                key={day}
-                role="listitem"
-                aria-label={label}
-                title={label}
-                className={cn(
-                  "h-8 rounded-sm",
-                  state === "none" && "bg-muted",
-                  state === "up" && "bg-success",
-                  state === "down" && "bg-destructive",
-                  state === "degraded" && "bg-warning"
-                )}
-              />
-            );
-          })}
-        </div>
-      </div>
+      <HistoryStrip {...history} range={range} />
       <div className="flex justify-between text-xs text-muted-foreground">
         <span>{t("Inicio del período")}</span>
         <span>{granular ? t("Ahora") : t("Día más reciente")}</span>

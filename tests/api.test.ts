@@ -465,3 +465,27 @@ it("publishes only explicitly included monitors within the selected groups", asy
   ).run();
   expect((await read()).monitors).toEqual([]);
 });
+
+it("returns bounded dashboard histories with monitor isolation and Access protection", async () => {
+  const a = await createMonitor(), b = await createMonitor();
+  const now = Math.floor(Date.now() / 1000);
+  const slot = new Date(Math.floor(now / 300) * 300000).toISOString().slice(0, 16);
+  const oldSlot = new Date((now - 2 * 86400) * 1000).toISOString().slice(0, 16);
+  for (const id of [a.id, b.id]) {
+    for (const time of [slot, oldSlot]) {
+      await statement(env.DB, "INSERT INTO short_stats(monitor_id,slot,observed_seconds,up_seconds,degraded_count) VALUES(?,?,300,300,1)", id, time).run();
+    }
+  }
+  const get = (path: string) => worker.fetch(new Request(`http://localhost/api/v1/admin/${path}`), env);
+  const recent = await get("monitor-history");
+  expect(recent.status).toBe(200);
+  const recentData = await recent.json() as { short: { monitor_id: string; slot: string }[] };
+  expect(recentData.short.map((stat) => stat.monitor_id).sort()).toEqual([a.id, b.id].sort());
+  expect(recentData.short.every((stat) => stat.slot === slot)).toBe(true);
+  const detail = await get(`monitors/${a.id}/history`);
+  expect(await detail.json()).toMatchObject({ short: [{ slot, observed_seconds: 300, up_seconds: 300, degraded_count: 1 }] });
+  expect((await get("monitors/missing/history")).status).toBe(404);
+  for (const path of ["monitor-history", `monitors/${a.id}/history`]) {
+    expect((await worker.fetch(new Request(`http://localhost/api/v1/admin/${path}`), { ...env, ENVIRONMENT: "production", APP_ORIGIN: "http://localhost" })).status).toBe(401);
+  }
+});

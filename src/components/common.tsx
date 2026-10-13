@@ -23,11 +23,13 @@ export const statusLabels: Record<Status, string> = {
   paused: "Pausado",
   maintenance: "Mantenimiento"
 };
-export function StatusBadge({ status }: { status: Status }) {
+export function StatusBadge({ status, compact = false }: { status: Status; compact?: boolean }) {
   const { t } = useLocale();
   return (
     <Badge
       variant="outline"
+      aria-label={compact ? t(statusLabels[status]) : undefined}
+      title={compact ? t(statusLabels[status]) : undefined}
       className={cn(
         status === "up" && "text-success",
         status === "down" && "text-destructive",
@@ -35,7 +37,7 @@ export function StatusBadge({ status }: { status: Status }) {
       )}
     >
       <span className="size-1.5 rounded-full bg-current" />
-      {t(statusLabels[status])}
+      {!compact && t(statusLabels[status])}
     </Badge>
   );
 }

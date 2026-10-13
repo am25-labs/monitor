@@ -139,3 +139,15 @@ export interface Job {
 export interface JobMessage {
   id: string;
 }
+
+export interface HistoryStat {
+  observed_seconds: number;
+  up_seconds: number;
+  degraded_count?: number;
+}
+export interface MonitorHistory {
+  updatedAt: number;
+  stats: (HistoryStat & { day: string })[];
+  hourly: (HistoryStat & { hour: string })[];
+  short: (HistoryStat & { slot: string })[];
+}

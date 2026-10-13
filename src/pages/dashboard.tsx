@@ -27,6 +27,8 @@ import { cn } from "../lib/utils";
 import { Notice, Nothing, Panel, StatusBadge } from "../components/common";
 import { MonitorForm } from "../components/monitor-form";
 import { ResourceForm, type Resource } from "../components/resource-form";
+import { MonitorTimeline, HistoryStrip } from "../components/monitor-timeline";
+import type { MonitorHistory } from "../shared/types";
 import { History } from "../components/history";
 import { Button, buttonVariants } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -61,7 +63,7 @@ export function Dashboard({
 function DashboardView({
   data,
   error,
-  refresh,
+  refresh: refreshSnapshot,
   theme,
   toggleTheme
 }: {
@@ -81,6 +83,17 @@ function DashboardView({
       resource: string;
       id: string;
     } | null>(null);
+  const recent = useRefresh<{ updatedAt: number; short: (MonitorHistory["short"][number] & { monitor_id: string })[] }>(
+    section === "monitors" && !id ? "admin/monitor-history" : ""
+  );
+  const [historyRevision, setHistoryRevision] = useState(0);
+  async function refresh() {
+    await Promise.all([
+      refreshSnapshot(),
+      section === "monitors" && !id ? recent.refresh() : Promise.resolve()
+    ]);
+    setHistoryRevision((revision) => revision + 1);
+  }
   const [filter, setFilter] = useState(""),
     [project, setProject] = useState(""),
     [group, setGroup] = useState("");
@@ -440,6 +453,7 @@ function DashboardView({
                     </div>
                   </dl>
                 </Panel>
+                <MonitorTimeline key={`timeline-${selected.id}`} monitor={selected} revision={historyRevision} />
                 <History key={selected.id} monitor={selected} />
               </>
             )}
@@ -492,6 +506,7 @@ function DashboardView({
                     {t("Nuevo monitor")}
                   </Button>
                 </div>
+                <Notice message={recent.error} destructive />
                 <Panel
                   title={t("Monitores")}
                   description={t("{count} de 100 configurados", {
@@ -505,6 +520,7 @@ function DashboardView({
                           <TableHead>{t("Nombre")}</TableHead>
                           <TableHead>{t("Proyecto / grupo")}</TableHead>
                           <TableHead>{t("Estado")}</TableHead>
+                          <TableHead>{t("Última hora")}</TableHead>
                           <TableHead>{t("Latencia")}</TableHead>
                           <TableHead>{t("Última comprobación")}</TableHead>
                         </TableRow>
@@ -533,7 +549,12 @@ function DashboardView({
                                 : ""}
                             </TableCell>
                             <TableCell>
-                              <StatusBadge status={m.display_status} />
+                              <StatusBadge status={m.display_status} compact />
+                            </TableCell>
+                            <TableCell>
+                              <div className="w-40">
+                                {recent.data ? <HistoryStrip range="1h" updatedAt={recent.data.updatedAt} short={recent.data.short.filter((stat) => stat.monitor_id === m.id)} stats={[]} hourly={[]} compact /> : <Skeleton className="h-5 w-full" />}
+                              </div>
                             </TableCell>
                             <TableCell>
                               {m.last_latency === null
