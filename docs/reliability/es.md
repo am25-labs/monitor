@@ -8,7 +8,7 @@ El límite de 100 monitores es una capacidad de configuración, no una garantía
 
 Un Durable Object mantiene una alarma por minuto y prepara la siguiente antes de ejecutar el ciclo. El cron inicia la primera alarma tras el despliegue y recupera una alarma ausente o atrasada más de dos minutos; no ejecuta las comprobaciones directamente. Un fallo del ciclo programa un reintento en un máximo de 15 segundos. Las migraciones y el binding del programador se crean con el despliegue habitual, sin variables adicionales.
 
-Las alarmas también pueden retrasarse; este cambio reduce la dependencia del cron, pero debe medirse en producción. El historial marca con borde discontinuo los segmentos cerrados con cobertura parcial, conservando su color según las comprobaciones observadas. “Sin datos” indica estado sin confirmar, no degradación del servicio.
+Las alarmas también pueden retrasarse; este cambio reduce la dependencia del cron, pero debe medirse en producción. El historial conserva colores sólidos según las comprobaciones observadas; la cobertura parcial de los segmentos cerrados se puede consultar en el tooltip. “Sin datos” indica estado sin confirmar, no degradación del servicio.
 
 ## Qué protege el motor
 

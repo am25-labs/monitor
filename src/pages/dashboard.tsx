@@ -549,11 +549,11 @@ function DashboardView({
                                 : ""}
                             </TableCell>
                             <TableCell>
-                              <StatusBadge status={m.display_status} compact />
+                              <StatusBadge status={m.display_status} />
                             </TableCell>
                             <TableCell>
                               <div className="w-40">
-                                {recent.data ? <HistoryStrip range="1h" updatedAt={recent.data.updatedAt} short={recent.data.short.filter((stat) => stat.monitor_id === m.id)} stats={[]} hourly={[]} compact /> : <Skeleton className="h-5 w-full" />}
+                                {recent.data ? <HistoryStrip range="1h" updatedAt={recent.data.updatedAt} short={recent.data.short.filter((stat) => stat.monitor_id === m.id)} stats={[]} hourly={[]} compact /> : <Skeleton className="h-4 w-18" />}
                               </div>
                             </TableCell>
                             <TableCell>

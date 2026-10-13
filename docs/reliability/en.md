@@ -8,7 +8,7 @@ The 100-monitor limit is a configuration capacity, not a guarantee that every ch
 
 A Durable Object maintains a minute alarm and arms the next one before running the cycle. Cron starts the first alarm after deployment and recovers a missing alarm or one delayed by more than two minutes; it does not run checks directly. A failed cycle schedules a retry within 15 seconds. The normal deployment creates the scheduler binding and migration, without additional variables.
 
-Alarms can also be delayed; this change reduces reliance on cron but requires production measurements. History uses a dashed outline for completed segments with partial coverage, retaining their color based on observed checks. “No data” indicates unconfirmed status, not service degradation.
+Alarms can also be delayed; this change reduces reliance on cron but requires production measurements. History retains solid colors based on observed checks; partial coverage for completed segments is available in the tooltip. “No data” indicates unconfirmed status, not service degradation.
 
 ## Engine protections
 
