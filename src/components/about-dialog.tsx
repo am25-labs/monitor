@@ -48,7 +48,7 @@ export function AboutDialog() {
         <AboutLogo />
         <div className="flex flex-col gap-2">
           <CardTitle><h2>{product.name}</h2></CardTitle>
-          <CardDescription>{copyright}</CardDescription>
+          <CardDescription>{copyright} · {t("Versión")} {product.version}</CardDescription>
         </div>
       </CardHeader>
       <CardFooter className="justify-center border-t-0 bg-card">
@@ -66,9 +66,8 @@ export function AboutDialog() {
                 <AboutLogo />
                 <div className="mt-3 flex flex-col gap-2">
                   <Dialog.Title className="text-lg font-medium">{product.name}</Dialog.Title>
-                  <Dialog.Description className="text-sm text-muted-foreground">{copyright}</Dialog.Description>
+                  <Dialog.Description className="text-xs text-muted-foreground">{t("Versión")} {product.version}</Dialog.Description>
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">{t("Versión")} {product.version}</p>
               </div>
               <div className="flex flex-col gap-6 px-6 sm:px-8 py-6">
                 <div className="grid gap-3 sm:grid-cols-2">
