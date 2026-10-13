@@ -65,5 +65,21 @@
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1
-  }
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SCHEDULER",
+        "class_name": "MonitorScheduler"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "scheduler-1",
+      "new_sqlite_classes": [
+        "MonitorScheduler"
+      ]
+    }
+  ]
 }

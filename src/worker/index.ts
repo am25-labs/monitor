@@ -1,8 +1,9 @@
+export { MonitorScheduler } from "./scheduler";
 import { ZodError } from "zod";
 import type { JobMessage } from "../shared/types";
 import { admin, json, publicPage, receiveHeartbeat } from "./api";
 import { authorize, requireOrigin } from "./auth";
-import { consume, tick } from "./engine";
+import { consume } from "./engine";
 
 async function route(request: Request, env: Env) {
   const url = new URL(request.url),
@@ -87,8 +88,8 @@ export default {
       secured.headers.set("Cache-Control", "no-store");
     return secured;
   },
-  async scheduled(controller: ScheduledController, env: Env) {
-    await tick(env, undefined, Math.floor(controller.scheduledTime / 1000));
+  async scheduled(_controller: ScheduledController, env: Env) {
+    await env.SCHEDULER.getByName("engine").ensure();
   },
   async queue(batch: MessageBatch<JobMessage>, env: Env) {
     await consume(batch, env);

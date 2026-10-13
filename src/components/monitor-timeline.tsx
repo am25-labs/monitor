@@ -25,12 +25,13 @@ export function HistoryStrip({ range, compact = false, ...history }: MonitorHist
         role="list"
         aria-label={t("Historial, de más antiguo a más reciente")}
       >
-        {segments.map(({ start, stat, state }) => {
+        {segments.map(({ start, stat, state, coverage, partial }) => {
           const time = range === "90d" ? `${new Date(start * 1000).toISOString().slice(0, 10)} (UTC)` : date(start);
-          const label = `${time}: ${labels[state]}${stat?.observed_seconds ? ` · ${availability([stat])} · ${t("{outage} s de interrupción / {observed} s observados", { outage: Math.round(stat.observed_seconds - stat.up_seconds), observed: Math.round(stat.observed_seconds) })}` : ""}`;
+          const label = `${time}: ${labels[state]}${stat?.observed_seconds ? ` · ${availability([stat])} · ${t("{outage} s de interrupción / {observed} s observados", { outage: Math.round(stat.observed_seconds - stat.up_seconds), observed: Math.round(stat.observed_seconds) })}` : ""}${partial ? ` · ${t("Cobertura parcial: {coverage}%", { coverage: coverage.toFixed(1) })}` : ""}`;
           return <span key={start} role="listitem" aria-label={label} title={label} className={cn(
             "rounded-sm",
             compact ? "h-5" : "h-8",
+            partial && "outline outline-1 outline-dashed -outline-offset-1 outline-foreground",
             state === "none" && "bg-muted",
             state === "up" && "bg-success",
             state === "down" && "bg-destructive",
@@ -38,6 +39,9 @@ export function HistoryStrip({ range, compact = false, ...history }: MonitorHist
           )} />;
         })}
       </div>
+      {!compact && segments.some((segment) => segment.partial) && (
+        <p className="mt-2 text-xs text-muted-foreground">{t("Borde discontinuo: cobertura parcial. El color corresponde al tiempo observado.")}</p>
+      )}
     </div>
   );
 }

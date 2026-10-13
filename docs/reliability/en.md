@@ -2,7 +2,13 @@
 
 [Español](es.md)
 
-The 100-monitor limit is a configuration capacity, not a guarantee that every check finishes exactly every 60 seconds. Timing depends on cron, Queues delivery, D1, and the monitored service's timeout.
+The 100-monitor limit is a configuration capacity, not a guarantee that every check finishes exactly every 60 seconds. Timing depends on scheduler alarms, Queues delivery, D1, and the monitored service's timeout.
+
+## Cycle scheduling
+
+A Durable Object maintains a minute alarm and arms the next one before running the cycle. Cron starts the first alarm after deployment and recovers a missing alarm or one delayed by more than two minutes; it does not run checks directly. A failed cycle schedules a retry within 15 seconds. The normal deployment creates the scheduler binding and migration, without additional variables.
+
+Alarms can also be delayed; this change reduces reliance on cron but requires production measurements. History uses a dashed outline for completed segments with partial coverage, retaining their color based on observed checks. “No data” indicates unconfirmed status, not service degradation.
 
 ## Engine protections
 
@@ -15,7 +21,7 @@ The 100-monitor limit is a configuration capacity, not a guarantee that every ch
 
 ## Local tests
 
-Run `pnpm exec vitest run tests/engine.test.ts` and `pnpm typecheck`.
+Run `pnpm exec vitest run tests/engine.test.ts tests/scheduler.test.ts tests/history.test.ts` and `pnpm typecheck`.
 
 Tests cover 25 and 100 monitors, concurrent cycles, recovery after publication failures, an expired backlog, retries without duplicate results, and 100 simultaneous 30-second timeouts. The last test requires persisting all 100 failures within 60 seconds after starting their consumers.
 
@@ -27,7 +33,7 @@ After the usual deployment, open **Workers & Pages → your Worker → Observabi
 
 | Event | Fields | Measurement |
 | --- | --- | --- |
-| `engine_cycle` | `cronDelaySeconds` | Delay between the scheduled time and the actual cycle start. |
+| `engine_cycle` | `schedulerDelaySeconds` | Delay between the scheduled time and the actual cycle start. |
 | `engine_cycle` | `schedulingMs`, `dispatchMs`, `due`, `dispatched`, `cancelled` | Scheduler time, publication, and jobs discarded due to expiration, pauses, or configuration changes. |
 | `engine_cycle` | `notificationsMs`, `cleanupMs`, `totalMs` | Time spent on the cycle's remaining operations. |
 | `check_completed` | `jobAgeSeconds` | Time from the start of the cycle that created the job to its consumer start; includes scheduling and delivery. |
@@ -51,7 +57,7 @@ For HTTP/TCP monitors with a 60-second interval, initially use these operational
 
 These are validation targets, not a published SLA. Measure 24 hours to identify regressions and seven days to assess stability. Validate 100 monitors in a separate test installation, including fast responses, slow responses, timeouts, and simultaneous outages. Do not use a hundred third-party targets without authorization or alter real monitors for testing.
 
-If the delay is in `cronDelaySeconds`, batching writes or increasing concurrency will not eliminate it. Offering a stricter guarantee requires evaluating another way to schedule checks and measuring it again, along with monitoring the engine from an independent system. A stopped engine cannot guarantee that it will send an alert about its own stoppage.
+If the delay is in `schedulerDelaySeconds`, batching writes or increasing concurrency will not eliminate it. Alarms must be measured against the same criteria, along with monitoring the engine from an independent system. A stopped engine cannot guarantee that it will send an alert about its own stoppage.
 
 Detection time includes the interval, timeout, and configured consecutive failed checks. Notification delivery adds provider and device time; it is not the same as detection time.
 

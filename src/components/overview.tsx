@@ -42,6 +42,8 @@ export function Overview({
   const { t, date, availability } = useLocale();
   const up = data.monitors.filter((m) => m.display_status === "up").length;
   const down = data.monitors.filter((m) => m.display_status === "down").length;
+  const unknown = data.monitors.filter((m) => m.display_status === "unknown").length;
+  const degraded = data.monitors.filter((m) => m.display_status === "degraded").length;
   const open = data.incidents.filter((i) => !i.closed_at).length;
   const allUp = data.monitors.length > 0 && up === data.monitors.length;
   const needsAttention = data.monitors.length > 0 && !allUp && down === 0;
@@ -94,9 +96,13 @@ export function Overview({
               ? t("Comienza a monitorear tu infraestructura")
               : down
                 ? t("Hay servicios que requieren atención")
-                : allUp
-                  ? t("Todos los servicios están operativos")
-                  : t("Monitoreo en curso")}
+                : degraded
+                  ? t("Hay servicios degradados")
+                  : unknown
+                    ? t("Hay monitores sin datos recientes")
+                    : allUp
+                      ? t("Todos los servicios están operativos")
+                      : t("Monitoreo en curso")}
           </CardTitle>
           <CardDescription>
             {t(
@@ -119,6 +125,7 @@ export function Overview({
           </CardAction>
         </CardHeader>
       </Card>
+      {unknown > 0 && <Notice message={t("{count} monitores no tienen comprobaciones recientes. Su estado actual no está confirmado; esto no indica una degradación del servicio.", { count: unknown })} />}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {states.map((stat) => (
           <Card key={stat.title} size="sm">
@@ -298,6 +305,7 @@ function EngineHealth({ data }: { data: Snapshot }) {
       Date.now() / 1000 - data.engine.last_finished > 180
   );
   const unhealthy = stale || Boolean(data.engine.last_error);
+  const delayed = data.monitors.some((monitor) => monitor.display_status === "unknown" && monitor.last_checked !== null);
   return (
     <Card>
       <CardHeader>
@@ -311,16 +319,20 @@ function EngineHealth({ data }: { data: Snapshot }) {
             className={
               unhealthy
                 ? "text-destructive"
-                : data.engine.last_finished
-                  ? "text-success"
-                  : undefined
+                : delayed
+                  ? "text-warning"
+                  : data.engine.last_finished
+                    ? "text-success"
+                    : undefined
             }
           >
             {unhealthy
               ? t("Revisar")
-              : data.engine.last_finished
-                ? t("Activo")
-                : t("En espera")}
+              : delayed
+                ? t("Comprobaciones atrasadas")
+                : data.engine.last_finished
+                  ? t("Activo")
+                  : t("En espera")}
           </Badge>
         </CardAction>
       </CardHeader>

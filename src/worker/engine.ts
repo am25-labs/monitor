@@ -480,7 +480,7 @@ async function dispatchJobs(env: Env, now: number) {
   return { dispatched: jobs.length, cancelled: cancelled.meta.changes };
 }
 
-export async function tick(env: Env, now = nowSeconds(), scheduledAt = now) {
+export async function tick(env: Env, now = nowSeconds(), scheduledAt = now, scheduler: "cron" | "alarm" = "cron") {
   const started = Date.now();
   await statement(
     env.DB,
@@ -554,7 +554,8 @@ export async function tick(env: Env, now = nowSeconds(), scheduledAt = now) {
       nowSeconds()
     ).run();
     console.log(JSON.stringify({
-      event: "engine_cycle", cronDelaySeconds: Math.max(0, now - scheduledAt),
+      event: "engine_cycle", scheduler, schedulerDelaySeconds: Math.max(0, now - scheduledAt),
+      cronDelaySeconds: scheduler === "cron" ? Math.max(0, now - scheduledAt) : undefined,
       due: due.length, ...dispatch, schedulingMs, dispatchMs,
       notificationsMs, cleanupMs, totalMs: Date.now() - started
     }));

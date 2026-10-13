@@ -71,7 +71,7 @@ El agente puede ayudar a preparar toda la instalación, pero la selección de pl
 
 ## 1. Preparar las cuentas y el dominio
 
-Necesitas una cuenta de GitHub con Actions habilitado, una cuenta de Cloudflare con Workers, D1, Queues y Zero Trust disponibles, y un dominio cuya zona DNS esté activa en la misma cuenta de Cloudflare.
+Necesitas una cuenta de GitHub con Actions habilitado, una cuenta de Cloudflare con Workers, Durable Objects, D1, Queues y Zero Trust disponibles, y un dominio cuya zona DNS esté activa en la misma cuenta de Cloudflare.
 
 Elige un subdominio dedicado, por ejemplo `monitor.example.com`, que no sirva otra aplicación. No necesitas un VPS para alojar Monitor. Para los pasos locales, instala Git, Node.js 22.14 o superior y la versión de pnpm indicada en `package.json`.
 
@@ -197,7 +197,7 @@ Edita `wrangler.jsonc` reemplazando los valores de la instalación original:
 | `queues.producers[0].queue` | Nombre de tu cola |
 | `queues.consumers[0].queue` | El mismo nombre de cola |
 
-Conserva los bindings `DB`, `CHECKS` y `ASSETS`, `migrations_dir`, `run_worker_first`, el cron por minuto y los límites de consumidores. Mantén `workers_dev` y `preview_urls` en `false`. No añadas el correo a `vars`: `ACCESS_EMAIL` se suministra desde GitHub.
+Conserva los bindings `DB`, `CHECKS`, `ASSETS` y `SCHEDULER`, `migrations_dir`, `run_worker_first`, el cron por minuto y los límites de consumidores. Mantén `workers_dev` y `preview_urls` en `false`. No añadas el correo a `vars`: `ACCESS_EMAIL` se suministra desde GitHub.
 
 El Custom Domain se conecta durante el despliegue. Cloudflare administra su DNS y certificado; no necesitas apuntarlo a la IP de tu VPS. Si hay un CNAME existente en ese hostname, resuelve el conflicto antes de publicar, sin afectar registros de otros servicios. Consulta [Custom Domains](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/).
 
@@ -240,7 +240,7 @@ Revisa los valores y lleva los cambios a `main` en tu repositorio. Ese push acti
 
 El workflow instala con el lockfile, verifica TypeScript, ejecuta pruebas, compila la interfaz, aplica migraciones D1 y despliega Worker, assets y secretos. Un error detiene los pasos siguientes; un fallo de migración impide publicar el Worker. Los despliegues se ejecutan en serie.
 
-Espera a que Actions termine correctamente. En Cloudflare, comprueba que tu Worker tiene el Custom Domain, el cron, la base y la cola asociados. Abre `https://monitor.example.com/app/`, inicia sesión con el correo autorizado y confirma que el overview muestra una ejecución reciente del motor.
+Espera a que Actions termine correctamente. En Cloudflare, comprueba que tu Worker tiene el Custom Domain, el cron, el binding `SCHEDULER`, la base y la cola asociados. Abre `https://monitor.example.com/app/`, inicia sesión con el correo autorizado y confirma que el overview muestra una ejecución reciente del motor.
 
 ## 9. Activar las notificaciones
 
@@ -314,7 +314,7 @@ pnpm dev
 
 Abre `http://localhost:5173/app/`. `pnpm dev` crea `.dev.vars` desde el ejemplo si no existe. La base, la cola y el acceso son locales; todos los canales de notificaciones se interceptan. Los destinos HTTP/TCP sí reciben comprobaciones: usa servicios de prueba. El logout no aparece porque no hay sesión de Access.
 
-El cron local se activa manualmente y la validación no requiere un build de producción:
+El cron local se activa manualmente para iniciar el programador; las alarmas continúan los ciclos. Conserva también `durable_objects` y `migrations` en Wrangler. El despliegue crea el Durable Object automáticamente, sin secretos adicionales. La validación no requiere un build de producción:
 
 ```sh
 curl http://localhost:8787/__scheduled
@@ -331,7 +331,7 @@ No uses `wrangler.jsonc` ni migraciones remotas para el desarrollo rutinario. `p
 | Access rechaza o repite el login | Rutas, correo de la política, `ACCESS_EMAIL`, AUD, dominio de equipo y `APP_ORIGIN` |
 | Público o heartbeat solicita login | Evita reglas de Access sobre todo el hostname o Worker |
 | No llegan alertas | Canal guardado, credenciales, remitente/chat y estados de entrega |
-| Monitor pendiente o sin datos | Último cron, trabajos atrasados y configuración de la cola |
+| Monitor pendiente o sin datos | Alarmas del programador, último ciclo, trabajos atrasados y configuración de la cola |
 | Web marcada caída con 3xx | URL final, redirecciones y códigos aceptados |
 
 Los nombres de los menús de Cloudflare pueden cambiar. Los enlaces oficiales complementan esta guía; la configuración del repositorio determina cómo se despliega esta versión.

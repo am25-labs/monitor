@@ -1,4 +1,10 @@
 export const english: Record<string, string> = {
+  "Hay servicios degradados": "Some services are degraded",
+  "Hay monitores sin datos recientes": "Some monitors have no recent data",
+  "Comprobaciones atrasadas": "Checks delayed",
+  "{count} monitores no tienen comprobaciones recientes. Su estado actual no está confirmado; esto no indica una degradación del servicio.": "{count} monitors have no recent checks. Their current status is unconfirmed; this does not indicate service degradation.",
+  "Cobertura parcial: {coverage}%": "Partial coverage: {coverage}%",
+  "Borde discontinuo: cobertura parcial. El color corresponde al tiempo observado.": "Dashed outline: partial coverage. The color represents observed time.",
   "Última hora": "Last hour",
   "Historial de disponibilidad": "Availability history",
   "No se pudo conectar con Monitor. Revisa tu conexión e intenta actualizar nuevamente.": "Could not connect to Monitor. Check your connection and try refreshing again.",

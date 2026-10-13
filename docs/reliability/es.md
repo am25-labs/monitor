@@ -2,7 +2,13 @@
 
 [English](en.md)
 
-El límite de 100 monitores es una capacidad de configuración, no una garantía de que cada comprobación termine exactamente cada 60 segundos. La puntualidad depende del cron, la entrega de Queues, D1 y el timeout del servicio vigilado.
+El límite de 100 monitores es una capacidad de configuración, no una garantía de que cada comprobación termine exactamente cada 60 segundos. La puntualidad depende de las alarmas del programador, la entrega de Queues, D1 y el timeout del servicio vigilado.
+
+## Programación de los ciclos
+
+Un Durable Object mantiene una alarma por minuto y prepara la siguiente antes de ejecutar el ciclo. El cron inicia la primera alarma tras el despliegue y recupera una alarma ausente o atrasada más de dos minutos; no ejecuta las comprobaciones directamente. Un fallo del ciclo programa un reintento en un máximo de 15 segundos. Las migraciones y el binding del programador se crean con el despliegue habitual, sin variables adicionales.
+
+Las alarmas también pueden retrasarse; este cambio reduce la dependencia del cron, pero debe medirse en producción. El historial marca con borde discontinuo los segmentos cerrados con cobertura parcial, conservando su color según las comprobaciones observadas. “Sin datos” indica estado sin confirmar, no degradación del servicio.
 
 ## Qué protege el motor
 
@@ -15,7 +21,7 @@ El límite de 100 monitores es una capacidad de configuración, no una garantía
 
 ## Pruebas locales
 
-Ejecuta `pnpm exec vitest run tests/engine.test.ts` y `pnpm typecheck`.
+Ejecuta `pnpm exec vitest run tests/engine.test.ts tests/scheduler.test.ts tests/history.test.ts` y `pnpm typecheck`.
 
 Las pruebas cubren 25 y 100 monitores, ciclos concurrentes, recuperación tras fallos de publicación, una cola de trabajos vencidos, reintentos sin resultados duplicados y 100 timeouts simultáneos de 30 segundos. La última prueba exige persistir los 100 fallos en menos de 60 segundos después de iniciar sus consumidores.
 
@@ -27,7 +33,7 @@ Después del despliegue habitual, abre **Workers & Pages → tu Worker → Obser
 
 | Evento | Campos | Qué mide |
 | --- | --- | --- |
-| `engine_cycle` | `cronDelaySeconds` | Retraso entre la hora programada y el inicio real del ciclo. |
+| `engine_cycle` | `schedulerDelaySeconds` | Retraso entre la hora programada y el inicio real del ciclo. |
 | `engine_cycle` | `schedulingMs`, `dispatchMs`, `due`, `dispatched`, `cancelled` | Tiempo del programador, publicación y trabajos descartados por vencimiento, pausa o cambios de configuración. |
 | `engine_cycle` | `notificationsMs`, `cleanupMs`, `totalMs` | Tiempo de las operaciones restantes del ciclo. |
 | `check_completed` | `jobAgeSeconds` | Tiempo desde el inicio del ciclo que creó el trabajo hasta el inicio de su consumidor; incluye programación y entrega. |
@@ -51,7 +57,7 @@ Para monitores HTTP/TCP con intervalo de 60 segundos, utiliza inicialmente estos
 
 Son objetivos de validación, no un SLA publicado. Mide 24 horas para detectar regresiones y siete días para evaluar estabilidad. Valida 100 monitores en una instalación de pruebas separada, incluyendo respuestas rápidas, lentas, timeouts y caídas simultáneas. No utilices cien destinos ajenos sin autorización ni alteres los monitores reales para hacer la prueba.
 
-Si el retraso está en `cronDelaySeconds`, agrupar escrituras o aumentar la concurrencia no lo elimina. Para ofrecer una garantía más exigente hay que evaluar otra forma de programar las comprobaciones y volver a medirla, además de vigilar el motor desde un sistema independiente. Un motor detenido tampoco puede garantizar que enviará una alerta sobre su propia detención.
+Si el retraso está en `schedulerDelaySeconds`, agrupar escrituras o aumentar la concurrencia no lo elimina. Las alarmas deben medirse con los mismos criterios, además de vigilar el motor desde un sistema independiente. Un motor detenido tampoco puede garantizar que enviará una alerta sobre su propia detención.
 
 El tiempo de detección incluye el intervalo, el timeout y las comprobaciones fallidas consecutivas configuradas. La entrega de notificaciones añade el tiempo del proveedor y del dispositivo; no equivale al tiempo de detección.
 

@@ -18,7 +18,11 @@ export function historySegments(history: MonitorHistory, range: HistoryRange) {
     const start = last - (count - 1 - index) * stride;
     const key = new Date(start * 1000).toISOString().slice(0, length);
     const stat = byTime.get(key);
-    return { start, stat, state: historyStatus(stat) };
+    const expected = Math.min(stride, Math.max(0, history.updatedAt - start));
+    const observed = stat?.observed_seconds ?? 0;
+    const coverage = expected > 0 ? Math.min(100, observed / expected * 100) : 0;
+    const partial = start < last && observed > 0 && observed < expected;
+    return { start, stat, state: historyStatus(stat), expected, coverage, partial };
   });
 }
 
