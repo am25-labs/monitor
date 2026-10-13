@@ -520,7 +520,7 @@ function DashboardView({
                           <TableHead>{t("Nombre")}</TableHead>
                           <TableHead>{t("Proyecto / grupo")}</TableHead>
                           <TableHead>{t("Estado")}</TableHead>
-                          <TableHead>{t("Última hora")}</TableHead>
+                          <TableHead className="w-px">{t("Última hora")}</TableHead>
                           <TableHead>{t("Latencia")}</TableHead>
                           <TableHead>{t("Última comprobación")}</TableHead>
                         </TableRow>
@@ -552,7 +552,7 @@ function DashboardView({
                               <StatusBadge status={m.display_status} />
                             </TableCell>
                             <TableCell>
-                              <div className="w-40">
+                              <div className="w-max">
                                 {recent.data ? <HistoryStrip range="1h" updatedAt={recent.data.updatedAt} short={recent.data.short.filter((stat) => stat.monitor_id === m.id)} stats={[]} hourly={[]} compact /> : <Skeleton className="h-4 w-18" />}
                               </div>
                             </TableCell>

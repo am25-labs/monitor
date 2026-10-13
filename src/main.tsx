@@ -9,6 +9,7 @@ import {
 } from "react-router-dom";
 import { Dashboard } from "./pages/dashboard";
 import { PublicStatus } from "./pages/status";
+import { TooltipProvider } from "./components/ui/tooltip";
 import "./styles.css";
 
 function App() {
@@ -77,7 +78,9 @@ function ThemedApp({ storageKey }: { storageKey: string }) {
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
-      <App />
+      <TooltipProvider>
+        <App />
+      </TooltipProvider>
     </BrowserRouter>
   </StrictMode>
 );

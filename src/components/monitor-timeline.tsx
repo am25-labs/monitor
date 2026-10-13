@@ -7,6 +7,7 @@ import type { MonitorHistory, SafeMonitor } from "../shared/types";
 import { ChoiceSelect } from "./choice-select";
 import { Notice, Panel } from "./common";
 import { Skeleton } from "./ui/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 export function HistoryStrip({ range, compact = false, ...history }: MonitorHistory & { range: HistoryRange; compact?: boolean }) {
   const { t, date, availability } = useLocale();
@@ -28,14 +29,25 @@ export function HistoryStrip({ range, compact = false, ...history }: MonitorHist
         {segments.map(({ start, stat, state, coverage, partial }) => {
           const time = range === "90d" ? `${new Date(start * 1000).toISOString().slice(0, 10)} (UTC)` : date(start);
           const label = `${time}: ${labels[state]}${stat?.observed_seconds ? ` · ${availability([stat])} · ${t("{outage} s de interrupción / {observed} s observados", { outage: Math.round(stat.observed_seconds - stat.up_seconds), observed: Math.round(stat.observed_seconds) })}` : ""}${partial ? ` · ${t("Cobertura parcial: {coverage}%", { coverage: coverage.toFixed(1) })}` : ""}`;
-          return <span key={start} role="listitem" aria-label={label} title={label} className={cn(
-            "rounded-[1px]",
-            compact ? "h-4" : "h-6",
-            state === "none" && "bg-muted",
-            state === "up" && "bg-success",
-            state === "down" && "bg-destructive",
-            state === "degraded" && "bg-warning"
-          )} />;
+          return (
+            <Tooltip key={start}>
+              <TooltipTrigger
+                render={<span />}
+                role="listitem"
+                tabIndex={0}
+                aria-label={label}
+                className={cn(
+                  "rounded-[1px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+                  compact ? "h-4" : "h-6",
+                  state === "none" && "bg-muted",
+                  state === "up" && "bg-success",
+                  state === "down" && "bg-destructive",
+                  state === "degraded" && "bg-warning"
+                )}
+              />
+              <TooltipContent>{label}</TooltipContent>
+            </Tooltip>
+          );
         })}
       </div>
     </div>
