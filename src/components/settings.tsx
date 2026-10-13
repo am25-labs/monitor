@@ -620,13 +620,13 @@ function General({
     }
   }
   return (
-    <Panel
-      title={t("General")}
-      description={t(
-        "Preferencias del dashboard. Cada página pública tiene su propio idioma.",
-      )}
-    >
-      <form onSubmit={submit} className="flex flex-col gap-6">
+    <form onSubmit={submit} className="flex flex-col gap-6">
+      <Panel
+        title={t("General")}
+        description={t(
+          "Preferencias del dashboard. Cada página pública tiene su propio idioma.",
+        )}
+      >
         <FieldGroup>
           <FormField id="dashboard-language" label={t("Idioma del dashboard")}>
             <ChoiceSelect
@@ -643,101 +643,112 @@ function General({
               ]}
             />
           </FormField>
-          <FormField id="test-mode" label={t("Modo de pruebas")}>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="test-mode"
-                checked={testMode}
-                disabled={busy}
-                onCheckedChange={(checked) => {
-                  setTestMode(checked === true);
-                  setSaved(false);
-                }}
-              />
-              <Label htmlFor="test-mode">
-                {t("Habilitar herramientas para borrar el historial")}
-              </Label>
-            </div>
-            <FieldDescription>
-              {t(
-                "Guarda los cambios para habilitar estas herramientas. Al desactivar el modo, las opciones desaparecen.",
-              )}
-            </FieldDescription>
-          </FormField>
         </FieldGroup>
-        <Notice message={error} destructive />
-        {saved && <Notice message={t("Configuración guardada.")} />}
-        <Button type="submit" disabled={busy} className="self-end">
-          {busy ? t("Guardando…") : t("Guardar cambios")}
-        </Button>
-      </form>
-      {initial.testMode && testMode && (
-        <div className="mt-6 flex flex-col gap-4">
-          <Separator />
-          <p className="font-medium">{t("Borrar historial de pruebas")}</p>
-          <p className="text-muted-foreground">
+      </Panel>
+      <Card className="bg-destructive/5 ring-destructive/40 [&_[data-slot=card-title]]:text-destructive">
+        <CardHeader>
+          <CardTitle>{t("Modo de pruebas")}</CardTitle>
+          <CardDescription>
             {t(
               "Elimina comprobaciones, estadísticas, incidentes y sus registros de notificación. Conserva los monitores y su configuración. Esta acción no se puede deshacer.",
             )}
-          </p>
-          <FormField id="history-monitor" label={t("Monitor")}>
-            <ChoiceSelect
-              id="history-monitor"
-              value={monitorId}
-              onValueChange={setMonitorId}
-              placeholder={t("Selecciona un monitor")}
-              options={monitors.map((monitor) => ({
-                value: monitor.id,
-                label: monitor.name,
-              }))}
-            />
-          </FormField>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="destructive"
-              disabled={!monitorId || busy}
-              onClick={() => setDeletion(monitorId)}
-            >
-              {t("Borrar historial del monitor")}
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={busy}
-              onClick={() => setDeletion(null)}
-            >
-              {t("Borrar todo el historial")}
-            </Button>
-          </div>
-          <ConfirmDialog
-            open={deletion !== undefined}
-            onOpenChange={(open) => {
-              if (!open) setDeletion(undefined);
-            }}
-            title={
-              deletion === null
-                ? t("Borrar todo el historial")
-                : t("Borrar historial de {name}", {
-                    name:
-                      monitors.find((monitor) => monitor.id === deletion)
-                        ?.name ?? "",
-                  })
-            }
-            description={t(
-              "Se eliminarán definitivamente las comprobaciones, estadísticas, incidentes y sus registros de notificación del alcance seleccionado. Los monitores volverán a pendiente hasta recibir una nueva comprobación. No se puede deshacer.",
-            )}
-            action={t("Borrar historial")}
-            destructive
-            onConfirm={async () => {
-              await api("admin/settings/history", "DELETE", {
-                monitorId: deletion,
-                confirmation: "DELETE_HISTORY",
-              });
-              await onChange();
-            }}
-          />
-        </div>
-      )}
-    </Panel>
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-6">
+          <FieldGroup>
+            <FormField id="test-mode" label={t("Modo de pruebas")}>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="test-mode"
+                  checked={testMode}
+                  disabled={busy}
+                  onCheckedChange={(checked) => {
+                    setTestMode(checked === true);
+                    setSaved(false);
+                  }}
+                />
+                <Label htmlFor="test-mode">
+                  {t("Habilitar herramientas para borrar el historial")}
+                </Label>
+              </div>
+              <FieldDescription>
+                {t(
+                  "Guarda los cambios para habilitar estas herramientas. Al desactivar el modo, las opciones desaparecen.",
+                )}
+              </FieldDescription>
+            </FormField>
+          </FieldGroup>
+          {initial.testMode && testMode && (
+            <div className="flex flex-col gap-4">
+              <Separator />
+              <p className="font-medium">{t("Borrar historial de pruebas")}</p>
+              <FormField id="history-monitor" label={t("Monitor")}>
+                <ChoiceSelect
+                  id="history-monitor"
+                  value={monitorId}
+                  onValueChange={setMonitorId}
+                  placeholder={t("Selecciona un monitor")}
+                  options={monitors.map((monitor) => ({
+                    value: monitor.id,
+                    label: monitor.name,
+                  }))}
+                />
+              </FormField>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={!monitorId || busy}
+                  onClick={() => setDeletion(monitorId)}
+                >
+                  {t("Borrar historial del monitor")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={busy}
+                  onClick={() => setDeletion(null)}
+                >
+                  {t("Borrar todo el historial")}
+                </Button>
+              </div>
+              <ConfirmDialog
+                open={deletion !== undefined}
+                onOpenChange={(open) => {
+                  if (!open) setDeletion(undefined);
+                }}
+                title={
+                  deletion === null
+                    ? t("Borrar todo el historial")
+                    : t("Borrar historial de {name}", {
+                        name:
+                          monitors.find((monitor) => monitor.id === deletion)
+                            ?.name ?? "",
+                      })
+                }
+                description={t(
+                  "Se eliminarán definitivamente las comprobaciones, estadísticas, incidentes y sus registros de notificación del alcance seleccionado. Los monitores volverán a pendiente hasta recibir una nueva comprobación. No se puede deshacer.",
+                )}
+                action={t("Borrar historial")}
+                destructive
+                onConfirm={async () => {
+                  await api("admin/settings/history", "DELETE", {
+                    monitorId: deletion,
+                    confirmation: "DELETE_HISTORY",
+                  });
+                  await onChange();
+                }}
+              />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      <Notice message={error} destructive />
+      {saved && <Notice message={t("Configuración guardada.")} />}
+      <Button type="submit" disabled={busy} className="self-end">
+        {busy ? t("Guardando…") : t("Guardar cambios")}
+      </Button>
+    </form>
   );
 }
 
