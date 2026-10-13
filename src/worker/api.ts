@@ -33,6 +33,7 @@ import { first, rows, statement, nowSeconds } from "./db";
 import { heartbeat, windows } from "./engine";
 import { displayStatus } from "./state";
 import { verifyHeartbeat } from "./auth";
+import { exportData } from "./export";
 
 export function json(value: unknown, status = 200) {
   return Response.json(value, {
@@ -126,6 +127,8 @@ export async function admin(
   const [resource, id, action] = path.split("/").filter(Boolean),
     method = request.method,
     now = nowSeconds();
+  if (resource === "settings" && id === "export" && !action && method === "GET")
+    return exportData(request, env);
   if (resource === "incidents") {
     if (method === "GET") return json(id ? await incidentDetail(env, id) : await incidentList(env, new URL(request.url).searchParams.get("monitor") ?? undefined));
     if (method === "POST" && action === "publish" && id) {

@@ -535,6 +535,7 @@ function DashboardView({
                               >
                                 {m.name}
                               </Link>
+                              <p className="font-mono text-xs text-muted-foreground">{m.id}</p>
                               <p className="text-xs text-muted-foreground">
                                 {m.kind.toUpperCase()}
                               </p>
@@ -603,6 +604,7 @@ function DashboardView({
                     <Panel
                       key={p.id}
                       title={p.name}
+                      id={p.id}
                       description={p.description}
                     >
                       <div className="flex flex-col gap-3">

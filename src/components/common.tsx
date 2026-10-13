@@ -44,16 +44,19 @@ export function StatusBadge({ status, compact = false }: { status: Status; compa
 export function Panel({
   title,
   description,
+  id,
   children
 }: {
   title: string;
   description?: string;
+  id?: string;
   children: ReactNode;
 }) {
   return (
     <Card>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
+        {id && <p className="break-all font-mono text-xs text-muted-foreground">{id}</p>}
         {description && <CardDescription>{description}</CardDescription>}
       </CardHeader>
       <CardContent>{children}</CardContent>

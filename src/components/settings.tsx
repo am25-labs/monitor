@@ -16,6 +16,7 @@ import type {
 } from "../shared/settings";
 import { ChoiceSelect } from "./choice-select";
 import { AboutDialog } from "./about-dialog";
+import { DataExport } from "./data-export";
 import { ConfirmDialog } from "./confirm-dialog";
 import { FormField, Notice, Panel } from "./common";
 import { Checkbox } from "./ui/checkbox";
@@ -784,10 +785,11 @@ export function Settings({
         </CardContent>
       </Card>
       <Tabs defaultValue="about" className="flex-col gap-6">
-        <TabsList aria-label={t("Ajustes")} className="h-8 shrink-0 self-start">
+        <TabsList aria-label={t("Ajustes")} className="h-auto flex-wrap shrink-0 self-start">
           <TabsTrigger value="about">{t("Acerca de")}</TabsTrigger>
           <TabsTrigger value="general">{t("General")}</TabsTrigger>
           <TabsTrigger value="notifications">{t("Notificaciones")}</TabsTrigger>
+          <TabsTrigger value="export">{t("Exportar")}</TabsTrigger>
         </TabsList>
         <TabsContent value="about" className="grid gap-6 lg:grid-cols-2">
           <AboutDialog />
@@ -818,6 +820,9 @@ export function Settings({
             initial={data.settings.notifications}
             onChange={onChange}
           />
+        </TabsContent>
+        <TabsContent value="export">
+          <DataExport projects={data.projects} />
         </TabsContent>
       </Tabs>
     </div>

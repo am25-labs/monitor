@@ -1,0 +1,654 @@
+{
+  "format": "am25-monitor",
+  "formatVersion": 1,
+  "appVersion": "0.2.1",
+  "startedAt": "2026-10-01T00:01:00.000Z",
+  "scope": {
+    "type": "projects",
+    "projectIds": [
+      "00000000-0000-4000-8000-000000000001"
+    ]
+  },
+  "consistency": "live",
+  "credentials": "encrypted-with-original-CONFIG_KEY",
+  "schema": [
+    {
+      "type": "index",
+      "name": "daily_retention",
+      "tbl_name": "daily_stats",
+      "sql": "CREATE INDEX daily_retention ON daily_stats(day)"
+    },
+    {
+      "type": "index",
+      "name": "hourly_retention",
+      "tbl_name": "hourly_stats",
+      "sql": "CREATE INDEX hourly_retention ON hourly_stats(hour)"
+    },
+    {
+      "type": "index",
+      "name": "incident_monitors_scope",
+      "tbl_name": "incident_monitors",
+      "sql": "CREATE INDEX incident_monitors_scope ON incident_monitors(monitor_id,incident_id)"
+    },
+    {
+      "type": "index",
+      "name": "incident_updates_time",
+      "tbl_name": "incident_updates",
+      "sql": "CREATE INDEX incident_updates_time ON incident_updates(incident_id,created_at,id)"
+    },
+    {
+      "type": "index",
+      "name": "incidents_open",
+      "tbl_name": "incidents",
+      "sql": "CREATE UNIQUE INDEX incidents_open ON incidents(monitor_id) WHERE closed_at IS NULL"
+    },
+    {
+      "type": "index",
+      "name": "jobs_pending",
+      "tbl_name": "jobs",
+      "sql": "CREATE INDEX jobs_pending ON jobs(state, due_at)"
+    },
+    {
+      "type": "index",
+      "name": "maintenance_active",
+      "tbl_name": "maintenance",
+      "sql": "CREATE INDEX maintenance_active ON maintenance(starts_at, ends_at)"
+    },
+    {
+      "type": "index",
+      "name": "monitors_due",
+      "tbl_name": "monitors",
+      "sql": "CREATE INDEX monitors_due ON monitors(paused, next_due)"
+    },
+    {
+      "type": "index",
+      "name": "monitors_project",
+      "tbl_name": "monitors",
+      "sql": "CREATE INDEX monitors_project ON monitors(project_id, group_id)"
+    },
+    {
+      "type": "index",
+      "name": "notification_deliveries_pending",
+      "tbl_name": "notification_deliveries",
+      "sql": "CREATE INDEX notification_deliveries_pending ON notification_deliveries(state, next_attempt)"
+    },
+    {
+      "type": "index",
+      "name": "notifications_pending",
+      "tbl_name": "notifications",
+      "sql": "CREATE INDEX notifications_pending ON notifications(state, next_attempt)"
+    },
+    {
+      "type": "index",
+      "name": "public_incidents_active",
+      "tbl_name": "public_incidents",
+      "sql": "CREATE UNIQUE INDEX public_incidents_active ON public_incidents(monitor_id) WHERE origin='automatic' AND closed_at IS NULL"
+    },
+    {
+      "type": "index",
+      "name": "public_incidents_history",
+      "tbl_name": "public_incidents",
+      "sql": "CREATE INDEX public_incidents_history ON public_incidents(project_id,closed_at,opened_at,id)"
+    },
+    {
+      "type": "index",
+      "name": "results_monitor_time",
+      "tbl_name": "results",
+      "sql": "CREATE INDEX results_monitor_time ON results(monitor_id, checked_at DESC)"
+    },
+    {
+      "type": "index",
+      "name": "results_retention",
+      "tbl_name": "results",
+      "sql": "CREATE INDEX results_retention ON results(checked_at)"
+    },
+    {
+      "type": "index",
+      "name": "short_retention",
+      "tbl_name": "short_stats",
+      "sql": "CREATE INDEX short_retention ON short_stats(slot)"
+    },
+    {
+      "type": "table",
+      "name": "daily_stats",
+      "tbl_name": "daily_stats",
+      "sql": "CREATE TABLE daily_stats (\n  monitor_id TEXT NOT NULL REFERENCES monitors(id) ON DELETE CASCADE, day TEXT NOT NULL,\n  observed_seconds INTEGER NOT NULL DEFAULT 0, up_seconds INTEGER NOT NULL DEFAULT 0,\n  check_count INTEGER NOT NULL DEFAULT 0, success_count INTEGER NOT NULL DEFAULT 0,\n  latency_sum REAL NOT NULL DEFAULT 0, latency_count INTEGER NOT NULL DEFAULT 0, degraded_count INTEGER NOT NULL DEFAULT 0,\n  PRIMARY KEY(monitor_id, day)\n)"
+    },
+    {
+      "type": "table",
+      "name": "groups",
+      "tbl_name": "groups",
+      "sql": "CREATE TABLE groups (id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE RESTRICT, name TEXT NOT NULL, UNIQUE(project_id, name))"
+    },
+    {
+      "type": "table",
+      "name": "hourly_stats",
+      "tbl_name": "hourly_stats",
+      "sql": "CREATE TABLE hourly_stats (\n  monitor_id TEXT NOT NULL REFERENCES monitors(id) ON DELETE CASCADE,\n  hour TEXT NOT NULL,\n  observed_seconds INTEGER NOT NULL DEFAULT 0,\n  up_seconds INTEGER NOT NULL DEFAULT 0, degraded_count INTEGER NOT NULL DEFAULT 0,\n  PRIMARY KEY(monitor_id, hour)\n)"
+    },
+    {
+      "type": "table",
+      "name": "incident_monitors",
+      "tbl_name": "incident_monitors",
+      "sql": "CREATE TABLE incident_monitors (\n  incident_id TEXT NOT NULL REFERENCES public_incidents(id) ON DELETE CASCADE,\n  monitor_id TEXT NOT NULL REFERENCES monitors(id) ON DELETE CASCADE,\n  PRIMARY KEY(incident_id,monitor_id)\n)"
+    },
+    {
+      "type": "table",
+      "name": "incident_updates",
+      "tbl_name": "incident_updates",
+      "sql": "CREATE TABLE incident_updates (\n  id TEXT PRIMARY KEY, incident_id TEXT NOT NULL REFERENCES public_incidents(id) ON DELETE CASCADE,\n  stage TEXT NOT NULL CHECK(stage IN ('investigating','identified','monitoring','resolved')),\n  impact TEXT NOT NULL CHECK(impact IN ('degraded','down')),\n  message_es TEXT NOT NULL DEFAULT '', message_en TEXT NOT NULL DEFAULT '',\n  event TEXT CHECK(event IN ('detected','changed','recovered')),\n  created_at INTEGER NOT NULL\n)"
+    },
+    {
+      "type": "table",
+      "name": "incidents",
+      "tbl_name": "incidents",
+      "sql": "CREATE TABLE incidents (\n  id TEXT PRIMARY KEY, monitor_id TEXT NOT NULL REFERENCES monitors(id) ON DELETE CASCADE,\n  opened_at INTEGER NOT NULL, closed_at INTEGER, reason TEXT NOT NULL\n)"
+    },
+    {
+      "type": "table",
+      "name": "jobs",
+      "tbl_name": "jobs",
+      "sql": "CREATE TABLE jobs (\n  id TEXT PRIMARY KEY, monitor_id TEXT NOT NULL REFERENCES monitors(id) ON DELETE CASCADE,\n  config_version INTEGER NOT NULL, due_at INTEGER NOT NULL,\n  state TEXT NOT NULL DEFAULT 'pending', lease_token TEXT, lease_until INTEGER,\n  dispatched_at INTEGER, attempts INTEGER NOT NULL DEFAULT 0, completed_at INTEGER\n)"
+    },
+    {
+      "type": "table",
+      "name": "maintenance",
+      "tbl_name": "maintenance",
+      "sql": "CREATE TABLE \"maintenance\" (\n  id TEXT PRIMARY KEY,\n  scope TEXT NOT NULL CHECK(scope IN ('global','project','group','monitor')),\n  target_id TEXT,\n  title TEXT NOT NULL,\n  starts_at INTEGER NOT NULL,\n  ends_at INTEGER,\n  CHECK(ends_at IS NULL OR ends_at > starts_at),\n  CHECK((scope = 'global' AND target_id IS NULL) OR (scope != 'global' AND target_id IS NOT NULL))\n)"
+    },
+    {
+      "type": "table",
+      "name": "monitors",
+      "tbl_name": "monitors",
+      "sql": "CREATE TABLE monitors (\n  id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE RESTRICT,\n  group_id TEXT REFERENCES groups(id) ON DELETE RESTRICT, name TEXT NOT NULL,\n  kind TEXT NOT NULL CHECK(kind IN ('http','tcp','heartbeat')),\n  config TEXT NOT NULL, config_version INTEGER NOT NULL DEFAULT 1,\n  interval_seconds INTEGER NOT NULL CHECK(interval_seconds >= 60), grace_seconds INTEGER NOT NULL DEFAULT 60,\n  failure_threshold INTEGER NOT NULL DEFAULT 2, recovery_threshold INTEGER NOT NULL DEFAULT 1,\n  failures INTEGER NOT NULL DEFAULT 0, successes INTEGER NOT NULL DEFAULT 0,\n  status TEXT NOT NULL DEFAULT 'pending', paused INTEGER NOT NULL DEFAULT 0,\n  next_due INTEGER NOT NULL, last_checked INTEGER, last_success INTEGER, last_latency REAL, last_ok INTEGER,\n  last_heartbeat INTEGER, heartbeat_hash TEXT, maintenance_active INTEGER NOT NULL DEFAULT 0,\n  created_at INTEGER NOT NULL\n, latency_threshold INTEGER, degradation_threshold INTEGER NOT NULL DEFAULT 3, latency_recovery_threshold INTEGER NOT NULL DEFAULT 2, slow_checks INTEGER NOT NULL DEFAULT 0, fast_checks INTEGER NOT NULL DEFAULT 0, degraded INTEGER NOT NULL DEFAULT 0)"
+    },
+    {
+      "type": "table",
+      "name": "notification_deliveries",
+      "tbl_name": "notification_deliveries",
+      "sql": "CREATE TABLE notification_deliveries (\n  notification_id TEXT NOT NULL REFERENCES notifications(id) ON DELETE CASCADE,\n  channel TEXT NOT NULL CHECK(channel IN ('email','telegram','pushover','ntfy')),\n  state TEXT NOT NULL DEFAULT 'pending',\n  attempts INTEGER NOT NULL DEFAULT 0,\n  next_attempt INTEGER NOT NULL,\n  delivered_at INTEGER,\n  error TEXT,\n  receipt TEXT,\n  receipt_token TEXT,\n  cancelled_at INTEGER,\n  PRIMARY KEY(notification_id, channel)\n)"
+    },
+    {
+      "type": "table",
+      "name": "notifications",
+      "tbl_name": "notifications",
+      "sql": "CREATE TABLE notifications (\n  id TEXT PRIMARY KEY, incident_id TEXT REFERENCES incidents(id) ON DELETE CASCADE,\n  event TEXT NOT NULL, monitor_name TEXT NOT NULL, created_at INTEGER NOT NULL,\n  next_attempt INTEGER NOT NULL, attempts INTEGER NOT NULL DEFAULT 0,\n  state TEXT NOT NULL DEFAULT 'pending', lease_until INTEGER, lease_token TEXT,\n  delivered_at INTEGER, error TEXT, UNIQUE(incident_id, event)\n)"
+    },
+    {
+      "type": "table",
+      "name": "pages",
+      "tbl_name": "pages",
+      "sql": "CREATE TABLE pages (\n  id TEXT PRIMARY KEY, slug TEXT NOT NULL UNIQUE, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '',\n  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE RESTRICT,\n  group_ids TEXT NOT NULL DEFAULT '[]', excluded_ids TEXT NOT NULL DEFAULT '[]', published INTEGER NOT NULL DEFAULT 0\n, included_ids TEXT, language TEXT NOT NULL DEFAULT 'es' CHECK(language IN ('es', 'en')))"
+    },
+    {
+      "type": "table",
+      "name": "projects",
+      "tbl_name": "projects",
+      "sql": "CREATE TABLE projects (id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL)"
+    },
+    {
+      "type": "table",
+      "name": "public_incidents",
+      "tbl_name": "public_incidents",
+      "sql": "CREATE TABLE public_incidents (\n  id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE RESTRICT,\n  origin TEXT NOT NULL CHECK(origin IN ('automatic','manual')),\n  monitor_id TEXT REFERENCES monitors(id) ON DELETE CASCADE,\n  technical_id TEXT REFERENCES incidents(id) ON DELETE SET NULL,\n  impact TEXT NOT NULL CHECK(impact IN ('degraded','down')),\n  stage TEXT NOT NULL CHECK(stage IN ('investigating','identified','monitoring','resolved')),\n  title_es TEXT NOT NULL DEFAULT '', title_en TEXT NOT NULL DEFAULT '',\n  published INTEGER NOT NULL DEFAULT 0, opened_at INTEGER NOT NULL,\n  updated_at INTEGER NOT NULL, closed_at INTEGER,\n  CHECK((origin='automatic' AND monitor_id IS NOT NULL) OR (origin='manual' AND monitor_id IS NULL))\n)"
+    },
+    {
+      "type": "table",
+      "name": "results",
+      "tbl_name": "results",
+      "sql": "CREATE TABLE results (\n  id INTEGER PRIMARY KEY AUTOINCREMENT, job_id TEXT NOT NULL UNIQUE,\n  monitor_id TEXT NOT NULL REFERENCES monitors(id) ON DELETE CASCADE,\n  checked_at INTEGER NOT NULL, ok INTEGER NOT NULL, latency REAL, code INTEGER,\n  reason TEXT NOT NULL, diagnostic TEXT NOT NULL, maintenance INTEGER NOT NULL DEFAULT 0,\n  observed_seconds INTEGER NOT NULL DEFAULT 0, up_seconds INTEGER NOT NULL DEFAULT 0\n, degraded INTEGER NOT NULL DEFAULT 0)"
+    },
+    {
+      "type": "table",
+      "name": "short_stats",
+      "tbl_name": "short_stats",
+      "sql": "CREATE TABLE short_stats (\n  monitor_id TEXT NOT NULL REFERENCES monitors(id) ON DELETE CASCADE,\n  slot TEXT NOT NULL,\n  observed_seconds INTEGER NOT NULL DEFAULT 0,\n  up_seconds INTEGER NOT NULL DEFAULT 0, degraded_count INTEGER NOT NULL DEFAULT 0,\n  PRIMARY KEY(monitor_id, slot)\n)"
+    },
+    {
+      "type": "trigger",
+      "name": "monitors_capacity",
+      "tbl_name": "monitors",
+      "sql": "CREATE TRIGGER monitors_capacity BEFORE INSERT ON monitors WHEN (SELECT COUNT(*) FROM monitors)>=100 BEGIN SELECT RAISE(ABORT,'monitor_capacity'); END"
+    }
+  ],
+  "data": {
+    "projects": [
+      {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "name": "Example client",
+        "description": "Illustrative monthly report data",
+        "created_at": 1788220800
+      }
+    ],
+    "groups": [],
+    "monitors": [
+      {
+        "id": "00000000-0000-4000-8000-000000000002",
+        "project_id": "00000000-0000-4000-8000-000000000001",
+        "group_id": null,
+        "name": "Client website",
+        "kind": "http",
+        "config": "{\"iv\":[],\"data\":[]}",
+        "config_version": 1,
+        "interval_seconds": 60,
+        "grace_seconds": 60,
+        "failure_threshold": 2,
+        "recovery_threshold": 1,
+        "failures": 0,
+        "successes": 0,
+        "status": "up",
+        "paused": 0,
+        "next_due": 1790812800,
+        "last_checked": 1790812740,
+        "last_success": 1790812740,
+        "last_latency": 245.0,
+        "last_ok": 1,
+        "last_heartbeat": null,
+        "heartbeat_hash": null,
+        "maintenance_active": 0,
+        "created_at": 1788220800,
+        "latency_threshold": null,
+        "degradation_threshold": 3,
+        "latency_recovery_threshold": 2,
+        "slow_checks": 0,
+        "fast_checks": 0,
+        "degraded": 0
+      }
+    ],
+    "jobs": [],
+    "results": [],
+    "daily_stats": [
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-01",
+        "observed_seconds": 86400,
+        "up_seconds": 86400,
+        "check_count": 1440,
+        "success_count": 1440,
+        "latency_sum": 352800.0,
+        "latency_count": 1440,
+        "degraded_count": 0
+      },
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-02",
+        "observed_seconds": 86400,
+        "up_seconds": 86400,
+        "check_count": 1440,
+        "success_count": 1440,
+        "latency_sum": 352800.0,
+        "latency_count": 1440,
+        "degraded_count": 0
+      },
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-03",
+        "observed_seconds": 86400,
+        "up_seconds": 86400,
+        "check_count": 1440,
+        "success_count": 1440,
+        "latency_sum": 352800.0,
+        "latency_count": 1440,
+        "degraded_count": 0
+      },
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-04",
+        "observed_seconds": 86400,
+        "up_seconds": 86400,
+        "check_count": 1440,
+        "success_count": 1440,
+        "latency_sum": 352800.0,
+        "latency_count": 1440,
+        "degraded_count": 0
+      },
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-05",
+        "observed_seconds": 86400,
+        "up_seconds": 86400,
+        "check_count": 1440,
+        "success_count": 1440,
+        "latency_sum": 352800.0,
+        "latency_count": 1440,
+        "degraded_count": 0
+      },
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-06",
+        "observed_seconds": 86400,
+        "up_seconds": 86400,
+        "check_count": 1440,
+        "success_count": 1440,
+        "latency_sum": 352800.0,
+        "latency_count": 1440,
+        "degraded_count": 0
+      },
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-07",
+        "observed_seconds": 86400,
+        "up_seconds": 86400,
+        "check_count": 1440,
+        "success_count": 1440,
+        "latency_sum": 352800.0,
+        "latency_count": 1440,
+        "degraded_count": 0
+      },
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-08",
+        "observed_seconds": 86400,
+        "up_seconds": 86400,
+        "check_count": 1440,
+        "success_count": 1440,
+        "latency_sum": 352800.0,
+        "latency_count": 1440,
+        "degraded_count": 0
+      },
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-09",
+        "observed_seconds": 86400,
+        "up_seconds": 86400,
+        "check_count": 1440,
+        "success_count": 1440,
+        "latency_sum": 352800.0,
+        "latency_count": 1440,
+        "degraded_count": 0
+      },
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-10",
+        "observed_seconds": 86400,
+        "up_seconds": 86400,
+        "check_count": 1440,
+        "success_count": 1440,
+        "latency_sum": 352800.0,
+        "latency_count": 1440,
+        "degraded_count": 0
+      },
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-11",
+        "observed_seconds": 86400,
+        "up_seconds": 86400,
+        "check_count": 1440,
+        "success_count": 1440,
+        "latency_sum": 352800.0,
+        "latency_count": 1440,
+        "degraded_count": 0
+      },
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-12",
+        "observed_seconds": 86400,
+        "up_seconds": 86400,
+        "check_count": 1440,
+        "success_count": 1440,
+        "latency_sum": 352800.0,
+        "latency_count": 1440,
+        "degraded_count": 0
+      },
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-13",
+        "observed_seconds": 86400,
+        "up_seconds": 86400,
+        "check_count": 1440,
+        "success_count": 1440,
+        "latency_sum": 352800.0,
+        "latency_count": 1440,
+        "degraded_count": 0
+      },
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-14",
+        "observed_seconds": 86400,
+        "up_seconds": 86400,
+        "check_count": 1440,
+        "success_count": 1440,
+        "latency_sum": 352800.0,
+        "latency_count": 1440,
+        "degraded_count": 0
+      },
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-15",
+        "observed_seconds": 86400,
+        "up_seconds": 85882,
+        "check_count": 1440,
+        "success_count": 1431,
+        "latency_sum": 350595.0,
+        "latency_count": 1431,
+        "degraded_count": 0
+      },
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-16",
+        "observed_seconds": 86400,
+        "up_seconds": 86400,
+        "check_count": 1440,
+        "success_count": 1440,
+        "latency_sum": 352800.0,
+        "latency_count": 1440,
+        "degraded_count": 0
+      },
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-17",
+        "observed_seconds": 86400,
+        "up_seconds": 86400,
+        "check_count": 1440,
+        "success_count": 1440,
+        "latency_sum": 352800.0,
+        "latency_count": 1440,
+        "degraded_count": 0
+      },
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-18",
+        "observed_seconds": 86400,
+        "up_seconds": 86400,
+        "check_count": 1440,
+        "success_count": 1440,
+        "latency_sum": 352800.0,
+        "latency_count": 1440,
+        "degraded_count": 0
+      },
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-19",
+        "observed_seconds": 86400,
+        "up_seconds": 86400,
+        "check_count": 1440,
+        "success_count": 1440,
+        "latency_sum": 352800.0,
+        "latency_count": 1440,
+        "degraded_count": 0
+      },
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-20",
+        "observed_seconds": 86400,
+        "up_seconds": 86400,
+        "check_count": 1440,
+        "success_count": 1440,
+        "latency_sum": 352800.0,
+        "latency_count": 1440,
+        "degraded_count": 0
+      },
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-21",
+        "observed_seconds": 86400,
+        "up_seconds": 86400,
+        "check_count": 1440,
+        "success_count": 1440,
+        "latency_sum": 352800.0,
+        "latency_count": 1440,
+        "degraded_count": 0
+      },
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-22",
+        "observed_seconds": 86400,
+        "up_seconds": 86400,
+        "check_count": 1440,
+        "success_count": 1440,
+        "latency_sum": 352800.0,
+        "latency_count": 1440,
+        "degraded_count": 0
+      },
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-23",
+        "observed_seconds": 86400,
+        "up_seconds": 86400,
+        "check_count": 1440,
+        "success_count": 1440,
+        "latency_sum": 352800.0,
+        "latency_count": 1440,
+        "degraded_count": 0
+      },
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-24",
+        "observed_seconds": 86400,
+        "up_seconds": 86400,
+        "check_count": 1440,
+        "success_count": 1440,
+        "latency_sum": 352800.0,
+        "latency_count": 1440,
+        "degraded_count": 0
+      },
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-25",
+        "observed_seconds": 86400,
+        "up_seconds": 86400,
+        "check_count": 1440,
+        "success_count": 1440,
+        "latency_sum": 352800.0,
+        "latency_count": 1440,
+        "degraded_count": 0
+      },
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-26",
+        "observed_seconds": 86400,
+        "up_seconds": 86400,
+        "check_count": 1440,
+        "success_count": 1440,
+        "latency_sum": 352800.0,
+        "latency_count": 1440,
+        "degraded_count": 0
+      },
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-27",
+        "observed_seconds": 86400,
+        "up_seconds": 86400,
+        "check_count": 1440,
+        "success_count": 1440,
+        "latency_sum": 352800.0,
+        "latency_count": 1440,
+        "degraded_count": 0
+      },
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-28",
+        "observed_seconds": 86400,
+        "up_seconds": 86400,
+        "check_count": 1440,
+        "success_count": 1440,
+        "latency_sum": 352800.0,
+        "latency_count": 1440,
+        "degraded_count": 0
+      },
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-29",
+        "observed_seconds": 86400,
+        "up_seconds": 86400,
+        "check_count": 1440,
+        "success_count": 1440,
+        "latency_sum": 352800.0,
+        "latency_count": 1440,
+        "degraded_count": 0
+      },
+      {
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "day": "2026-09-30",
+        "observed_seconds": 86400,
+        "up_seconds": 86400,
+        "check_count": 1440,
+        "success_count": 1440,
+        "latency_sum": 352800.0,
+        "latency_count": 1440,
+        "degraded_count": 0
+      }
+    ],
+    "hourly_stats": [],
+    "short_stats": [],
+    "incidents": [
+      {
+        "id": "00000000-0000-4000-8000-000000000003",
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "opened_at": 1789462800,
+        "closed_at": 1789463318,
+        "reason": "http_code"
+      }
+    ],
+    "notifications": [],
+    "notification_deliveries": [],
+    "maintenance": [],
+    "pages": [],
+    "public_incidents": [
+      {
+        "id": "00000000-0000-4000-8000-000000000004",
+        "project_id": "00000000-0000-4000-8000-000000000001",
+        "origin": "automatic",
+        "monitor_id": "00000000-0000-4000-8000-000000000002",
+        "technical_id": "00000000-0000-4000-8000-000000000003",
+        "impact": "down",
+        "stage": "resolved",
+        "title_es": "Interrupción temporal",
+        "title_en": "Temporary outage",
+        "published": 1,
+        "opened_at": 1789462800,
+        "updated_at": 1789463318,
+        "closed_at": 1789463318
+      }
+    ],
+    "incident_monitors": [
+      {
+        "incident_id": "00000000-0000-4000-8000-000000000004",
+        "monitor_id": "00000000-0000-4000-8000-000000000002"
+      }
+    ],
+    "incident_updates": [
+      {
+        "id": "00000000-0000-4000-8000-000000000004:detected",
+        "incident_id": "00000000-0000-4000-8000-000000000004",
+        "stage": "investigating",
+        "impact": "down",
+        "message_es": "",
+        "message_en": "",
+        "event": "detected",
+        "created_at": 1789462800
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000004:recovered",
+        "incident_id": "00000000-0000-4000-8000-000000000004",
+        "stage": "resolved",
+        "impact": "down",
+        "message_es": "",
+        "message_en": "",
+        "event": "recovered",
+        "created_at": 1789463318
+      }
+    ]
+  },
+  "completedAt": "2026-10-01T00:01:02.000Z"
+}

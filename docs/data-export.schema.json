@@ -1,0 +1,1303 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AM25 Monitor JSON export v1",
+  "description": "Stored database rows. Numeric timestamps are Unix seconds; date buckets use UTC. Encrypted values remain encrypted.",
+  "type": "object",
+  "required": [
+    "format",
+    "formatVersion",
+    "appVersion",
+    "startedAt",
+    "scope",
+    "consistency",
+    "credentials",
+    "schema",
+    "data",
+    "completedAt"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "format": {
+      "const": "am25-monitor"
+    },
+    "formatVersion": {
+      "const": 1
+    },
+    "appVersion": {
+      "type": "string"
+    },
+    "startedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "scope": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "full"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "projectIds"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "projects"
+            },
+            "projectIds": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "consistency": {
+      "const": "live"
+    },
+    "credentials": {
+      "const": "encrypted-with-original-CONFIG_KEY"
+    },
+    "schema": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "type",
+          "name",
+          "tbl_name",
+          "sql"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "tbl_name": {
+            "type": "string"
+          },
+          "sql": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "data": {
+      "type": "object"
+    },
+    "completedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "scope": {
+            "properties": {
+              "type": {
+                "const": "full"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/fullData"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/projectData"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "projects": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "description",
+        "created_at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "integer"
+        }
+      }
+    },
+    "groups": {
+      "type": "object",
+      "required": [
+        "id",
+        "project_id",
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "project_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "monitors": {
+      "type": "object",
+      "required": [
+        "id",
+        "project_id",
+        "group_id",
+        "name",
+        "kind",
+        "config",
+        "config_version",
+        "interval_seconds",
+        "grace_seconds",
+        "failure_threshold",
+        "recovery_threshold",
+        "failures",
+        "successes",
+        "status",
+        "paused",
+        "next_due",
+        "last_checked",
+        "last_success",
+        "last_latency",
+        "last_ok",
+        "last_heartbeat",
+        "heartbeat_hash",
+        "maintenance_active",
+        "created_at",
+        "latency_threshold",
+        "degradation_threshold",
+        "latency_recovery_threshold",
+        "slow_checks",
+        "fast_checks",
+        "degraded"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "project_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "group_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "config": {
+          "type": "string",
+          "description": "Stored encrypted configuration string; requires original CONFIG_KEY and monitor ID to decrypt"
+        },
+        "config_version": {
+          "type": "integer"
+        },
+        "interval_seconds": {
+          "type": "integer"
+        },
+        "grace_seconds": {
+          "type": "integer"
+        },
+        "failure_threshold": {
+          "type": "integer"
+        },
+        "recovery_threshold": {
+          "type": "integer"
+        },
+        "failures": {
+          "type": "integer"
+        },
+        "successes": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        },
+        "paused": {
+          "type": "integer"
+        },
+        "next_due": {
+          "type": "integer"
+        },
+        "last_checked": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "last_success": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "last_latency": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "last_ok": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "last_heartbeat": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "heartbeat_hash": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "maintenance_active": {
+          "type": "integer"
+        },
+        "created_at": {
+          "type": "integer"
+        },
+        "latency_threshold": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "degradation_threshold": {
+          "type": "integer"
+        },
+        "latency_recovery_threshold": {
+          "type": "integer"
+        },
+        "slow_checks": {
+          "type": "integer"
+        },
+        "fast_checks": {
+          "type": "integer"
+        },
+        "degraded": {
+          "type": "integer"
+        }
+      }
+    },
+    "jobs": {
+      "type": "object",
+      "required": [
+        "id",
+        "monitor_id",
+        "config_version",
+        "due_at",
+        "state",
+        "lease_token",
+        "lease_until",
+        "dispatched_at",
+        "attempts",
+        "completed_at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "monitor_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "config_version": {
+          "type": "integer"
+        },
+        "due_at": {
+          "type": "integer"
+        },
+        "state": {
+          "type": "string"
+        },
+        "lease_token": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lease_until": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "dispatched_at": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "attempts": {
+          "type": "integer"
+        },
+        "completed_at": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "results": {
+      "type": "object",
+      "required": [
+        "id",
+        "job_id",
+        "monitor_id",
+        "checked_at",
+        "ok",
+        "latency",
+        "code",
+        "reason",
+        "diagnostic",
+        "maintenance",
+        "observed_seconds",
+        "up_seconds",
+        "degraded"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "job_id": {
+          "type": "string"
+        },
+        "monitor_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "checked_at": {
+          "type": "integer"
+        },
+        "ok": {
+          "type": "integer"
+        },
+        "latency": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "code": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "diagnostic": {
+          "type": "string"
+        },
+        "maintenance": {
+          "type": "integer"
+        },
+        "observed_seconds": {
+          "type": "integer"
+        },
+        "up_seconds": {
+          "type": "integer"
+        },
+        "degraded": {
+          "type": "integer"
+        }
+      }
+    },
+    "daily_stats": {
+      "type": "object",
+      "required": [
+        "monitor_id",
+        "day",
+        "observed_seconds",
+        "up_seconds",
+        "check_count",
+        "success_count",
+        "latency_sum",
+        "latency_count",
+        "degraded_count"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "monitor_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "day": {
+          "type": "string",
+          "description": "UTC date: YYYY-MM-DD"
+        },
+        "observed_seconds": {
+          "type": "integer"
+        },
+        "up_seconds": {
+          "type": "integer"
+        },
+        "check_count": {
+          "type": "integer"
+        },
+        "success_count": {
+          "type": "integer"
+        },
+        "latency_sum": {
+          "type": "number",
+          "description": "Sum of latency for successful checks with non-null measurements, in milliseconds"
+        },
+        "latency_count": {
+          "type": "integer",
+          "description": "Number of successful checks with non-null latency measurements"
+        },
+        "degraded_count": {
+          "type": "integer"
+        }
+      }
+    },
+    "hourly_stats": {
+      "type": "object",
+      "required": [
+        "monitor_id",
+        "hour",
+        "observed_seconds",
+        "up_seconds",
+        "degraded_count"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "monitor_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "hour": {
+          "type": "string",
+          "description": "UTC hour: YYYY-MM-DDTHH"
+        },
+        "observed_seconds": {
+          "type": "integer"
+        },
+        "up_seconds": {
+          "type": "integer"
+        },
+        "degraded_count": {
+          "type": "integer"
+        }
+      }
+    },
+    "short_stats": {
+      "type": "object",
+      "required": [
+        "monitor_id",
+        "slot",
+        "observed_seconds",
+        "up_seconds",
+        "degraded_count"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "monitor_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "slot": {
+          "type": "string",
+          "description": "UTC five-minute bucket: YYYY-MM-DDTHH:mm"
+        },
+        "observed_seconds": {
+          "type": "integer"
+        },
+        "up_seconds": {
+          "type": "integer"
+        },
+        "degraded_count": {
+          "type": "integer"
+        }
+      }
+    },
+    "incidents": {
+      "type": "object",
+      "required": [
+        "id",
+        "monitor_id",
+        "opened_at",
+        "closed_at",
+        "reason"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "monitor_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "opened_at": {
+          "type": "integer"
+        },
+        "closed_at": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "notifications": {
+      "type": "object",
+      "required": [
+        "id",
+        "incident_id",
+        "event",
+        "monitor_name",
+        "created_at",
+        "next_attempt",
+        "attempts",
+        "state",
+        "lease_until",
+        "lease_token",
+        "delivered_at",
+        "error"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "incident_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "event": {
+          "type": "string"
+        },
+        "monitor_name": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "integer"
+        },
+        "next_attempt": {
+          "type": "integer"
+        },
+        "attempts": {
+          "type": "integer"
+        },
+        "state": {
+          "type": "string"
+        },
+        "lease_until": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "lease_token": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "delivered_at": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "notification_deliveries": {
+      "type": "object",
+      "required": [
+        "notification_id",
+        "channel",
+        "state",
+        "attempts",
+        "next_attempt",
+        "delivered_at",
+        "error",
+        "receipt",
+        "receipt_token",
+        "cancelled_at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "notification_id": {
+          "type": "string"
+        },
+        "channel": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "attempts": {
+          "type": "integer"
+        },
+        "next_attempt": {
+          "type": "integer"
+        },
+        "delivered_at": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "receipt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "receipt_token": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cancelled_at": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "maintenance": {
+      "type": "object",
+      "required": [
+        "id",
+        "scope",
+        "target_id",
+        "title",
+        "starts_at",
+        "ends_at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "target_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "starts_at": {
+          "type": "integer"
+        },
+        "ends_at": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "pages": {
+      "type": "object",
+      "required": [
+        "id",
+        "slug",
+        "title",
+        "description",
+        "project_id",
+        "group_ids",
+        "excluded_ids",
+        "published",
+        "included_ids",
+        "language"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "project_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "group_ids": {
+          "type": "string"
+        },
+        "excluded_ids": {
+          "type": "string"
+        },
+        "published": {
+          "type": "integer"
+        },
+        "included_ids": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "language": {
+          "type": "string"
+        }
+      }
+    },
+    "public_incidents": {
+      "type": "object",
+      "required": [
+        "id",
+        "project_id",
+        "origin",
+        "monitor_id",
+        "technical_id",
+        "impact",
+        "stage",
+        "title_es",
+        "title_en",
+        "published",
+        "opened_at",
+        "updated_at",
+        "closed_at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "project_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "origin": {
+          "type": "string"
+        },
+        "monitor_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "technical_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "impact": {
+          "type": "string"
+        },
+        "stage": {
+          "type": "string"
+        },
+        "title_es": {
+          "type": "string"
+        },
+        "title_en": {
+          "type": "string"
+        },
+        "published": {
+          "type": "integer"
+        },
+        "opened_at": {
+          "type": "integer"
+        },
+        "updated_at": {
+          "type": "integer"
+        },
+        "closed_at": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "incident_monitors": {
+      "type": "object",
+      "required": [
+        "incident_id",
+        "monitor_id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "incident_id": {
+          "type": "string"
+        },
+        "monitor_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    },
+    "incident_updates": {
+      "type": "object",
+      "required": [
+        "id",
+        "incident_id",
+        "stage",
+        "impact",
+        "message_es",
+        "message_en",
+        "event",
+        "created_at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "incident_id": {
+          "type": "string"
+        },
+        "stage": {
+          "type": "string"
+        },
+        "impact": {
+          "type": "string"
+        },
+        "message_es": {
+          "type": "string"
+        },
+        "message_en": {
+          "type": "string"
+        },
+        "event": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "created_at": {
+          "type": "integer"
+        }
+      }
+    },
+    "app_settings": {
+      "type": "object",
+      "required": [
+        "id",
+        "value",
+        "updated_at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "updated_at": {
+          "type": "integer"
+        }
+      }
+    },
+    "engine": {
+      "type": "object",
+      "required": [
+        "id",
+        "last_started",
+        "last_finished",
+        "last_error"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "last_started": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "last_finished": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "last_error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "sqlite_sequence": {
+      "type": "object",
+      "required": [
+        "name",
+        "seq"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "seq": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "fullData": {
+      "type": "object",
+      "required": [
+        "projects",
+        "groups",
+        "monitors",
+        "jobs",
+        "results",
+        "daily_stats",
+        "hourly_stats",
+        "short_stats",
+        "incidents",
+        "notifications",
+        "notification_deliveries",
+        "maintenance",
+        "pages",
+        "public_incidents",
+        "incident_monitors",
+        "incident_updates",
+        "app_settings",
+        "engine",
+        "sqlite_sequence"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "projects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/projects"
+          }
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/groups"
+          }
+        },
+        "monitors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/monitors"
+          }
+        },
+        "jobs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/jobs"
+          }
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/results"
+          }
+        },
+        "daily_stats": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/daily_stats"
+          }
+        },
+        "hourly_stats": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/hourly_stats"
+          }
+        },
+        "short_stats": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/short_stats"
+          }
+        },
+        "incidents": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/incidents"
+          }
+        },
+        "notifications": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/notifications"
+          }
+        },
+        "notification_deliveries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/notification_deliveries"
+          }
+        },
+        "maintenance": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/maintenance"
+          }
+        },
+        "pages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/pages"
+          }
+        },
+        "public_incidents": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/public_incidents"
+          }
+        },
+        "incident_monitors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/incident_monitors"
+          }
+        },
+        "incident_updates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/incident_updates"
+          }
+        },
+        "app_settings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/app_settings"
+          }
+        },
+        "engine": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/engine"
+          }
+        },
+        "sqlite_sequence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sqlite_sequence"
+          }
+        }
+      }
+    },
+    "projectData": {
+      "type": "object",
+      "required": [
+        "projects",
+        "groups",
+        "monitors",
+        "jobs",
+        "results",
+        "daily_stats",
+        "hourly_stats",
+        "short_stats",
+        "incidents",
+        "notifications",
+        "notification_deliveries",
+        "maintenance",
+        "pages",
+        "public_incidents",
+        "incident_monitors",
+        "incident_updates"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "projects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/projects"
+          }
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/groups"
+          }
+        },
+        "monitors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/monitors"
+          }
+        },
+        "jobs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/jobs"
+          }
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/results"
+          }
+        },
+        "daily_stats": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/daily_stats"
+          }
+        },
+        "hourly_stats": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/hourly_stats"
+          }
+        },
+        "short_stats": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/short_stats"
+          }
+        },
+        "incidents": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/incidents"
+          }
+        },
+        "notifications": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/notifications"
+          }
+        },
+        "notification_deliveries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/notification_deliveries"
+          }
+        },
+        "maintenance": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/maintenance"
+          }
+        },
+        "pages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/pages"
+          }
+        },
+        "public_incidents": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/public_incidents"
+          }
+        },
+        "incident_monitors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/incident_monitors"
+          }
+        },
+        "incident_updates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/incident_updates"
+          }
+        }
+      }
+    }
+  }
+}
