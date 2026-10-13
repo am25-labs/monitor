@@ -87,8 +87,8 @@ export default {
       secured.headers.set("Cache-Control", "no-store");
     return secured;
   },
-  async scheduled(_controller: ScheduledController, env: Env) {
-    await tick(env);
+  async scheduled(controller: ScheduledController, env: Env) {
+    await tick(env, undefined, Math.floor(controller.scheduledTime / 1000));
   },
   async queue(batch: MessageBatch<JobMessage>, env: Env) {
     await consume(batch, env);

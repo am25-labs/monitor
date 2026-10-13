@@ -245,10 +245,12 @@ export async function record(
       lease
     )
   );
-  await env.DB.batch(batch);
+  const saved = await env.DB.batch(batch);
+  return saved[0].meta.changes > 0;
 }
 
 export async function runJob(env: Env, id: string) {
+  const started = Date.now();
   const now = nowSeconds(),
     lease = crypto.randomUUID();
   const job = await first<Job>(
@@ -291,9 +293,16 @@ export async function runJob(env: Env, id: string) {
         id,
         lease
       ).run();
+      console.warn(JSON.stringify({
+        event: "check_cancelled", jobId: id,
+        reason: !m ? "missing_monitor" : m.paused ? "paused"
+          : m.config_version !== job.config_version ? "configuration_changed" : "expired",
+        jobAgeSeconds: now - job.due_at
+      }));
       return;
     }
     let result: CheckResult;
+    const checkStarted = Date.now();
     if (m.kind === "heartbeat") {
       if (
         (m.last_heartbeat ?? m.created_at) +
@@ -323,8 +332,17 @@ export async function runJob(env: Env, id: string) {
       stage = "check";
       result = await check(m.kind, config);
     }
+    const checked = nowSeconds(), checkMs = Date.now() - checkStarted;
+    const persistenceStarted = Date.now();
     stage = "persistence";
-    await record(env, job, m, result, lease, nowSeconds());
+    const saved = await record(env, job, m, result, lease, checked);
+    console.log(JSON.stringify({
+      event: saved ? "check_completed" : "check_superseded", monitorId: m.id, jobId: id,
+      jobAgeSeconds: now - job.due_at,
+      checkGapSeconds: m.last_checked === null ? null : checked - m.last_checked,
+      checkMs, persistenceMs: Date.now() - persistenceStarted,
+      totalMs: Date.now() - started, ok: result.ok
+    }));
   } catch (error) {
     await statement(
       env.DB,
@@ -433,7 +451,37 @@ export async function cleanup(env: Env, now: number) {
   ]);
 }
 
-export async function tick(env: Env, now = nowSeconds()) {
+async function dispatchJobs(env: Env, now: number) {
+  const [cancelled, claimed] = await env.DB.batch<Job>([
+    statement(env.DB,
+      `UPDATE jobs SET state='cancelled',completed_at=?,lease_until=NULL
+      WHERE (state='pending' OR (state='running' AND lease_until<?))
+      AND NOT EXISTS(SELECT 1 FROM monitors m WHERE m.id=jobs.monitor_id
+        AND m.config_version=jobs.config_version AND m.paused=0
+        AND jobs.due_at>=?-m.interval_seconds*2)`, now, now, now),
+    statement(env.DB,
+      `UPDATE jobs SET dispatched_at=? WHERE id IN (
+        SELECT id FROM jobs WHERE
+        (state='pending' AND (dispatched_at IS NULL OR dispatched_at<?))
+        OR (state='running' AND lease_until<? AND (dispatched_at IS NULL OR dispatched_at<?))
+        ORDER BY due_at,id LIMIT 100
+      ) RETURNING *`, now, now - 120, now, now - 120)
+  ]);
+  const jobs = claimed.results;
+  if (!jobs.length) return { dispatched: 0, cancelled: cancelled.meta.changes };
+  try {
+    await env.CHECKS.sendBatch(jobs.map((job) => ({ body: { id: job.id } })), { delaySeconds: 0 });
+  } catch (error) {
+    await env.DB.batch(jobs.map((job) => statement(env.DB,
+      "UPDATE jobs SET dispatched_at=NULL WHERE id=? AND dispatched_at=?",
+      job.id, now)));
+    throw error;
+  }
+  return { dispatched: jobs.length, cancelled: cancelled.meta.changes };
+}
+
+export async function tick(env: Env, now = nowSeconds(), scheduledAt = now) {
+  const started = Date.now();
   await statement(
     env.DB,
     "UPDATE engine SET last_started=?,last_error=NULL WHERE id=1",
@@ -461,13 +509,13 @@ export async function tick(env: Env, now = nowSeconds()) {
       "SELECT * FROM monitors WHERE paused=0 AND next_due<=? ORDER BY next_due LIMIT 100",
       now
     );
-    for (const m of due) {
+    const schedule = due.flatMap((m) => {
       const id = `${m.id}:${m.config_version}:${m.next_due}`;
       const scheduled =
         m.kind !== "heartbeat" && m.interval_seconds % 60 === 0
           ? Math.floor(m.next_due / 60) * 60
           : m.next_due;
-      await env.DB.batch([
+      return [
         statement(
           env.DB,
           "INSERT OR IGNORE INTO jobs(id,monitor_id,config_version,due_at) SELECT ?,id,config_version,? FROM monitors WHERE id=? AND config_version=? AND next_due=? AND paused=0",
@@ -487,42 +535,29 @@ export async function tick(env: Env, now = nowSeconds()) {
           m.config_version,
           m.next_due
         )
-      ]);
-    }
-    const pending = await rows<Job>(
-      env.DB,
-      "SELECT * FROM jobs WHERE (state='pending' AND (dispatched_at IS NULL OR dispatched_at<?)) OR (state='running' AND lease_until<?) LIMIT 100",
-      now - 120,
-      now
-    );
-    for (const job of pending) {
-      const dispatched = await first<{ id: string }>(
-        env.DB,
-        "UPDATE jobs SET dispatched_at=? WHERE id=? AND (dispatched_at IS NULL OR dispatched_at<?) RETURNING id",
-        now,
-        job.id,
-        now - 120
-      );
-      if (!dispatched) continue;
-      try {
-        await env.CHECKS.send({ id: job.id });
-      } catch (error) {
-        await statement(
-          env.DB,
-          "UPDATE jobs SET dispatched_at=NULL WHERE id=? AND dispatched_at=?",
-          job.id,
-          now
-        ).run();
-        throw error;
-      }
-    }
+      ];
+    });
+    if (schedule.length) await env.DB.batch(schedule);
+    const schedulingMs = Date.now() - started;
+    const dispatchStarted = Date.now();
+    const dispatch = await dispatchJobs(env, now);
+    const dispatchMs = Date.now() - dispatchStarted;
+    const notificationsStarted = Date.now();
     await deliverNotifications(env, now);
+    const notificationsMs = Date.now() - notificationsStarted;
+    const cleanupStarted = Date.now();
     await cleanup(env, now);
+    const cleanupMs = Date.now() - cleanupStarted;
     await statement(
       env.DB,
       "UPDATE engine SET last_finished=? WHERE id=1",
       nowSeconds()
     ).run();
+    console.log(JSON.stringify({
+      event: "engine_cycle", cronDelaySeconds: Math.max(0, now - scheduledAt),
+      due: due.length, ...dispatch, schedulingMs, dispatchMs,
+      notificationsMs, cleanupMs, totalMs: Date.now() - started
+    }));
   } catch (error) {
     await statement(
       env.DB,

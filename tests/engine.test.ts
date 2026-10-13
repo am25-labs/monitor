@@ -5,6 +5,7 @@ import { first, rows, statement } from "../src/worker/db";
 import { cleanup, consume, heartbeat, record, runJob, tick } from "../src/worker/engine";
 import { displayStatus, observation, sixMonthsAgo } from "../src/worker/state";
 import { deliverNotifications } from "../src/worker/mail";
+import { seal } from "../src/worker/crypto";
 import type { CheckResult, Job, JobMessage, Monitor, Window } from "../src/shared/types";
 
 const failure: CheckResult = {
@@ -109,7 +110,7 @@ describe("engine and persistence", () => {
       await tick(env, now);
       const jobs = await rows<Job>(
         env.DB,
-        "SELECT * FROM jobs WHERE monitor_id=? AND state='pending' ORDER BY due_at",
+        "SELECT * FROM jobs WHERE monitor_id=? AND state IN ('pending','cancelled') ORDER BY due_at",
         m.id
       );
       expect(jobs).toHaveLength(index + 1);
@@ -527,7 +528,7 @@ it("ignores results from a replaced lease and cancels overdue jobs without servi
   ).toBe(0);
 });
 
-it("drains 100 slow checks with five batches of five concurrent jobs and no duplicate results", async () => {
+it("drains 100 slow checks with twenty batches of five concurrent jobs and no duplicate results", async () => {
   const now = Math.floor(Date.now() / 1000);
   for (let i = 0; i < 100; i++) await createMonitor({ next_due: now });
   await tick(env, now);
@@ -542,14 +543,14 @@ it("drains 100 slow checks with five batches of five concurrent jobs and no dupl
     return new Response("healthy");
   });
   try {
-    const consumers = Array.from({ length: 5 }, async (_, consumer) => {
-      for (let offset = consumer * 5; offset < jobs.length; offset += 25)
+    const consumers = Array.from({ length: 20 }, async (_, consumer) => {
+      for (let offset = consumer * 5; offset < jobs.length; offset += 100)
         await Promise.all(
           jobs.slice(offset, offset + 5).map((job) => runJob(env, job.id))
         );
     });
     await Promise.all(consumers);
-    expect(peak).toBeLessThanOrEqual(25);
+    expect(peak).toBeLessThanOrEqual(100);
     expect(
       (await first<{ n: number }>(env.DB, "SELECT COUNT(*) AS n FROM results"))
         ?.n
@@ -575,6 +576,110 @@ it("drains 100 slow checks with five batches of five concurrent jobs and no dupl
     mock.mockRestore();
   }
 }, 30000);
+
+it.each([25, 100])("publishes %i monitors in one batch without duplicate dispatches", async (count) => {
+  const now = Math.floor(Date.now() / 1000);
+  for (let i = 0; i < count; i++) await createMonitor({ next_due: now });
+  const send = vi.spyOn(env.CHECKS, "send");
+  const publish = vi.spyOn(env.CHECKS, "sendBatch");
+  const batch = vi.spyOn(env.DB, "batch");
+  const log = vi.spyOn(console, "log").mockImplementation(() => {});
+  try {
+    await Promise.all([tick(env, now, now - 75), tick(env, now, now - 75)]);
+    expect(send).not.toHaveBeenCalled();
+    const messages = publish.mock.calls.flatMap(([messages]) => [...messages]);
+    expect(messages).toHaveLength(count);
+    expect(new Set(messages.map((message) => JSON.stringify(message.body))).size).toBe(count);
+    const schedules = batch.mock.calls.filter(([statements]) => statements.length === count * 2);
+    expect(schedules.length).toBeGreaterThanOrEqual(1);
+    expect(schedules.length).toBeLessThanOrEqual(2);
+    const cycles = log.mock.calls.map(([value]) => JSON.parse(value)).filter((entry) => entry.event === "engine_cycle");
+    expect(cycles).toHaveLength(2);
+    expect(cycles.every((cycle) => cycle.cronDelaySeconds === 75)).toBe(true);
+    expect(cycles.reduce((sum, cycle) => sum + cycle.dispatched, 0)).toBe(count);
+  } finally {
+    send.mockRestore(); publish.mockRestore(); batch.mockRestore(); log.mockRestore();
+  }
+}, 30000);
+
+it("releases every dispatch after publication fails and recovers on the next tick", async () => {
+  const now = Math.floor(Date.now() / 1000);
+  for (let i = 0; i < 25; i++) await createMonitor({ next_due: now });
+  const publish = vi.spyOn(env.CHECKS, "sendBatch").mockRejectedValueOnce(new Error("Queue unavailable"));
+  const log = vi.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    await expect(tick(env, now)).rejects.toThrow("Queue unavailable");
+    expect(await first(env.DB, "SELECT COUNT(*) AS count FROM jobs WHERE dispatched_at IS NULL"))
+      .toEqual({ count: 25 });
+    await tick(env, now + 1);
+    expect(await first(env.DB, "SELECT COUNT(*) AS count FROM jobs WHERE dispatched_at IS NOT NULL"))
+      .toEqual({ count: 25 });
+    expect(await first(env.DB, "SELECT COUNT(*) AS count FROM jobs")).toEqual({ count: 25 });
+    expect(publish).toHaveBeenCalledTimes(2);
+  } finally {
+    publish.mockRestore(); log.mockRestore();
+  }
+});
+
+it("cancels an expired backlog before dispatching current checks", async () => {
+  const now = Math.floor(Date.now() / 1000);
+  for (let i = 0; i < 25; i++) {
+    const m = await createMonitor({ next_due: now });
+    for (let j = 0; j < 5; j++)
+      await statement(env.DB, "INSERT INTO jobs(id,monitor_id,config_version,due_at) VALUES(?,?,1,?)",
+        `${m.id}:old:${j}`, m.id, now - 121 - j).run();
+  }
+  const publish = vi.spyOn(env.CHECKS, "sendBatch");
+  try {
+    await tick(env, now);
+    expect([...publish.mock.calls[0][0]]).toHaveLength(25);
+    expect(await first(env.DB, "SELECT COUNT(*) AS count FROM jobs WHERE state='cancelled'"))
+      .toEqual({ count: 125 });
+    expect(await first(env.DB, "SELECT COUNT(*) AS count FROM jobs WHERE state='pending' AND dispatched_at=?", now))
+      .toEqual({ count: 25 });
+  } finally { publish.mockRestore(); }
+});
+
+it("persists 100 simultaneous 30-second timeouts within a minute", async () => {
+  const now = Math.floor(Date.now() / 1000);
+  for (let i = 0; i < 100; i++) {
+    const m = await createMonitor({ next_due: now });
+    const config = await seal({ url: "https://example.test/health", method: "GET", headers: {}, codes: "200-299", followRedirects: false, timeoutSeconds: 30, assertion: "none" }, env.CONFIG_KEY, m.id);
+    await statement(env.DB, "UPDATE monitors SET config=? WHERE id=?", config, m.id).run();
+  }
+  await tick(env, now);
+  const jobs = await rows<Job>(env.DB, "SELECT * FROM jobs");
+  let active = 0, peak = 0;
+  const mock = vi.spyOn(globalThis, "fetch").mockImplementation((_url, options) => {
+    active++; peak = Math.max(peak, active);
+    return new Promise<Response>((_resolve, reject) => {
+      const signal = options?.signal;
+      const abort = () => { active--; reject(signal?.reason); };
+      if (signal?.aborted) abort();
+      else signal?.addEventListener("abort", abort, { once: true });
+    });
+  });
+  const started = Date.now();
+  try {
+    await Promise.all(Array.from({ length: 20 }, (_, consumer) => {
+      const messages = jobs.slice(consumer * 5, consumer * 5 + 5)
+        .map((job) => ({ body: { id: job.id }, ack: vi.fn(), retry: vi.fn() }));
+      return consume({ messages } as unknown as MessageBatch<JobMessage>, env)
+        .then(() => { for (const message of messages) {
+          expect(message.ack).toHaveBeenCalledOnce();
+          expect(message.retry).not.toHaveBeenCalled();
+        } });
+    }));
+    expect(Date.now() - started).toBeLessThan(60000);
+    expect(peak).toBe(100);
+    expect(active).toBe(0);
+    expect(await first(env.DB, "SELECT COUNT(*) AS count FROM results WHERE ok=0 AND reason='timeout'"))
+      .toEqual({ count: 100 });
+    expect(await first(env.DB, "SELECT COUNT(*) AS count FROM jobs WHERE state='completed'"))
+      .toEqual({ count: 100 });
+    console.log(JSON.stringify({ event: "local_capacity_test", monitors: 100, timeoutSeconds: 30, elapsedMs: Date.now() - started }));
+  } finally { mock.mockRestore(); }
+}, 90000);
 
 it("splits hourly observations and excludes overlapping maintenance and stale data", async () => {
   const m = await createMonitor({ last_checked: 3570, last_ok: 1 });

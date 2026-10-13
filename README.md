@@ -24,6 +24,8 @@ Sigue la [guía de configuración en español](docs/setup/es.md). Explica cómo 
 
 El despliegue utiliza GitHub Actions y se activa únicamente con cambios en `main`. Funciona con repositorios públicos o privados. El consumo y los límites dependen de tu plan de Cloudflare; la retención de seis meses no implica que toda instalación quepa en el plan gratuito.
 
+El límite de cien monitores no garantiza comprobaciones exactas cada minuto. Consulta cómo [validar la fiabilidad del motor](docs/reliability/es.md) con pruebas de carga y mediciones en producción.
+
 ### Versiones y Releases
 
 Al publicar el proyecto, cada promoción a `main` se identificará con una versión y un GitHub Release. La versión de `package.json`, la etiqueta `X.Y.Z` y el Release deben corresponder al mismo estado del código; la versión de la aplicación se muestra en Ajustes.
@@ -61,6 +63,8 @@ React, Vite, TypeScript, and shadcn/ui power the interface. Cloudflare Workers r
 Follow the [English setup guide](docs/setup/en.md). It explains how to prepare your repository, create Cloudflare resources, secure access, connect your domain, and enable notifications. Each installation uses its own accounts, resources, and credentials.
 
 Deployment uses GitHub Actions and runs only on changes to `main`. It works with public or private repositories. Usage and limits depend on your Cloudflare plan; six-month retention does not mean every installation fits within the free plan.
+
+The hundred-monitor limit does not guarantee checks exactly every minute. See how to [validate engine reliability](docs/reliability/en.md) with load tests and production measurements.
 
 ### Versions and Releases
 
