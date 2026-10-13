@@ -394,7 +394,10 @@ describe("engine and persistence", () => {
     expect(
       observation(m, [w], 86430, false).reduce((n, s) => n + s.seconds, 0)
     ).toBe(30);
-    expect(observation(m, [], 87000, false)).toEqual([]);
+    expect(observation(m, [], 87000, false)).toEqual([
+      { day: "1970-01-01", seconds: 30, up: 30 },
+      { day: "1970-01-02", seconds: 90, up: 90 }
+    ]);
   });
   it("retains six calendar months including month-end boundaries", async () => {
     const now = Date.UTC(2026, 7, 31, 12) / 1000,
@@ -595,7 +598,10 @@ it("splits hourly observations and excludes overlapping maintenance and stale da
     { day: "1970-01-01T00", seconds: 10, up: 10 },
     { day: "1970-01-01T01", seconds: 20, up: 20 }
   ]);
-  expect(observation(m, [], 4000, false, 3600)).toEqual([]);
+  expect(observation(m, [], 4000, false, 3600)).toEqual([
+    { day: "1970-01-01T00", seconds: 30, up: 30 },
+    { day: "1970-01-01T01", seconds: 90, up: 90 }
+  ]);
   await statement(
     env.DB,
     "INSERT INTO maintenance VALUES(?,?,?,?,?,?)",
@@ -625,6 +631,45 @@ it("splits hourly observations and excludes overlapping maintenance and stale da
   ).run();
   await cleanup(env, 3630);
   expect((await rows(env.DB, "SELECT * FROM hourly_stats")).length).toBe(2);
+});
+
+it.each([1, 0])("retains only the fresh part of delayed checks with previous result %i", async (ok) => {
+  const m = await createMonitor({ last_checked: 1170, last_ok: ok });
+  for (const elapsed of [90, 95, 120, 121, 600]) {
+    const segments = observation(m, [], 1170 + elapsed, false, 300);
+    expect(segments.reduce((sum, s) => sum + s.seconds, 0)).toBe(Math.min(elapsed, 120));
+    expect(segments.reduce((sum, s) => sum + s.up, 0)).toBe(ok * Math.min(elapsed, 120));
+  }
+  expect(observation(m, [], 1170, false)).toEqual([]);
+  expect(observation(m, [], 1169, false)).toEqual([]);
+  expect(observation({ ...m, paused: 1 }, [], 1290, false)).toEqual([]);
+  expect(observation(m, [], 1290, true)).toEqual([]);
+  expect(observation({ ...m, maintenance_active: 1 }, [], 1290, false)).toEqual([]);
+  expect(observation({ ...m, kind: "heartbeat", grace_seconds: 60 }, [], 1500, false)
+    .reduce((sum, s) => sum + s.seconds, 0)).toBe(180);
+  const job = await sample(m.id, 1500, success);
+  await record(env, job, m, success, "lease", 1500);
+  for (const table of ["results", "daily_stats", "hourly_stats", "short_stats"]) {
+    expect(await first(env.DB,
+      `SELECT SUM(observed_seconds) AS seconds,SUM(up_seconds) AS up FROM ${table} WHERE monitor_id=?`, m.id))
+      .toEqual({ seconds: 120, up: ok * 120 });
+  }
+  expect(await rows(env.DB, "SELECT slot FROM short_stats WHERE monitor_id=? ORDER BY slot", m.id))
+    .toEqual([{ slot: "1970-01-01T00:15" }, { slot: "1970-01-01T00:20" }]);
+});
+
+it("preserves history when cron delivery reproduces the October 13 gaps", async () => {
+  const at = (time: string) => Date.parse(`2026-10-13T${time}Z`) / 1000;
+  const m = await createMonitor({ last_checked: at("11:04:25"), last_ok: 1 });
+  for (const time of ["11:06:42", "11:08:22", "11:10:01", "11:11:36"])
+    await sample(m.id, at(time), success);
+  expect(await rows(env.DB,
+    "SELECT slot,observed_seconds,up_seconds FROM short_stats WHERE monitor_id=? ORDER BY slot", m.id))
+    .toEqual([
+      { slot: "2026-10-13T11:00", observed_seconds: 35, up_seconds: 35 },
+      { slot: "2026-10-13T11:05", observed_seconds: 283, up_seconds: 283 },
+      { slot: "2026-10-13T11:10", observed_seconds: 96, up_seconds: 96 }
+    ]);
 });
 
 it("records five-minute slots across boundaries without expanding a brief outage", async () => {

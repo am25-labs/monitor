@@ -1,5 +1,9 @@
 import type { Monitor, Status, Window } from "../shared/types";
 
+function freshnessSeconds(m: Monitor) {
+  return m.interval_seconds * 2 + (m.kind === "heartbeat" ? m.grace_seconds : 0);
+}
+
 export function isMaintenance(m: Monitor, windows: Window[], now: number) {
   return windows.some(
     (w) =>
@@ -26,8 +30,7 @@ export function displayStatus(
   if (m.paused) return "paused";
   if (
     m.last_checked &&
-    now - m.last_checked >
-      m.interval_seconds * 2 + (m.kind === "heartbeat" ? m.grace_seconds : 0)
+    now - m.last_checked > freshnessSeconds(m)
   )
     return "unknown";
   return m.status === "up" && m.degraded ? "degraded" : m.status;
@@ -71,18 +74,13 @@ export function observation(
     m.paused
   )
     return [];
-  const elapsed = now - m.last_checked;
-  if (
-    elapsed <= 0 ||
-    elapsed >
-      m.interval_seconds * 1.5 + (m.kind === "heartbeat" ? m.grace_seconds : 0)
-  )
-    return [];
+  const observedUntil = Math.min(now, m.last_checked + freshnessSeconds(m));
+  if (observedUntil <= m.last_checked) return [];
   const segments: { day: string; seconds: number; up: number }[] = [];
   let start = m.last_checked;
-  while (start < now) {
+  while (start < observedUntil) {
     const midnight = (Math.floor(start / bucketSeconds) + 1) * bucketSeconds,
-      end = Math.min(now, midnight);
+      end = Math.min(observedUntil, midnight);
     const spans = windows
       .filter(
         (w) =>
