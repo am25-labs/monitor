@@ -567,6 +567,7 @@ export const english: Record<string, string> = {
   "El incidente cambió. Actualiza la página e inténtalo de nuevo.": "The incident changed. Refresh the page and try again.",
   "Las correcciones no cambian el impacto de un incidente resuelto.": "Corrections do not change the impact of a resolved incident.",
   "Exportar": "Export",
+  "Proyectos": "Projects",
   "Exportar datos": "Export data",
   "Descarga un backup completo o los datos de los proyectos seleccionados en JSON. Se conservan los IDs y sus relaciones.": "Download a full backup or selected projects as JSON. IDs and relationships are preserved.",
   "Datos a exportar": "Data to export",

@@ -32,11 +32,12 @@ export function DataExport({ projects }: { projects: Project[] }) {
     try {
       const response = await fetch(`/api/v1/admin/settings/export?${params}`, { credentials: "same-origin" });
       if (response.status === 401) {
+        setError("Tu sesión expiró. Vuelve a entrar.");
         location.assign("/app/");
-        throw new Error(t("Tu sesión expiró. Vuelve a entrar."));
+        return;
       }
       if (!response.ok || !response.headers.get("Content-Type")?.includes("application/json"))
-        throw new Error(t("No se pudo exportar la información."));
+        throw new Error("Export failed");
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -46,8 +47,8 @@ export function DataExport({ projects }: { projects: Project[] }) {
       link.click();
       link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 60000);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : t("No se pudo exportar la información."));
+    } catch {
+      setError("No se pudo exportar la información.");
     } finally {
       setBusy(false);
     }

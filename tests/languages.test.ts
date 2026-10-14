@@ -201,6 +201,17 @@ it("keeps interpolation fields consistent in every translation", () => {
   }
 });
 
+it("localizes export controls, errors, and history tooltip details", () => {
+  expect(translate("en", "Proyectos")).toBe("Projects");
+  expect(translate("en", "Exportar")).toBe("Export");
+  expect(translate("en", "Seleccionar todos")).toBe("Select all");
+  expect(translate("en", "Descargar JSON")).toBe("Download JSON");
+  expect(translate("en", "No se pudo exportar la información.")).toBe("The data could not be exported.");
+  expect(translate("es", "No se pudo exportar la información.")).toBe("No se pudo exportar la información.");
+  expect(translate("en", "Cobertura parcial: {coverage}%", { coverage: "25.0" })).toBe("Partial coverage: 25.0%");
+  expect(translate("en", "{outage} s de interrupción / {observed} s observados", { outage: 60, observed: 300 })).toBe("60 s interrupted / 300 s observed");
+});
+
 it("formats dates and empty availability in the selected language", () => {
   expect(date(null, "es")).toBe("Sin datos");
   expect(date(null, "en")).toBe("No data");
