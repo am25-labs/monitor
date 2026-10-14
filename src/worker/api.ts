@@ -679,6 +679,9 @@ export async function publicPage(env: Env, slug: string, query = new URLSearchPa
   const reports = await publicIncidents(env, page.project_id, included, page.language, now, archive,
     cursorTime !== null && cursorId !== null ? { time:Number(cursorTime), id:cursorId } : undefined);
   if (archive) return json(reports);
+  const visibleGroups = groups.length ? (await rows<Pick<Group, "id" | "name">>(
+    env.DB, "SELECT id,name FROM groups WHERE project_id=? ORDER BY name,id", page.project_id
+  )).filter((group) => groups.includes(group.id) && included.some((monitor) => monitor.group_id === group.id)) : [];
   const monitors = await Promise.all(
     included.map(async (m) => {
       const stats = await rows<Stat>(
@@ -720,6 +723,7 @@ export async function publicPage(env: Env, slug: string, query = new URLSearchPa
       return {
         id: m.id,
         name: m.name,
+        groupId: groups.length ? m.group_id : null,
         status: publicStatus(displayStatus(m, activeWindows, now), reports.incidents.filter(i => i.origin === "manual" && i.closed_at === null && i.monitors.some(target => target.id === m.id)).map(i => i.impact)),
         lastChecked: m.last_checked,
         stats,
@@ -742,6 +746,7 @@ export async function publicPage(env: Env, slug: string, query = new URLSearchPa
     timeZone: (await generalSettings(env)).timeZone,
     description: page.description,
     monitors,
+    groups: visibleGroups,
     updatedAt: now
   });
 }

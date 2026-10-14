@@ -24,9 +24,11 @@ interface PublicData {
   title: string;
   description: string;
   updatedAt: number;
+  groups?: { id: string; name: string }[];
   monitors: {
     id: string;
     name: string;
+    groupId: string | null;
     status: Status;
     lastChecked: number | null;
     stats: { day: string; observed_seconds: number; up_seconds: number; degraded_count?: number }[];
@@ -88,6 +90,43 @@ function History({
     </div>
   );
 }
+export function PublicMonitors({ monitors, groups = [], range, updatedAt }: {
+  monitors: PublicData["monitors"];
+  groups?: PublicData["groups"];
+  range: HistoryRange;
+  updatedAt: number;
+}) {
+  const { t } = useLocale();
+  const renderMonitor = (m: PublicData["monitors"][number]) => (
+    <Panel key={m.id} title={m.name}>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm text-muted-foreground">
+            {t("Estado actual")}
+          </span>
+          <StatusBadge status={m.status} />
+        </div>
+        <History
+          stats={m.stats}
+          hourly={m.hourly ?? []}
+          short={m.short ?? []}
+          range={range}
+          updatedAt={updatedAt}
+        />
+      </div>
+    </Panel>
+  );
+  if (!groups.length) return <>{monitors.map(renderMonitor)}</>;
+  return <>{groups.map((group) => {
+    const selected = monitors.filter((monitor) => monitor.groupId === group.id);
+    if (!selected.length) return null;
+    return <section key={group.id} className="flex flex-col gap-4" aria-labelledby={`monitor-group-${group.id}`}>
+      <h2 id={`monitor-group-${group.id}`} className="text-lg font-semibold">{group.name}</h2>
+      <div className="flex flex-col gap-6">{selected.map(renderMonitor)}</div>
+    </section>;
+  })}</>;
+}
+
 function HistoryGuide({ monitors, range, updatedAt }: {
   monitors: PublicData["monitors"];
   range: HistoryRange;
@@ -243,27 +282,7 @@ function StatusView({
             {data.incidents.filter(i => i.closed_at === null).map(i => <IncidentCard key={i.id} incident={i} />)}
           </section>}
           {data.monitors.length ? (
-            data.monitors.map((m) => {
-              return (
-                <Panel key={m.id} title={m.name}>
-                  <div className="flex flex-col gap-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm text-muted-foreground">
-                        {t("Estado actual")}
-                      </span>
-                      <StatusBadge status={m.status} />
-                    </div>
-                    <History
-                      stats={m.stats}
-                      hourly={m.hourly ?? []}
-                      short={m.short ?? []}
-                      range={range}
-                      updatedAt={data.updatedAt}
-                    />
-                  </div>
-                </Panel>
-              );
-            })
+            <PublicMonitors monitors={data.monitors} groups={data.groups} range={range} updatedAt={data.updatedAt} />
           ) : (
             <Nothing
               title={t("Sin servicios publicados")}
