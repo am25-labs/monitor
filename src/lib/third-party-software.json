@@ -86,6 +86,11 @@
       "license": "MIT"
     },
     {
+      "name": "recharts",
+      "version": "3.8.0",
+      "license": "MIT"
+    },
+    {
       "name": "tailwind-merge",
       "version": "3.7.0",
       "license": "MIT"
@@ -126,5 +131,5 @@
       "license": "MIT"
     }
   ],
-  "packageCount": 328
+  "packageCount": 364
 }

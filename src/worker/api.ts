@@ -36,6 +36,7 @@ import { verifyHeartbeat } from "./auth";
 import { exportData } from "./export";
 import { restoreData } from "./restore";
 import { backupLimit } from "../shared/backup";
+import { metricsData } from "./metrics";
 
 export function json(value: unknown, status = 200) {
   return Response.json(value, {
@@ -129,6 +130,8 @@ export async function admin(
   const [resource, id, action] = path.split("/").filter(Boolean),
     method = request.method,
     now = nowSeconds();
+  if (resource === "metrics" && !id && method === "GET")
+    return json(await metricsData(request, env));
   if (resource === "settings" && id === "export" && !action && method === "GET")
     return exportData(request, env);
   if (resource === "settings" && id === "restore" && !action && method === "POST") {

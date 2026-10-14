@@ -18,7 +18,7 @@ import {
   CardTitle
 } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { Button } from "./ui/button";
+import { Button, buttonVariants } from "./ui/button";
 import {
   Table,
   TableBody,
@@ -29,6 +29,7 @@ import {
 } from "./ui/table";
 import { Notice, Nothing, Panel } from "./common";
 import { cn } from "../lib/utils";
+import { MetricCharts } from "./metric-charts";
 
 export function Overview({
   data,
@@ -48,6 +49,9 @@ export function Overview({
   const allUp = data.monitors.length > 0 && up === data.monitors.length;
   const needsAttention = data.monitors.length > 0 && !allUp && down === 0;
   const failed = data.notifications.filter((n) => n.state === "failed").length;
+  const end = new Date().toISOString().slice(0, 10);
+  const start = new Date(Date.parse(`${end}T00:00:00Z`) - 29 * 86400000).toISOString().slice(0, 10);
+  const stats = data.stats.filter((stat) => stat.day >= start && stat.day <= end);
   const states = [
     {
       title: t("Monitores"),
@@ -74,7 +78,7 @@ export function Overview({
     },
     {
       title: t("Disponibilidad · 30 días"),
-      value: availability(data.stats),
+      value: availability(stats),
       description: t("Calculada sobre el tiempo observado"),
       icon: Clock
     }
@@ -148,6 +152,11 @@ export function Overview({
             </CardContent>
           </Card>
         ))}
+      </div>
+      <div className="flex min-w-0 flex-col gap-4">
+        <p className="text-sm text-muted-foreground">{t("Últimos 30 días en UTC. El día actual está en curso.")}</p>
+        <MetricCharts stats={stats} start={start} end={end} />
+        <Link to="/app/metrics" className={buttonVariants({ variant: "outline", className: "self-end" })}>{t("Ver todas las métricas")}</Link>
       </div>
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <Panel
