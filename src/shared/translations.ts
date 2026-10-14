@@ -1,4 +1,6 @@
 export const english: Record<string, string> = {
+  " Los segmentos más antiguos están a la izquierda y los más recientes, a la derecha.": " Older segments are on the left and more recent ones are on the right.",
+  " Rojo indica interrupciones; amarillo, degradación por latencia; verde, sin afectación; gris, sin registros.": " Red indicates interruptions; yellow, latency degradation; green, no impact; gray, no records.",
   "Tipo": "Type",
   "{count} minuto": "{count} minute",
   "Inicio:": "Started:",

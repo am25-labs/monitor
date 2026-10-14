@@ -78,10 +78,12 @@ function History({
           {t("Disponibilidad observada:")} {availability(observed)}
         </p>
       </div>
-      <HistoryStrip {...history} range={range} />
-      <div className="flex justify-between text-xs text-muted-foreground">
-        <span>{t("Inicio del período")}</span>
-        <span>{granular ? t("Ahora") : t("Día más reciente")}</span>
+      <div className="flex flex-col gap-1">
+        <HistoryStrip {...history} range={range} />
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <span>{t("Inicio del período")}</span>
+          <span>{granular ? t("Ahora") : t("Día más reciente")}</span>
+        </div>
       </div>
     </div>
   );
@@ -131,12 +133,12 @@ function HistoryGuide({ monitors, range, updatedAt }: {
             )
           }
         )}
+        {t(" Los segmentos más antiguos están a la izquierda y los más recientes, a la derecha.")}
         {granular
           ? t(
-              " Lee de izquierda a derecha. Rojo indica interrupciones; amarillo, degradación por latencia; verde, sin afectación; gris, sin registros. Cada segmento tiene un solo color."
+              " Rojo indica interrupciones; amarillo, degradación por latencia; verde, sin afectación; gris, sin registros."
             )
-          : t(" El historial puede incluir incidentes ya resueltos.")}{" "}
-        {t("El segmento actual está en curso.")}
+          : t(" El historial puede incluir incidentes ya resueltos.")}
       </p>
     </div>
   );
@@ -258,10 +260,6 @@ function StatusView({
                       range={range}
                       updatedAt={data.updatedAt}
                     />
-                    <p className="text-xs text-muted-foreground">
-                      {t("Última comprobación:")} {date(m.lastChecked)}
-                    </p>
-
                   </div>
                 </Panel>
               );
