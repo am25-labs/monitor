@@ -333,9 +333,6 @@ function IncidentEditor({ data, id }: { data: Snapshot; id: string }) {
             </Button>
           </>
         )}
-        <Badge variant="outline">
-          {t(incident.published ? "Publicado" : "Borrador")}
-        </Badge>
       </div>
       <Notice message={notice || error} destructive />
       {incident.origin === "manual" && (
@@ -350,7 +347,7 @@ function IncidentEditor({ data, id }: { data: Snapshot; id: string }) {
         />
       )}
       <LocaleProvider language={previewLanguage} documentLanguage={false}>
-        <IncidentCard incident={preview} />
+        <IncidentCard incident={preview} published={Boolean(incident.published)} />
       </LocaleProvider>
       <p className="text-sm text-muted-foreground">
         {t("Inicio:")} {date(incident.opened_at)}

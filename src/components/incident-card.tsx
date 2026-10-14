@@ -6,7 +6,7 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Separator } from "./ui/separator";
 
-export function IncidentCard({ incident }: { incident: PublicIncidentView }) {
+export function IncidentCard({ incident, published }: { incident: PublicIncidentView; published?: boolean }) {
   const { t, date } = useLocale();
   const [expanded, setExpanded] = useState(false);
   const latest = incident.updates.at(-1);
@@ -16,6 +16,7 @@ export function IncidentCard({ incident }: { incident: PublicIncidentView }) {
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={incident.impact} />
           <Badge variant="outline">{t(stageLabels[incident.stage])}</Badge>
+          {published !== undefined && <Badge variant="outline">{t(published ? "Publicado" : "Borrador")}</Badge>}
           {incident.monitors.map((m) => (
             <Badge key={m.id} variant="secondary">
               {m.name}
