@@ -158,7 +158,7 @@ export function Overview({
         <MetricCharts stats={stats} start={start} end={end} />
         <Link to="/app/metrics" className={buttonVariants({ variant: "outline", className: "self-end" })}>{t("Ver todas las métricas")}</Link>
       </div>
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="grid items-stretch gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <Panel
           title={t("Incidentes recientes")}
           description={t("Caídas y recuperaciones de tus servicios.")}
