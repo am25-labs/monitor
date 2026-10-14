@@ -633,7 +633,7 @@ function General({
           "Preferencias del dashboard. Cada página pública tiene su propio idioma.",
         )}
       >
-        <FieldGroup>
+        <FieldGroup className="grid grid-cols-1 lg:grid-cols-2">
           <FormField id="dashboard-language" label={t("Idioma del dashboard")}>
             <ChoiceSelect
               id="dashboard-language"
