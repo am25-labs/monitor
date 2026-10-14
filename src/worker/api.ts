@@ -38,6 +38,7 @@ import { restoreData } from "./restore";
 import { backupLimit } from "../shared/backup";
 import { metricsData } from "./metrics";
 import { suppressNotifications } from "./mail";
+import { bulkMonitors, validateMonitorMove } from "./bulk-monitors";
 
 export function json(value: unknown, status = 200) {
   return Response.json(value, {
@@ -133,6 +134,8 @@ export async function admin(
     now = nowSeconds();
   if (resource === "metrics" && !id && method === "GET")
     return json(await metricsData(request, env));
+  if (resource === "monitors" && id === "bulk" && !action && method === "POST")
+    return json(await bulkMonitors(env, await body(request), now));
   if (resource === "settings" && id === "export" && !action && method === "GET")
     return exportData(request, env);
   if (resource === "settings" && id === "restore" && !action && method === "POST") {
@@ -443,30 +446,7 @@ export async function admin(
       await requireProject(env, v.project_id);
       await requireGroup(env, v.group_id, v.project_id);
       const old = id ? await monitor(env, id) : null;
-      if (old && old.project_id !== v.project_id && await first(env.DB,
-        "SELECT incident_id FROM incident_monitors WHERE monitor_id=? LIMIT 1", id))
-        throw new Response("Borra el historial del monitor antes de cambiarlo de proyecto.", { status: 409 });
-      if (
-        old &&
-        (old.project_id !== v.project_id || old.group_id !== v.group_id)
-      ) {
-        const allPages = await rows<{
-          project_id: string;
-          excluded_ids: string;
-          included_ids: string | null;
-        }>(env.DB, "SELECT project_id,excluded_ids,included_ids FROM pages");
-        if (
-          allPages.some(
-            (p) =>
-              p.project_id !== v.project_id &&
-              JSON.parse(p.included_ids ?? p.excluded_ids).includes(id)
-          )
-        )
-          throw new Response(
-            "Quita el monitor de la página pública antes de moverlo.",
-            { status: 409 }
-          );
-      }
+      if (old) await validateMonitorMove(env, old, v.project_id, v.group_id);
       const key = id ?? crypto.randomUUID();
       let config: CheckConfig = v.config;
       if (old?.kind === "http" && v.kind === "http" && v.keepCredentials) {

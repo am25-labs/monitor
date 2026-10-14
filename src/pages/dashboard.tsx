@@ -47,6 +47,9 @@ import {
   TableRow
 } from "../components/ui/table";
 import { ChoiceSelect } from "../components/choice-select";
+import { Checkbox } from "../components/ui/checkbox";
+import { MonitorBulkActions } from "../components/monitor-bulk-actions";
+import { visibleSelection } from "../shared/bulk-monitors";
 
 type Editor =
   | { resource: Resource; value?: Record<string, unknown> }
@@ -104,6 +107,7 @@ function DashboardView({
   const [filter, setFilter] = useState(""),
     [project, setProject] = useState(""),
     [group, setGroup] = useState("");
+  const [selection, setSelection] = useState<string[]>([]);
   async function mutate(path: string, method: MutationMethod, payload?: unknown) {
     setBusy(true);
     setNotice("");
@@ -183,6 +187,10 @@ function DashboardView({
         (!group || m.group_id === group) &&
         m.name.toLowerCase().includes(filter.toLowerCase())
     ) ?? [];
+  const selectedIds = visibleSelection(selection, visible);
+  function selectMonitor(monitorId: string, checked: boolean) {
+    setSelection(checked ? [...selectedIds, monitorId] : selectedIds.filter((id) => id !== monitorId));
+  }
   const titles: Record<string, string> = {
     overview: t("Resumen"),
     metrics: t("Métricas"),
@@ -480,7 +488,7 @@ function DashboardView({
                       placeholder={t("Buscar monitores…")}
                       className="w-full min-w-0"
                       value={filter}
-                      onChange={(e) => setFilter(e.target.value)}
+                      onChange={(e) => { setFilter(e.target.value); setSelection([]); }}
                     />
                     <ChoiceSelect
                       aria-label={t("Filtrar por proyecto")}
@@ -488,6 +496,7 @@ function DashboardView({
                       onValueChange={(value) => {
                         setProject(value);
                         setGroup("");
+                        setSelection([]);
                       }}
                       options={[
                         { value: "", label: t("Todos los proyectos") },
@@ -500,7 +509,7 @@ function DashboardView({
                     <ChoiceSelect
                       aria-label={t("Filtrar por grupo")}
                       value={group}
-                      onValueChange={(value) => setGroup(value)}
+                      onValueChange={(value) => { setGroup(value); setSelection([]); }}
                       options={[
                         { value: "", label: t("Todos los grupos") },
                         ...data.groups
@@ -509,16 +518,23 @@ function DashboardView({
                       ]}
                     />
                   </div>
-                  <Button
-                    className="self-start"
-                    disabled={
-                      !data.projects.length || data.monitors.length >= 100
-                    }
-                    onClick={() => setEditor({ resource: "monitors" })}
-                  >
-                    <Plus data-icon="inline-start" />
-                    {t("Nuevo monitor")}
-                  </Button>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Button
+                      disabled={busy || !data.projects.length || data.monitors.length >= 100}
+                      onClick={() => setEditor({ resource: "monitors" })}
+                    >
+                      <Plus data-icon="inline-start" />
+                      {t("Nuevo monitor")}
+                    </Button>
+                    {selectedIds.length > 0 && <MonitorBulkActions
+                      data={data}
+                      ids={selectedIds}
+                      busy={busy}
+                      onBusyChange={setBusy}
+                      onClear={() => setSelection([])}
+                      onComplete={() => { setSelection([]); setNotice(t("Acción aplicada a los monitores seleccionados.")); }}
+                    />}
+                  </div>
                 </div>
                 <Notice message={recent.error} destructive />
                 <Panel
@@ -531,6 +547,9 @@ function DashboardView({
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="w-10">
+                            <Checkbox aria-label={t("Seleccionar todos los monitores visibles")} disabled={busy} checked={selectedIds.length === visible.length} indeterminate={selectedIds.length > 0 && selectedIds.length < visible.length} onCheckedChange={(checked) => setSelection(checked ? visible.map((monitor) => monitor.id) : [])} />
+                          </TableHead>
                           <TableHead>{t("Nombre")}</TableHead>
                           <TableHead>{t("Proyecto / grupo")}</TableHead>
                           <TableHead>{t("Estado")}</TableHead>
@@ -541,7 +560,10 @@ function DashboardView({
                       </TableHeader>
                       <TableBody>
                         {visible.map((m) => (
-                          <TableRow key={m.id}>
+                          <TableRow key={m.id} data-state={selectedIds.includes(m.id) ? "selected" : undefined}>
+                            <TableCell>
+                              <Checkbox aria-label={t("Seleccionar {name}", { name: m.name })} checked={selectedIds.includes(m.id)} disabled={busy} onCheckedChange={(checked) => selectMonitor(m.id, checked)} />
+                            </TableCell>
                             <TableCell>
                               <Link
                                 className="font-medium hover:underline"
@@ -583,9 +605,11 @@ function DashboardView({
                   ) : (
                     <Nothing
                       description={
-                        data.projects.length
-                          ? t("Agrega tu primer monitor.")
-                          : t("Crea primero un proyecto en Proyectos y grupos.")
+                        data.monitors.length
+                          ? t("No hay monitores para estos filtros.")
+                          : data.projects.length
+                            ? t("Agrega tu primer monitor.")
+                            : t("Crea primero un proyecto en Proyectos y grupos.")
                       }
                     />
                   )}
