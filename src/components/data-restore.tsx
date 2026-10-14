@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api } from "../lib/api";
+import { useMutation } from "../lib/mutations";
 import { useLocale } from "../lib/locale";
 import { backupLimit, parseBackup, type Backup } from "../shared/backup";
 import { FormField, Notice, Panel } from "./common";
@@ -8,7 +8,8 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { FieldDescription, FieldGroup } from "./ui/field";
 
-export function DataRestore({ onChange }: { onChange: () => Promise<void> }) {
+export function DataRestore() {
+  const mutation = useMutation();
   const { t } = useLocale();
   const [backup, setBackup] = useState<Backup | null>(null);
   const [error, setError] = useState("");
@@ -74,10 +75,9 @@ export function DataRestore({ onChange }: { onChange: () => Promise<void> }) {
             if (!backup) return;
             setBusy(true);
             try {
-              await api("admin/settings/restore", "POST", { confirmation: "RESTORE_BACKUP", backup });
+              await mutation.mutate("admin/settings/restore", "POST", { confirmation: "RESTORE_BACKUP", backup });
               setRestored(true);
               setBackup(null);
-              await onChange();
             } finally { setBusy(false); }
           }}
         />

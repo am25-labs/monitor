@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRefresh } from "../lib/api";
 import { useLocale } from "../lib/locale";
 import { cn } from "../lib/utils";
@@ -54,11 +54,10 @@ export function HistoryStrip({ range, compact = false, ...history }: MonitorHist
   );
 }
 
-export function MonitorTimeline({ monitor, revision }: { monitor: SafeMonitor; revision: number }) {
+export function MonitorTimeline({ monitor }: { monitor: SafeMonitor }) {
   const { t, availability } = useLocale();
   const [range, setRange] = useState<Exclude<HistoryRange, "1h">>("24h");
-  const { data, error, refresh } = useRefresh<MonitorHistory>(`admin/monitors/${monitor.id}/history`);
-  useEffect(() => { void refresh(); }, [revision, refresh]);
+  const { data, error } = useRefresh<MonitorHistory>(`admin/monitors/${monitor.id}/history`);
   const observed = data ? historySegments(data, range).flatMap(({ stat }) => stat?.observed_seconds ? [stat] : []) : [];
   return (
     <Panel title={t("Historial de disponibilidad")}>

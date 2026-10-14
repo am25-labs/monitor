@@ -10,6 +10,7 @@ import { ChoiceSelect } from "../components/choice-select";
 import { useParams } from "react-router-dom";
 import { Moon, Sun, RefreshCw } from "lucide-react";
 import { useRefresh } from "../lib/api";
+import { Spinner } from "../components/ui/spinner";
 import type { Status } from "../shared/types";
 import { Notice, Nothing, Panel, StatusBadge } from "../components/common";
 import { Button } from "../components/ui/button";
@@ -142,6 +143,7 @@ function StatusView({
   data,
   error,
   refresh,
+  loading,
   theme,
   toggleTheme
 }: {
@@ -149,7 +151,8 @@ function StatusView({
   toggleTheme: () => void;
   data: PublicData | null;
   error: string;
-  refresh: () => Promise<void>;
+  refresh: (force?: boolean) => Promise<void>;
+  loading: boolean;
 }) {
   const { t, date, availability } = useLocale();
   const [range, setRange] = useState<HistoryRange>("7d");
@@ -171,10 +174,12 @@ function StatusView({
           <Button
             variant="outline"
             size="icon"
-            aria-label={t("Actualizar")}
-            onClick={() => void refresh()}
+            aria-label={t(loading ? "Actualizando…" : "Actualizar")}
+            aria-busy={loading}
+            disabled={loading}
+            onClick={() => void refresh(true)}
           >
-            <RefreshCw />
+            {loading ? <Spinner aria-label={t("Actualizando…")} /> : <RefreshCw />}
           </Button>
           <Button
             variant="outline"

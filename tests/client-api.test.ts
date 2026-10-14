@@ -54,3 +54,12 @@ it("preserves errors returned by the server", async () => {
   await expect(api("public/am25")).rejects.toThrow("Servicio no disponible");
   expect(fetcher).toHaveBeenCalledTimes(1);
 });
+
+it("bypasses browser caching when reading refreshed data", async () => {
+  const fetcher = vi.fn().mockImplementation(async () => Response.json({ updatedAt: 456 }));
+  vi.stubGlobal("fetch", fetcher);
+  await api("admin/snapshot");
+  expect(fetcher).toHaveBeenCalledWith("/api/v1/admin/snapshot", expect.objectContaining({ method: "GET", cache: "no-store" }));
+  await api("admin/monitors", "POST", { name: "Monitor" });
+  expect(fetcher.mock.calls[1][1].cache).toBeUndefined();
+});

@@ -567,6 +567,7 @@ export const english: Record<string, string> = {
   "El incidente cambió. Actualiza la página e inténtalo de nuevo.": "The incident changed. Refresh the page and try again.",
   "Las correcciones no cambian el impacto de un incidente resuelto.": "Corrections do not change the impact of a resolved incident.",
   "Exportar": "Export",
+  "Actualizando…": "Refreshing…",
   "Métricas": "Metrics",
   "Ver todas las métricas": "View all metrics",
   "Volver al resumen": "Back to overview",

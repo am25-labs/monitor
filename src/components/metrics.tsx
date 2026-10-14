@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { useRefresh, type Snapshot } from "../lib/api";
@@ -14,7 +14,7 @@ import { FieldGroup } from "./ui/field";
 import { Skeleton } from "./ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 
-export function Metrics({ data, revision }: { data: Snapshot; revision: number }) {
+export function Metrics({ data }: { data: Snapshot }) {
   const { t, language } = useLocale();
   const [period, setPeriod] = useState("30");
   const [project, setProject] = useState("");
@@ -23,7 +23,6 @@ export function Metrics({ data, revision }: { data: Snapshot; revision: number }
   if (project) params.set("project", project);
   if (monitor) params.set("monitor", monitor);
   const metrics = useRefresh<MetricsData>(`admin/metrics?${params}`);
-  useEffect(() => { void metrics.refresh(); }, [revision, metrics.refresh]);
   const number = (value: number, digits = 0) => value.toLocaleString(locales[language], { maximumFractionDigits: digits });
   const value = (amount: number | null, unit: string) => amount === null ? t("Sin datos") : `${number(amount, 2)}${unit}`;
   const dayLabel = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString(locales[language], { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" });

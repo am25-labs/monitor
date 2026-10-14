@@ -2,7 +2,8 @@ import { useLocale } from "../lib/locale";
 import { DatePicker } from "./date-picker";
 import { ConfirmDialog } from "./confirm-dialog";
 import { useState } from "react";
-import { api, useRefresh } from "../lib/api";
+import { useRefresh } from "../lib/api";
+import { useMutation } from "../lib/mutations";
 import type { Result, SafeMonitor, Stat } from "../shared/types";
 import { FormField, Notice, Nothing, Panel } from "./common";
 import { FieldGroup } from "./ui/field";
@@ -23,6 +24,7 @@ interface HistoryData {
   stats: Stat[];
 }
 export function History({ monitor }: { monitor: SafeMonitor }) {
+  const mutation = useMutation();
   const { t, date, availability } = useLocale();
   const [from, setFrom] = useState(""),
     [to, setTo] = useState(""),
@@ -52,7 +54,7 @@ export function History({ monitor }: { monitor: SafeMonitor }) {
     try {
       setToken(
         (
-          await api<{ token: string }>(
+          await mutation.mutate<{ token: string }>(
             `admin/monitors/${monitor.id}/token`,
             "POST",
             {}

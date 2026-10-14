@@ -24,6 +24,9 @@ import {
   Settings as SettingsIcon
 } from "lucide-react";
 import { api, useRefresh, type Snapshot } from "../lib/api";
+import { RefreshProvider, useRefreshGroup } from "../lib/refresh-context";
+import { useMutation, type MutationMethod } from "../lib/mutations";
+import { Spinner } from "../components/ui/spinner";
 import type { SafeMonitor, Window } from "../shared/types";
 import { cn } from "../lib/utils";
 import { Notice, Nothing, Panel, StatusBadge } from "../components/common";
@@ -55,6 +58,9 @@ export function Dashboard({
   theme: string;
   toggleTheme: () => void;
 }) {
+  return <RefreshProvider><DashboardContent theme={theme} toggleTheme={toggleTheme} /></RefreshProvider>;
+}
+function DashboardContent({ theme, toggleTheme }: { theme: string; toggleTheme: () => void }) {
   const snapshot = useRefresh<Snapshot>("admin/snapshot");
   return (
     <LocaleProvider language={snapshot.data?.settings.general.language ?? "es"}>
@@ -65,7 +71,6 @@ export function Dashboard({
 function DashboardView({
   data,
   error,
-  refresh: refreshSnapshot,
   theme,
   toggleTheme
 }: {
@@ -73,9 +78,11 @@ function DashboardView({
   toggleTheme: () => void;
   data: Snapshot | null;
   error: string;
-  refresh: () => Promise<void>;
 }) {
   const { t, date } = useLocale();
+  const groupRefresh = useRefreshGroup();
+  const mutation = useMutation();
+  const [refreshing, setRefreshing] = useState(false);
   const { section = "overview", id } = useParams(),
     navigate = useNavigate();
   const [editor, setEditor] = useState<Editor | null>(null),
@@ -88,22 +95,20 @@ function DashboardView({
   const recent = useRefresh<{ updatedAt: number; short: (MonitorHistory["short"][number] & { monitor_id: string })[] }>(
     section === "monitors" && !id ? "admin/monitor-history" : ""
   );
-  const [historyRevision, setHistoryRevision] = useState(0);
   async function refresh() {
-    await Promise.all([
-      refreshSnapshot(),
-      section === "monitors" && !id ? recent.refresh() : Promise.resolve()
-    ]);
-    setHistoryRevision((revision) => revision + 1);
+    setRefreshing(true);
+    try { await groupRefresh.refresh(); }
+    catch (error) { setNotice(error instanceof Error ? error.message : t("Falló la consulta.")); }
+    finally { setRefreshing(false); }
   }
   const [filter, setFilter] = useState(""),
     [project, setProject] = useState(""),
     [group, setGroup] = useState("");
-  async function mutate(path: string, method: string, payload?: unknown) {
+  async function mutate(path: string, method: MutationMethod, payload?: unknown) {
     setBusy(true);
     setNotice("");
     try {
-      const result = await api<{ token?: string }>(
+      const result = await mutation.mutate<{ token?: string }>(
         `admin/${path}`,
         method,
         payload
@@ -115,7 +120,6 @@ function DashboardView({
             { token: result.token }
           )
         );
-      await refresh();
       return result;
     } catch (e) {
       setNotice(e instanceof Error ? e.message : t("Falló la operación."));
@@ -139,15 +143,16 @@ function DashboardView({
     setBusy(true);
     try {
       const now = Math.floor(Date.now() / 1000);
-      await Promise.all(
-        windows.map((w) =>
-          api(`admin/maintenance/${w.id}`, "PUT", {
+      await mutation.batch(
+        windows.map((w) => ({
+          path: `admin/maintenance/${w.id}`,
+          method: "PUT" as const,
+          payload: {
             ...w,
             ends_at: Math.max(w.starts_at + 1, now)
-          })
-        )
+          }
+        }))
       );
-      await refresh();
     } catch (e) {
       setNotice(e instanceof Error ? e.message : t("Falló la operación."));
     } finally {
@@ -275,10 +280,12 @@ function DashboardView({
             <Button
               variant="outline"
               size="icon"
-              aria-label={t("Actualizar")}
+              aria-label={t(refreshing ? "Actualizando…" : "Actualizar")}
+              aria-busy={refreshing}
+              disabled={refreshing}
               onClick={() => void refresh()}
             >
-              <RefreshCw />
+              {refreshing ? <Spinner aria-label={t("Actualizando…")} /> : <RefreshCw />}
             </Button>
             <Button
               variant="outline"
@@ -330,7 +337,7 @@ function DashboardView({
               ))}
             {section === "incidents" && <Incidents data={data} />}
             {section === "settings" && (
-              <Settings data={data} onChange={refresh} />
+              <Settings data={data} />
             )}
             {section === "overview" && (
               <Overview
@@ -341,7 +348,7 @@ function DashboardView({
                 }}
               />
             )}
-            {section === "metrics" && <Metrics data={data} revision={historyRevision} />}
+            {section === "metrics" && <Metrics data={data} />}
             {section === "monitors" && selected && (
               <>
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -460,7 +467,7 @@ function DashboardView({
                     </div>
                   </dl>
                 </Panel>
-                <MonitorTimeline key={`timeline-${selected.id}`} monitor={selected} revision={historyRevision} />
+                <MonitorTimeline key={`timeline-${selected.id}`} monitor={selected} />
                 <History key={selected.id} monitor={selected} />
               </>
             )}

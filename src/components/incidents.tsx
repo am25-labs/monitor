@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { api, useRefresh, type Snapshot } from "../lib/api";
+import { useRefresh, type Snapshot } from "../lib/api";
+import { useMutation } from "../lib/mutations";
 import { useLocale } from "../lib/locale";
 import { LocaleProvider } from "../lib/locale";
 import { type Language } from "../shared/settings";
@@ -139,6 +140,7 @@ function DraftForm({
   onCancel: () => void;
   monitorId?: string;
 }) {
+  const mutation = useMutation();
   const { t } = useLocale();
   const [project, setProject] = useState(
     incident?.project_id ??
@@ -159,7 +161,7 @@ function DraftForm({
     setError("");
     const form = new FormData(e.currentTarget);
     try {
-      const result = await api<{ id: string }>(
+      const result = await mutation.mutate<{ id: string }>(
         `admin/incidents${incident ? `/${incident.id}` : ""}`,
         incident ? "PUT" : "POST",
         {
@@ -238,12 +240,12 @@ function DraftForm({
   );
 }
 function IncidentEditor({ data, id }: { data: Snapshot; id: string }) {
+  const mutation = useMutation();
   const { t, date, language } = useLocale();
   const navigate = useNavigate();
   const {
     data: incident,
-    error,
-    refresh
+    error
   } = useRefresh<IncidentDetail>(`admin/incidents/${id}`);
   const [editing, setEditing] = useState(false),
     [notice, setNotice] = useState(""),
@@ -255,8 +257,7 @@ function IncidentEditor({ data, id }: { data: Snapshot; id: string }) {
     setBusy(true);
     setNotice("");
     try {
-      await api(`admin/incidents/${id}/publish`, "POST", {});
-      await refresh();
+      await mutation.mutate(`admin/incidents/${id}/publish`, "POST", {});
     } catch (e) {
       setNotice(e instanceof Error ? e.message : t("Falló la operación."));
     } finally {
@@ -270,7 +271,7 @@ function IncidentEditor({ data, id }: { data: Snapshot; id: string }) {
     setBusy(true);
     setNotice("");
     try {
-      await api(`admin/incidents/${id}/updates`, "POST", {
+      await mutation.mutate(`admin/incidents/${id}/updates`, "POST", {
         stage: stage ?? incident!.stage,
         impact: impact ?? incident!.impact,
         message_es: form.get("message_es"),
@@ -279,7 +280,6 @@ function IncidentEditor({ data, id }: { data: Snapshot; id: string }) {
       element.reset();
       setStage(null);
       setImpact(null);
-      await refresh();
     } catch (e) {
       setNotice(e instanceof Error ? e.message : t("Falló la operación."));
     } finally {
@@ -294,7 +294,6 @@ function IncidentEditor({ data, id }: { data: Snapshot; id: string }) {
         incident={incident}
         onSaved={() => {
           setEditing(false);
-          void refresh();
         }}
         onCancel={() => setEditing(false)}
       />

@@ -6,7 +6,8 @@ import {
   type SetStateAction,
 } from "react";
 import { ExternalLink, Mail, Send, ShieldCheck } from "lucide-react";
-import { api, type Snapshot } from "../lib/api";
+import { type Snapshot } from "../lib/api";
+import { useMutation } from "../lib/mutations";
 import { product } from "../shared/product";
 import type {
   SafeNotificationConfig,
@@ -378,11 +379,10 @@ function NtfyFields({
 }
 function Notifications({
   initial,
-  onChange,
 }: {
   initial: SafeNotificationConfig;
-  onChange: () => Promise<void>;
 }) {
+  const mutation = useMutation();
   const { t } = useLocale();
   const [saved, setSaved] = useState(initial);
   const [email, setEmail] = useState<NotificationConfig["email"]>({
@@ -419,7 +419,7 @@ function Notifications({
     setError("");
     setNotice("");
     try {
-      const result = await api<SafeNotificationConfig>(
+      const result = await mutation.mutate<SafeNotificationConfig>(
         "admin/settings/notifications",
         "PUT",
         values,
@@ -434,7 +434,6 @@ function Notifications({
           "Configuración guardada. Las alertas usarán todos los canales activos.",
         ),
       );
-      await onChange();
     } catch (error) {
       setError(
         error instanceof Error
@@ -585,12 +584,11 @@ function Notifications({
 function General({
   initial,
   monitors,
-  onChange,
 }: {
   initial: GeneralSettings;
   monitors: Snapshot["monitors"];
-  onChange: () => Promise<void>;
 }) {
+  const mutation = useMutation();
   const { t } = useLocale();
   const [language, setLanguage] = useState(initial.language);
   const [testMode, setTestMode] = useState(initial.testMode);
@@ -605,11 +603,10 @@ function General({
     setError("");
     setSaved(false);
     try {
-      await api<GeneralSettings>("admin/settings/general", "PUT", {
+      await mutation.mutate<GeneralSettings>("admin/settings/general", "PUT", {
         language,
         testMode,
       });
-      await onChange();
       setSaved(true);
     } catch (error) {
       setError(
@@ -734,11 +731,10 @@ function General({
                 action={t("Borrar historial")}
                 destructive
                 onConfirm={async () => {
-                  await api("admin/settings/history", "DELETE", {
+                  await mutation.mutate("admin/settings/history", "DELETE", {
                     monitorId: deletion,
                     confirmation: "DELETE_HISTORY",
                   });
-                  await onChange();
                 }}
               />
             </div>
@@ -756,10 +752,8 @@ function General({
 
 export function Settings({
   data,
-  onChange,
 }: {
   data: Snapshot;
-  onChange: () => Promise<void>;
 }) {
   const { t } = useLocale();
   return (
@@ -813,18 +807,16 @@ export function Settings({
           <General
             initial={data.settings.general}
             monitors={data.monitors}
-            onChange={onChange}
           />
         </TabsContent>
         <TabsContent value="notifications">
           <Notifications
             initial={data.settings.notifications}
-            onChange={onChange}
           />
         </TabsContent>
         <TabsContent value="export" className="flex flex-col gap-6">
           <DataExport projects={data.projects} />
-          <DataRestore onChange={onChange} />
+          <DataRestore />
         </TabsContent>
       </Tabs>
     </div>

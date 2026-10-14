@@ -4,7 +4,8 @@ import type {
   Language
 } from "../shared/settings";
 import { locales, translate } from "../shared/i18n";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { RefreshContext } from "./refresh-context";
 import type {
   Group,
   Incident,
@@ -53,6 +54,7 @@ export async function api<T>(
   const options: RequestInit = {
     method,
     credentials: "same-origin",
+    cache: method === "GET" ? "no-store" : undefined,
     headers:
       payload === undefined ? {} : { "Content-Type": "application/json" },
     body: payload === undefined ? undefined : JSON.stringify(payload),
@@ -95,18 +97,22 @@ export async function api<T>(
 }
 export function useRefresh<T>(path: string) {
   const [data, setData] = useState<T | null>(null),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [loading, setLoading] = useState(false);
+  const group = useContext(RefreshContext);
   const active = useRef<{
     path: string;
     controller: AbortController;
     promise: Promise<void>;
   } | null>(null);
-  const refresh = useCallback(() => {
-    if (active.current?.path === path) return active.current.promise;
+  const refresh = useCallback((force = false) => {
+    if (!path) return Promise.resolve();
+    if (!force && active.current?.path === path) return active.current.promise;
     active.current?.controller.abort();
     const controller = new AbortController();
     const request = { path, controller, promise: Promise.resolve() };
     active.current = request;
+    setLoading(true);
     request.promise = (async () => {
       let timedOut = false;
       const timeout = setTimeout(() => {
@@ -125,14 +131,21 @@ export function useRefresh<T>(path: string) {
           : e instanceof Error ? e.message : "Falló la consulta.");
       } finally {
         clearTimeout(timeout);
-        if (active.current === request) active.current = null;
+        if (active.current === request) {
+          active.current = null;
+          setLoading(false);
+        }
       }
     })();
     return request.promise;
   }, [path]);
   useEffect(() => {
+    if (path && group) return group.register(() => refresh(true));
+  }, [path, group, refresh]);
+  useEffect(() => {
     setData(null);
     setError("");
+    setLoading(false);
     if (!path) return;
     void refresh();
     const timer = setInterval(() => void refresh(), 30000);
@@ -142,7 +155,7 @@ export function useRefresh<T>(path: string) {
       active.current = null;
     };
   }, [refresh]);
-  return { data, error, refresh };
+  return { data, error, refresh, loading };
 }
 export function date(
   value: number | null | undefined,
