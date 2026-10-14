@@ -17,6 +17,7 @@ import type {
 import { ChoiceSelect } from "./choice-select";
 import { AboutDialog } from "./about-dialog";
 import { DataExport } from "./data-export";
+import { DataRestore } from "./data-restore";
 import { ConfirmDialog } from "./confirm-dialog";
 import { FormField, Notice, Panel } from "./common";
 import { Checkbox } from "./ui/checkbox";
@@ -821,8 +822,9 @@ export function Settings({
             onChange={onChange}
           />
         </TabsContent>
-        <TabsContent value="export">
+        <TabsContent value="export" className="flex flex-col gap-6">
           <DataExport projects={data.projects} />
+          <DataRestore onChange={onChange} />
         </TabsContent>
       </Tabs>
     </div>

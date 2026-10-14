@@ -34,6 +34,8 @@ import { heartbeat, windows } from "./engine";
 import { displayStatus } from "./state";
 import { verifyHeartbeat } from "./auth";
 import { exportData } from "./export";
+import { restoreData } from "./restore";
+import { backupLimit } from "../shared/backup";
 
 export function json(value: unknown, status = 200) {
   return Response.json(value, {
@@ -41,7 +43,7 @@ export function json(value: unknown, status = 200) {
     headers: { "Cache-Control": "no-store" }
   });
 }
-export async function body(request: Request): Promise<unknown> {
+export async function body(request: Request, limit = 65536): Promise<unknown> {
   if (!request.headers.get("Content-Type")?.startsWith("application/json"))
     throw new Response("Usa JSON.", { status: 415 });
   const reader = request.body?.getReader();
@@ -53,7 +55,7 @@ export async function body(request: Request): Promise<unknown> {
       const { value, done } = await reader.read();
       if (done) break;
       size += value.length;
-      if (size > 65536)
+      if (size > limit)
         throw new Response("Solicitud demasiado grande.", { status: 413 });
       chunks.push(value);
     }
@@ -129,6 +131,15 @@ export async function admin(
     now = nowSeconds();
   if (resource === "settings" && id === "export" && !action && method === "GET")
     return exportData(request, env);
+  if (resource === "settings" && id === "restore" && !action && method === "POST") {
+    const input = z.object({ confirmation: z.literal("RESTORE_BACKUP"), backup: z.unknown() }).parse(await body(request, backupLimit + 1024));
+    try { return json(await restoreData(input.backup, env)); }
+    catch (error) {
+      if (error instanceof Error && ["La copia", "Los proyectos"].some((prefix) => error.message.startsWith(prefix)))
+        return json({ error: error.message }, 400);
+      throw error;
+    }
+  }
   if (resource === "incidents") {
     if (method === "GET") return json(id ? await incidentDetail(env, id) : await incidentList(env, new URL(request.url).searchParams.get("monitor") ?? undefined));
     if (method === "POST" && action === "publish" && id) {

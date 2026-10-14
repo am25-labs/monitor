@@ -90,8 +90,10 @@ export function DataExport({ projects }: { projects: Project[] }) {
               {!projects.length && <FieldDescription>{t("No hay proyectos para exportar.")}</FieldDescription>}
             </FieldSet>
           )}
-          <FieldDescription>{t("Las credenciales conservan su cifrado. Guarda también la CONFIG_KEY original por separado para poder recuperarlas.")}</FieldDescription>
-          <FieldDescription>{t("La exportación lee los datos durante la descarga; no representa una captura de un único instante.")}</FieldDescription>
+          <div className="flex flex-col gap-1">
+            <FieldDescription>{t("El JSON conserva la configuración y las credenciales cifradas. Para restaurarlas, Monitor necesita la misma CONFIG_KEY usada al crear la copia. Esa clave no se incluye en el archivo y debe conservarse por separado. Los reportes de métricas e incidentes no necesitan la clave.")}</FieldDescription>
+            <FieldDescription>{t("Los datos se leen durante la descarga; los cambios realizados mientras se exporta pueden aparecer en la copia.")}</FieldDescription>
+          </div>
         </FieldGroup>
         <Notice message={error} destructive />
         <Button type="submit" disabled={busy || (scope === "projects" && !projectIds.length)} className="self-end">

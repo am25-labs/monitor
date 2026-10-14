@@ -23,7 +23,31 @@ Keep the installation's original `CONFIG_KEY` separately. It is required to
 decrypt monitor configuration, notification credentials, and delivery receipt
 tokens. Deployment secrets, Cloudflare infrastructure, queued messages, and
 Durable Object state are outside the database and are not included in this file.
-This feature exports data; it does not add a restore/import operation.
+Settings → Export also supports restoring these files. Restoration requires the
+installation's existing `CONFIG_KEY`; it neither changes that key nor reciphers
+the imported values.
+
+## Restoring a backup
+
+Select a JSON file of up to 20 MB. Monitor validates the format, version, table
+columns, relationships, configurations, and encrypted values before replacement.
+An incompatible or differently encrypted file is rejected before any data is
+changed. The file's SQL definitions are never executed.
+
+The confirmation dialog states the replacement scope. A full backup replaces
+all application data and settings. A project backup replaces only the projects
+listed in its scope and their related data. Other projects, global settings, and
+global maintenance windows are preserved. Global maintenance entries included
+in a project export are ignored during its restoration.
+
+Deletion and insertion run in one database batch transaction. Constraint failures
+roll back the entire replacement. Project IDs, monitor IDs, and retained history
+are preserved. Pending/running check jobs and pending/sending notifications are
+cancelled, and notification leases are cleared to avoid replaying old work.
+Monitors become due for new checks after 60 seconds; their paused state remains
+unchanged. Existing queue messages whose jobs are absent or cancelled cannot
+reapply old checks. Restoration requires admin authentication, a valid request
+origin, and an explicit `RESTORE_BACKUP` confirmation.
 
 Downloads use the authenticated admin API and are never cached. The Worker reads
 and streams rows in batches without applying the dashboard's history limits.

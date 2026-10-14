@@ -12,7 +12,7 @@ const tables = [
 type Table = typeof tables[number];
 type ExportRow = Record<string, unknown> & { export_rowid: number };
 
-function projectFilter(table: Table) {
+export function projectFilter(table: string) {
   const project = "IN (SELECT value FROM json_each(?))";
   const monitor = `IN (SELECT id FROM monitors WHERE project_id ${project})`;
   const incident = `IN (SELECT id FROM incidents WHERE monitor_id ${monitor})`;
