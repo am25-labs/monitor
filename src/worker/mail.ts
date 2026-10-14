@@ -131,27 +131,45 @@ async function providerResponse(response: Response) {
     id?: string;
   };
 }
-async function cancelEmergency(
+const silencedMonitor = `m.paused=1 OR EXISTS(SELECT 1 FROM maintenance w WHERE w.starts_at<=? AND (w.ends_at IS NULL OR w.ends_at>?) AND (w.scope='global' OR (w.scope='monitor' AND w.target_id=m.id) OR (w.scope='project' AND w.target_id=m.project_id) OR (w.scope='group' AND w.target_id=m.group_id)))`;
+
+async function notificationSuppressed(env: Env, id: string, now: number) {
+  return Boolean(await first(
+    env.DB,
+    `SELECT n.id FROM notifications n LEFT JOIN incidents i ON i.id=n.incident_id LEFT JOIN monitors m ON m.id=i.monitor_id WHERE n.id=? AND (n.state='cancelled' OR ${silencedMonitor})`,
+    id,
+    now,
+    now
+  ));
+}
+
+async function cancelNotification(env: Env, id: string) {
+  await env.DB.batch([
+    statement(
+      env.DB,
+      "UPDATE notifications SET state='cancelled',error=NULL,lease_token=NULL,lease_until=NULL WHERE id=?",
+      id
+    ),
+    statement(
+      env.DB,
+      "UPDATE notification_deliveries SET state='cancelled',error=NULL WHERE notification_id=? AND state IN ('pending','failed')",
+      id
+    )
+  ]);
+}
+
+interface EmergencyReceipt {
+  notification_id: string;
+  receipt: string;
+  receipt_token: string;
+}
+
+async function cancelReceipt(
   env: Env,
-  n: Notification,
+  active: EmergencyReceipt,
+  now: number,
   fetcher: typeof fetch
 ) {
-  const opening = await first(
-    env.DB,
-    "SELECT n.id FROM notifications n LEFT JOIN notification_deliveries d ON d.notification_id=n.id AND d.channel='pushover' WHERE n.incident_id=? AND n.event='opened' AND (n.state='sending' OR d.state='pending')",
-    n.incident_id
-  );
-  if (opening) throw new Error("temporary");
-  const active = await first<{
-    notification_id: string;
-    receipt: string;
-    receipt_token: string;
-  }>(
-    env.DB,
-    "SELECT d.notification_id,d.receipt,d.receipt_token FROM notification_deliveries d JOIN notifications n ON n.id=d.notification_id WHERE n.incident_id=? AND n.event='opened' AND d.receipt IS NOT NULL AND d.cancelled_at IS NULL",
-    n.incident_id
-  );
-  if (!active) return;
   const token = await unseal<string>(
     active.receipt_token,
     env.CONFIG_KEY,
@@ -172,17 +190,71 @@ async function cancelEmergency(
   await statement(
     env.DB,
     "UPDATE notification_deliveries SET cancelled_at=? WHERE notification_id=? AND channel='pushover'",
-    n.created_at,
+    now,
     active.notification_id
   ).run();
+}
+
+export async function suppressNotifications(
+  env: Env,
+  now: number,
+  fetcher: typeof fetch = fetch
+) {
+  const selected = await rows<{ id: string }>(
+    env.DB,
+    `SELECT n.id FROM notifications n JOIN incidents i ON i.id=n.incident_id JOIN monitors m ON m.id=i.monitor_id WHERE n.state IN ('pending','sending','failed') AND (${silencedMonitor})`,
+    now,
+    now
+  );
+  for (const n of selected) await cancelNotification(env, n.id);
+  const active = await rows<EmergencyReceipt>(
+    env.DB,
+    `SELECT d.notification_id,d.receipt,d.receipt_token FROM notification_deliveries d JOIN notifications n ON n.id=d.notification_id JOIN incidents i ON i.id=n.incident_id JOIN monitors m ON m.id=i.monitor_id WHERE d.channel='pushover' AND d.receipt IS NOT NULL AND d.cancelled_at IS NULL AND (n.state='cancelled' OR ${silencedMonitor})`,
+    now,
+    now
+  );
+  for (const receipt of active) {
+    await cancelNotification(env, receipt.notification_id);
+    if (env.ENVIRONMENT === "local") continue;
+    try {
+      await cancelReceipt(env, receipt, now, fetcher);
+    } catch {
+      console.error(JSON.stringify({
+        event: "emergency_cancellation_pending",
+        notificationId: receipt.notification_id
+      }));
+    }
+  }
+}
+
+async function cancelEmergency(
+  env: Env,
+  n: Notification,
+  fetcher: typeof fetch
+) {
+  const opening = await first(
+    env.DB,
+    "SELECT n.id FROM notifications n LEFT JOIN notification_deliveries d ON d.notification_id=n.id AND d.channel='pushover' WHERE n.incident_id=? AND n.event='opened' AND (n.state='sending' OR d.state='pending')",
+    n.incident_id
+  );
+  if (opening) throw new Error("temporary");
+  const active = await first<EmergencyReceipt>(
+    env.DB,
+    "SELECT d.notification_id,d.receipt,d.receipt_token FROM notification_deliveries d JOIN notifications n ON n.id=d.notification_id WHERE n.incident_id=? AND n.event='opened' AND d.receipt IS NOT NULL AND d.cancelled_at IS NULL",
+    n.incident_id
+  );
+  if (!active) return;
+  await cancelReceipt(env, active, n.created_at, fetcher);
 }
 async function sendNotification(
   env: Env,
   config: NotificationConfig,
   channel: NotificationChannel,
   n: Notification,
-  fetcher: typeof fetch
+  fetcher: typeof fetch,
+  now: number
 ) {
+  if (await notificationSuppressed(env, n.id, now)) throw new Error("suppressed");
   if (env.ENVIRONMENT === "local") {
     console.info(
       JSON.stringify({
@@ -205,6 +277,7 @@ async function sendNotification(
     n.closed_at = incident?.closed_at ?? n.closed_at;
   }
   const content = await mailBody(n, env.APP_ORIGIN, channel === "email");
+  if (await notificationSuppressed(env, n.id, now)) throw new Error("suppressed");
   const url = `${env.APP_ORIGIN.replace(/\/+$/, "")}/app/monitors/${encodeURIComponent(n.monitor_id ?? "")}`;
   let response: Response;
   if (channel === "email") {
@@ -334,25 +407,32 @@ async function deliverChannel(
       config,
       delivery.channel,
       n,
-      fetcher
+      fetcher,
+      now
     );
     await statement(
       env.DB,
-      "UPDATE notification_deliveries SET state='sent',delivered_at=?,error=NULL,receipt=?,receipt_token=? WHERE notification_id=? AND channel=?",
+      "UPDATE notification_deliveries SET state=CASE WHEN state='cancelled' THEN state ELSE 'sent' END,delivered_at=?,error=NULL,receipt=?,receipt_token=? WHERE notification_id=? AND channel=?",
       now,
       result.receipt ?? null,
       result.receiptToken ?? null,
       n.id,
       delivery.channel
     ).run();
+    if (result.receipt && await notificationSuppressed(env, n.id, now))
+      await suppressNotifications(env, now, fetcher);
   } catch (error) {
+    if (await notificationSuppressed(env, n.id, now)) {
+      await cancelNotification(env, n.id);
+      return;
+    }
     const attempts = delivery.attempts + 1;
     const final =
       attempts >= 8 ||
       (error instanceof Error && error.message === "permanent");
     await statement(
       env.DB,
-      "UPDATE notification_deliveries SET state=?,attempts=?,next_attempt=?,error=? WHERE notification_id=? AND channel=?",
+      "UPDATE notification_deliveries SET state=?,attempts=?,next_attempt=?,error=? WHERE notification_id=? AND channel=? AND state='pending'",
       final ? "failed" : "pending",
       attempts,
       now + Math.min(3600, 60 * 2 ** attempts),
@@ -414,6 +494,10 @@ async function finishNotification(
   lease: string,
   configured: boolean
 ) {
+  if (await notificationSuppressed(env, n.id, now)) {
+    await cancelNotification(env, n.id);
+    return;
+  }
   const totals = await rows<Delivery>(
     env.DB,
     "SELECT channel,state,attempts,next_attempt FROM notification_deliveries WHERE notification_id=?",
@@ -433,7 +517,7 @@ async function finishNotification(
         : "sent";
   await statement(
     env.DB,
-    "UPDATE notifications SET state=?,attempts=?,next_attempt=?,delivered_at=?,error=?,lease_until=NULL WHERE id=? AND lease_token=?",
+    "UPDATE notifications SET state=?,attempts=?,next_attempt=?,delivered_at=?,error=?,lease_until=NULL WHERE id=? AND lease_token=? AND state='sending'",
     state,
     attempts,
     waiting.length
@@ -455,6 +539,7 @@ export async function deliverNotifications(
   fetcher: typeof fetch = fetch
 ) {
   const started = Date.now();
+  await suppressNotifications(env, now, fetcher);
   const { config, configured } = await notificationConfig(env);
   const pending = await rows<Notification>(
     env.DB,

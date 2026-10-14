@@ -37,6 +37,7 @@ import { exportData } from "./export";
 import { restoreData } from "./restore";
 import { backupLimit } from "../shared/backup";
 import { metricsData } from "./metrics";
+import { suppressNotifications } from "./mail";
 
 export function json(value: unknown, status = 200) {
   return Response.json(value, {
@@ -191,7 +192,7 @@ export async function admin(
       first(env.DB, "SELECT * FROM engine WHERE id=1"),
       rows(
         env.DB,
-        "SELECT n.id,n.event,n.monitor_name,n.created_at,COALESCE(d.state,n.state) AS state,COALESCE(d.attempts,n.attempts) AS attempts,COALESCE(d.error,n.error) AS error,d.channel FROM notifications n LEFT JOIN notification_deliveries d ON d.notification_id=n.id WHERE COALESCE(d.state,n.state)<>'sent' ORDER BY n.created_at DESC LIMIT 50"
+        "SELECT n.id,n.event,n.monitor_name,n.created_at,COALESCE(d.state,n.state) AS state,COALESCE(d.attempts,n.attempts) AS attempts,COALESCE(d.error,n.error) AS error,d.channel FROM notifications n LEFT JOIN notification_deliveries d ON d.notification_id=n.id WHERE COALESCE(d.state,n.state) NOT IN ('sent','cancelled') ORDER BY n.created_at DESC LIMIT 50"
       ),
       first(
         env.DB,
@@ -423,6 +424,7 @@ export async function admin(
           (m.kind === "heartbeat" ? m.interval_seconds + m.grace_seconds : 0),
         id
       ).run();
+      if (v.paused) await suppressNotifications(env, now);
       return json({ ok: true });
     }
     if (action === "test" && method === "POST") {
@@ -580,6 +582,7 @@ export async function admin(
         v.starts_at,
         v.ends_at
       ).run();
+      await suppressNotifications(env, now);
       return json({ id: key });
     }
     if (method === "DELETE" && id) {
