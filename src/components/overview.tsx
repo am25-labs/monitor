@@ -81,50 +81,53 @@ export function Overview({
   ];
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex flex-wrap items-center gap-2">
-            <Activity
-              className={cn(
-                "size-4",
-                allUp && "text-success",
-                needsAttention && "text-warning",
-                down > 0 && "text-destructive"
+      <div className="grid gap-6 xl:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex flex-wrap items-center gap-2">
+              <Activity
+                className={cn(
+                  "size-4",
+                  allUp && "text-success",
+                  needsAttention && "text-warning",
+                  down > 0 && "text-destructive"
+                )}
+              />
+              {!data.monitors.length
+                ? t("Comienza a monitorear tu infraestructura")
+                : down
+                  ? t("Hay servicios que requieren atención")
+                  : degraded
+                    ? t("Hay servicios degradados")
+                    : unknown
+                      ? t("Hay monitores sin datos recientes")
+                      : allUp
+                        ? t("Todos los servicios están operativos")
+                        : t("Monitoreo en curso")}
+            </CardTitle>
+            <CardDescription>
+              {t(
+                "Estado actual de tus servicios. La disponibilidad incluye las comprobaciones anteriores."
               )}
-            />
-            {!data.monitors.length
-              ? t("Comienza a monitorear tu infraestructura")
-              : down
-                ? t("Hay servicios que requieren atención")
-                : degraded
-                  ? t("Hay servicios degradados")
-                  : unknown
-                    ? t("Hay monitores sin datos recientes")
-                    : allUp
-                      ? t("Todos los servicios están operativos")
-                      : t("Monitoreo en curso")}
-          </CardTitle>
-          <CardDescription>
-            {t(
-              "Estado actual de tus servicios. La disponibilidad incluye las comprobaciones anteriores."
-            )}
-          </CardDescription>
-          <CardAction className="col-start-1 row-start-3 justify-self-start sm:col-start-2 sm:row-start-1 sm:justify-self-end">
-            <Badge
-              variant={down > 0 ? "destructive" : "outline"}
-              className={cn(
-                allUp && "text-success",
-                needsAttention && "text-warning"
-              )}
-            >
-              {t("{up} de {total} operativos", {
-                up,
-                total: data.monitors.length
-              })}
-            </Badge>
-          </CardAction>
-        </CardHeader>
-      </Card>
+            </CardDescription>
+            <CardAction className="col-start-1 row-start-3 justify-self-start sm:col-start-2 sm:row-start-1 sm:justify-self-end">
+              <Badge
+                variant={down > 0 ? "destructive" : "outline"}
+                className={cn(
+                  allUp && "text-success",
+                  needsAttention && "text-warning"
+                )}
+              >
+                {t("{up} de {total} operativos", {
+                  up,
+                  total: data.monitors.length
+                })}
+              </Badge>
+            </CardAction>
+          </CardHeader>
+        </Card>
+        <EngineHealth data={data} />
+      </div>
       {unknown > 0 && <Notice message={t("{count} monitores no tienen comprobaciones recientes. Su estado actual no está confirmado; esto no indica una degradación del servicio.", { count: unknown })} />}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {states.map((stat) => (
@@ -146,8 +149,7 @@ export function Overview({
           </Card>
         ))}
       </div>
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-        <EngineHealth data={data} />
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <Panel
           title={t("Incidentes recientes")}
           description={t("Caídas y recuperaciones de tus servicios.")}
@@ -200,101 +202,101 @@ export function Overview({
             />
           )}
         </Panel>
-      </div>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Mail className="size-4" />
-            {t("Alertas personales")}
-          </CardTitle>
-          <CardDescription>
-            {t("Notificaciones de apertura y recuperación, solo para ti.")}
-          </CardDescription>
-          <CardAction>
-            <Badge
-              variant="outline"
-              className={failed ? "text-destructive" : undefined}
-            >
-              {failed
-                ? t("{count} fallidas", { count: failed })
-                : data.notifications.length
-                  ? t("{count} pendientes", {
-                      count: data.notifications.length
-                    })
-                  : t("Sin pendientes")}
-            </Badge>
-          </CardAction>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-wrap items-center gap-2">
-              {(["email", "telegram", "pushover", "ntfy"] as const)
-                .filter(
-                  (channel) => data.settings.notifications[channel].enabled
-                )
-                .map((channel) => (
-                  <Badge key={channel} variant="outline">
-                    {channel === "email"
-                      ? t("Correo · Postmark")
-                      : channel === "telegram"
-                        ? "Telegram"
-                        : channel === "pushover"
-                          ? "Pushover"
-                          : "ntfy"}
-                  </Badge>
-                ))}
-              {!Object.values(data.settings.notifications).some(
-                (value) => typeof value === "object" && value.enabled
-              ) && (
-                <span className="text-sm text-muted-foreground">
-                  {t("Sin canales activos")}
-                </span>
-              )}
-            </div>
-            {data.notifications.length ? (
-              <div className="flex flex-col gap-3 border-t pt-4">
-                {data.notifications.map((n) => (
-                  <div
-                    key={`${n.id}:${n.channel ?? "unconfigured"}`}
-                    className="flex flex-wrap items-center justify-between gap-3"
-                  >
-                    <div>
-                      <p className="font-medium">{n.monitor_name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {n.state === "failed"
-                          ? t("Entrega fallida")
-                          : t("Pendiente")}{" "}
-                        · {n.channel ?? t("Sin canal")} · {n.attempts}{" "}
-                        {t("intentos")}
-                      </p>
-                      {n.error && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Mail className="size-4" />
+              {t("Alertas personales")}
+            </CardTitle>
+            <CardDescription>
+              {t("Notificaciones de apertura y recuperación, solo para ti.")}
+            </CardDescription>
+            <CardAction>
+              <Badge
+                variant="outline"
+                className={failed ? "text-destructive" : undefined}
+              >
+                {failed
+                  ? t("{count} fallidas", { count: failed })
+                  : data.notifications.length
+                    ? t("{count} pendientes", {
+                        count: data.notifications.length
+                      })
+                    : t("Sin pendientes")}
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-wrap items-center gap-2">
+                {(["email", "telegram", "pushover", "ntfy"] as const)
+                  .filter(
+                    (channel) => data.settings.notifications[channel].enabled
+                  )
+                  .map((channel) => (
+                    <Badge key={channel} variant="outline">
+                      {channel === "email"
+                        ? t("Correo · Postmark")
+                        : channel === "telegram"
+                          ? "Telegram"
+                          : channel === "pushover"
+                            ? "Pushover"
+                            : "ntfy"}
+                    </Badge>
+                  ))}
+                {!Object.values(data.settings.notifications).some(
+                  (value) => typeof value === "object" && value.enabled
+                ) && (
+                  <span className="text-sm text-muted-foreground">
+                    {t("Sin canales activos")}
+                  </span>
+                )}
+              </div>
+              {data.notifications.length ? (
+                <div className="flex flex-col gap-3 border-t pt-4">
+                  {data.notifications.map((n) => (
+                    <div
+                      key={`${n.id}:${n.channel ?? "unconfigured"}`}
+                      className="flex flex-wrap items-center justify-between gap-3"
+                    >
+                      <div>
+                        <p className="font-medium">{n.monitor_name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {t(n.error)}
+                          {n.state === "failed"
+                            ? t("Entrega fallida")
+                            : t("Pendiente")}{" "}
+                          · {n.channel ?? t("Sin canal")} · {n.attempts}{" "}
+                          {t("intentos")}
                         </p>
+                        {n.error && (
+                          <p className="text-xs text-muted-foreground">
+                            {t(n.error)}
+                          </p>
+                        )}
+                      </div>
+                      {n.state === "failed" && (
+                        <Button
+                          variant="outline"
+                          disabled={busy}
+                          onClick={() =>
+                            void onRetry(n.id).catch(() => undefined)
+                          }
+                        >
+                          {t("Reintentar")}
+                        </Button>
                       )}
                     </div>
-                    {n.state === "failed" && (
-                      <Button
-                        variant="outline"
-                        disabled={busy}
-                        onClick={() =>
-                          void onRetry(n.id).catch(() => undefined)
-                        }
-                      >
-                        {t("Reintentar")}
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                {t("No hay notificaciones pendientes o fallidas.")}
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {t("No hay notificaciones pendientes o fallidas.")}
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </>
   );
 }
