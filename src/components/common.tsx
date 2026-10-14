@@ -13,6 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import { Field, FieldLabel } from "./ui/field";
 import { cn } from "../lib/utils";
 import type { Status } from "../shared/types";
+import { CopyId } from "./copy-id";
 
 export const statusLabels: Record<Status, string> = {
   pending: "Pendiente",
@@ -56,7 +57,7 @@ export function Panel({
     <Card>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
-        {id && <p className="break-all font-mono text-xs text-muted-foreground">{id}</p>}
+        {id && <CopyId key={id} id={id} />}
         {description && <CardDescription>{description}</CardDescription>}
       </CardHeader>
       <CardContent>{children}</CardContent>

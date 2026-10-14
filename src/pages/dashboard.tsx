@@ -4,6 +4,7 @@ import { Settings } from "../components/settings";
 import { LocaleProvider } from "../lib/locale";
 import { Overview } from "../components/overview";
 import { ConfirmDialog } from "../components/confirm-dialog";
+import { CopyId } from "../components/copy-id";
 import { useState } from "react";
 import { Link, NavLink, useNavigate, useParams } from "react-router-dom";
 import {
@@ -259,6 +260,9 @@ function DashboardView({
                 <StatusBadge status={selected.display_status} />
               )}
             </div>
+            {section === "monitors" && selected && (
+              <CopyId key={selected.id} id={selected.id} />
+            )}
             <p className="text-sm text-muted-foreground">
               {data?.settings.environment === "local"
                 ? t("Entorno local · notificaciones interceptadas")
@@ -535,7 +539,6 @@ function DashboardView({
                               >
                                 {m.name}
                               </Link>
-                              <p className="font-mono text-xs text-muted-foreground">{m.id}</p>
                               <p className="text-xs text-muted-foreground">
                                 {m.kind.toUpperCase()}
                               </p>
