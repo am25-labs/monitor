@@ -1,4 +1,5 @@
-import { notificationConfig } from "./settings";
+import { generalSettings, notificationConfig } from "./settings";
+import { defaultTimeZone, formatDate } from "../shared/time";
 import {
   channels,
   type NotificationChannel,
@@ -26,12 +27,8 @@ interface Notification {
   closed_at: number | null;
   reason: string | null;
 }
-function mailDate(timestamp: number) {
-  return `${new Intl.DateTimeFormat("es-SV", {
-    timeZone: "America/El_Salvador",
-    dateStyle: "long",
-    timeStyle: "short"
-  }).format(new Date(timestamp * 1000))} (El Salvador, UTC−6)`;
+function mailDate(timestamp: number, timeZone: string) {
+  return formatDate(timestamp, "es", timeZone, { dateStyle: "long", timeStyle: "short", hourCycle: "h23" });
 }
 function duration(seconds: number) {
   const days = Math.floor(seconds / 86400),
@@ -53,7 +50,8 @@ function duration(seconds: number) {
 export async function mailBody(
   n: Omit<Notification, "incident_id">,
   origin: string,
-  includeHtml = true
+  includeHtml = true,
+  timeZone = defaultTimeZone
 ) {
   const event =
     n.event === "opened" ? "Caída detectada" : "Servicio recuperado";
@@ -78,7 +76,7 @@ export async function mailBody(
     },
     {
       label: "Inicio del incidente",
-      value: mailDate(n.opened_at ?? n.created_at)
+      value: mailDate(n.opened_at ?? n.created_at, timeZone)
     },
     {
       label: "Motivo de la caída",
@@ -87,7 +85,7 @@ export async function mailBody(
   ];
   if (recovered) {
     const closed = n.closed_at ?? n.created_at;
-    fields.push({ label: "Recuperación", value: mailDate(closed) });
+    fields.push({ label: "Recuperación", value: mailDate(closed, timeZone) });
     if (n.opened_at != null)
       fields.push({
         label: "Duración del incidente",
@@ -276,7 +274,7 @@ async function sendNotification(
     );
     n.closed_at = incident?.closed_at ?? n.closed_at;
   }
-  const content = await mailBody(n, env.APP_ORIGIN, channel === "email");
+  const content = await mailBody(n, env.APP_ORIGIN, channel === "email", (await generalSettings(env)).timeZone);
   if (await notificationSuppressed(env, n.id, now)) throw new Error("suppressed");
   const url = `${env.APP_ORIGIN.replace(/\/+$/, "")}/app/monitors/${encodeURIComponent(n.monitor_id ?? "")}`;
   let response: Response;

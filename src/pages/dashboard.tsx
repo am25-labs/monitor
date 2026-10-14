@@ -63,7 +63,7 @@ export function Dashboard({
 function DashboardContent({ theme, toggleTheme }: { theme: string; toggleTheme: () => void }) {
   const snapshot = useRefresh<Snapshot>("admin/snapshot");
   return (
-    <LocaleProvider language={snapshot.data?.settings.general.language ?? "es"}>
+    <LocaleProvider language={snapshot.data?.settings.general.language ?? "es"} timeZone={snapshot.data?.settings.general.timeZone}>
       <DashboardView theme={theme} toggleTheme={toggleTheme} {...snapshot} />
     </LocaleProvider>
   );

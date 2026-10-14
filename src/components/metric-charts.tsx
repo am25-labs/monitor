@@ -1,6 +1,7 @@
 import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import { useLocale } from "../lib/locale";
 import { locales } from "../shared/i18n";
+import { utcDay } from "../shared/time";
 import { metricDays } from "../shared/metrics";
 import type { Stat } from "../shared/types";
 import { Nothing, Panel } from "./common";
@@ -9,7 +10,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "./ui/chart";
 export function MetricCharts({ stats, start, end }: { stats: Stat[]; start: string; end: string }) {
   const { t, language } = useLocale();
   const days = metricDays(stats, start, end);
-  const formatDate = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString(locales[language], { month: "short", day: "numeric", timeZone: "UTC" });
+  const formatDate = (day: string) => utcDay(day, language, true);
   const charts = [
     { key: "availability", title: t("Disponibilidad diaria"), description: t("Porcentaje del tiempo observado sin interrupciones. Días en UTC."), color: "var(--success)", unit: "%", component: BarChart },
     { key: "latency", title: t("Latencia media diaria"), description: t("Promedio ponderado de comprobaciones exitosas con latencia. Días en UTC."), color: "var(--primary)", unit: " ms", component: LineChart }

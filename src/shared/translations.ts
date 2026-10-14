@@ -1,4 +1,13 @@
 export const english: Record<string, string> = {
+  "Zona horaria de la instancia": "Instance time zone",
+  "Actualización automática cada 30 segundos · Zona horaria: {zone}": "Automatic refresh every 30 seconds · Time zone: {zone}",
+  "Selecciona una zona horaria válida.": "Select a valid time zone.",
+  "Se usa en el dashboard, las páginas públicas, las alertas y los formularios. Los datos y agregados diarios se conservan en UTC.": "Used in the dashboard, public pages, alerts, and forms. Data and daily aggregates remain in UTC.",
+  "Comprobaciones individuales disponibles durante seis meses. Zona horaria: {zone}.": "Individual checks available for six months. Time zone: {zone}.",
+  "Inicio ({zone})": "Start ({zone})",
+  "Hora ({zone})": "Time ({zone})",
+  "Fin ({zone})": "End ({zone})",
+  "La fecha u hora no existe en la zona horaria seleccionada.": "The date or time does not exist in the selected time zone.",
   "Hay servicios degradados": "Some services are degraded",
   "Hay monitores sin datos recientes": "Some monitors have no recent data",
   "Comprobaciones atrasadas": "Checks delayed",

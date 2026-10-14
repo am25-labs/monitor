@@ -1,10 +1,12 @@
 import { z } from "zod";
+import { defaultTimeZone, validTimeZone } from "./time";
 
 export const languageInput = z.enum(["es", "en"]);
 export type Language = z.infer<typeof languageInput>;
 export const generalInput = z.object({
   language: languageInput.default("es"),
   testMode: z.boolean().default(false),
+  timeZone: z.string().max(100).refine(validTimeZone, "Selecciona una zona horaria válida.").default(defaultTimeZone),
 });
 export type GeneralSettings = z.infer<typeof generalInput>;
 export const channels = ["email", "telegram", "pushover", "ntfy"] as const;

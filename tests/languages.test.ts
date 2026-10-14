@@ -22,7 +22,7 @@ const request = (path: string, method = "GET", body?: unknown) =>
 it("defaults the dashboard to Spanish and persists its language without altering encrypted notifications", async () => {
   expect(
     await (await worker.fetch(request("admin/settings/general"), env)).json(),
-  ).toEqual({ language: "es", testMode: false });
+  ).toEqual({ language: "es", testMode: false, timeZone: "UTC" });
   await saveNotifications(env, {
     email: {
       enabled: true,
@@ -41,7 +41,7 @@ it("defaults the dashboard to Spanish and persists its language without altering
     expect(saved.status).toBe(200);
     expect(
       await (await worker.fetch(request("admin/settings/general"), env)).json(),
-    ).toEqual({ language, testMode: false });
+    ).toEqual({ language, testMode: false, timeZone: "UTC" });
     const snapshot = (await (
       await worker.fetch(request("admin/snapshot"), env)
     ).json()) as { settings: { general: { language: string } } };
@@ -72,7 +72,7 @@ it("protects general settings with Access and rejects unsupported languages", as
   ).toBe(401);
   expect(
     await (await worker.fetch(request("admin/settings/general"), env)).json(),
-  ).toEqual({ language: "es", testMode: false });
+  ).toEqual({ language: "es", testMode: false, timeZone: "UTC" });
   expect(
     (
       await worker.fetch(
@@ -220,9 +220,9 @@ it("formats dates and empty availability in the selected language", () => {
     "50.00%",
   );
   expect(date(1700000000, "en")).toBe(
-    new Date(1700000000000).toLocaleString("en-US"),
+    "11/14/2023, 22:13:20 (UTC)",
   );
   expect(date(1700000000, "es")).toBe(
-    new Date(1700000000000).toLocaleString("es-SV"),
+    "14/11/2023, 22:13:20 (UTC)",
   );
 });

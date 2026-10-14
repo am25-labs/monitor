@@ -1,4 +1,5 @@
 import { useLocale } from "../lib/locale";
+import { parseDateTime, utcDay } from "../shared/time";
 import { DatePicker } from "./date-picker";
 import { ConfirmDialog } from "./confirm-dialog";
 import { useState } from "react";
@@ -25,25 +26,28 @@ interface HistoryData {
 }
 export function History({ monitor }: { monitor: SafeMonitor }) {
   const mutation = useMutation();
-  const { t, date, availability } = useLocale();
+  const { t, date, availability, timeZone, timeZoneLabel, language } = useLocale();
   const [from, setFrom] = useState(""),
     [to, setTo] = useState(""),
     [cursor, setCursor] = useState<number | null>(null),
     [trail, setTrail] = useState<(number | null)[]>([]);
   const params = new URLSearchParams();
-  if (from)
+  const fromTime = from ? parseDateTime(`${from}T00:00:00`, timeZone) : undefined;
+  const toTime = to ? parseDateTime(`${to}T23:59:59`, timeZone) : undefined;
+  const invalidRange = fromTime === null || toTime === null;
+  if (fromTime != null)
     params.set(
       "from",
-      String(Math.floor(new Date(`${from}T00:00:00`).getTime() / 1000))
+      String(fromTime)
     );
-  if (to)
+  if (toTime != null)
     params.set(
       "to",
-      String(Math.floor(new Date(`${to}T23:59:59`).getTime() / 1000))
+      String(toTime)
     );
   if (cursor) params.set("cursor", String(cursor));
   const { data, error } = useRefresh<HistoryData>(
-    `admin/monitors/${monitor.id}/results?${params}`
+    invalidRange ? "" : `admin/monitors/${monitor.id}/results?${params}`
   );
   const [token, setToken] = useState(""),
     [notice, setNotice] = useState(""),
@@ -121,7 +125,7 @@ export function History({ monitor }: { monitor: SafeMonitor }) {
       <Panel
         title={t("Historial completo")}
         description={t(
-          "Comprobaciones individuales disponibles durante seis meses. Fechas en tu hora local."
+          "Comprobaciones individuales disponibles durante seis meses. Zona horaria: {zone}.", { zone: timeZoneLabel }
         )}
       >
         <div className="flex flex-col gap-4">
@@ -147,7 +151,7 @@ export function History({ monitor }: { monitor: SafeMonitor }) {
               />
             </FormField>
           </FieldGroup>
-          <Notice message={error} destructive />
+          <Notice message={invalidRange ? t("La fecha u hora no existe en la zona horaria seleccionada.") : error} destructive />
           {data && (
             <>
               <p>
@@ -226,7 +230,7 @@ export function History({ monitor }: { monitor: SafeMonitor }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t("Día")}</TableHead>
+                <TableHead>{t("Día (UTC)")}</TableHead>
                 <TableHead>{t("Disponibilidad")}</TableHead>
                 <TableHead>{t("Comprobaciones")}</TableHead>
                 <TableHead>{t("Latencia media")}</TableHead>
@@ -238,7 +242,7 @@ export function History({ monitor }: { monitor: SafeMonitor }) {
                 .reverse()
                 .map((s) => (
                   <TableRow key={s.day}>
-                    <TableCell>{s.day}</TableCell>
+                    <TableCell>{utcDay(s.day, language)}</TableCell>
                     <TableCell>{availability([s])}</TableCell>
                     <TableCell>{s.check_count}</TableCell>
                     <TableCell>

@@ -759,6 +759,7 @@ export async function publicPage(env: Env, slug: string, query = new URLSearchPa
     incidents: reports.incidents,
     title: page.title,
     language: page.language,
+    timeZone: (await generalSettings(env)).timeZone,
     description: page.description,
     monitors,
     updatedAt: now

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useRefresh } from "../lib/api";
 import { useLocale } from "../lib/locale";
+import { utcDay } from "../shared/time";
 import { cn } from "../lib/utils";
 import { historySegments, type HistoryRange } from "../shared/history";
 import type { MonitorHistory, SafeMonitor } from "../shared/types";
@@ -10,7 +11,7 @@ import { Skeleton } from "./ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 export function HistoryStrip({ range, compact = false, ...history }: MonitorHistory & { range: HistoryRange; compact?: boolean }) {
-  const { t, date, availability } = useLocale();
+  const { t, date, availability, language } = useLocale();
   const segments = historySegments(history, range);
   const labels: Record<string, string> = {
     none: t("Sin registros"),
@@ -27,7 +28,7 @@ export function HistoryStrip({ range, compact = false, ...history }: MonitorHist
         aria-label={t("Historial, de más antiguo a más reciente")}
       >
         {segments.map(({ start, stat, state, coverage, partial }) => {
-          const time = range === "90d" ? `${new Date(start * 1000).toISOString().slice(0, 10)} (UTC)` : date(start);
+          const time = range === "90d" ? utcDay(new Date(start * 1000).toISOString().slice(0, 10), language) : date(start);
           const label = `${time}: ${labels[state]}${stat?.observed_seconds ? ` · ${availability([stat])} · ${t("{outage} s de interrupción / {observed} s observados", { outage: Math.round(stat.observed_seconds - stat.up_seconds), observed: Math.round(stat.observed_seconds) })}` : ""}${partial ? ` · ${t("Cobertura parcial: {coverage}%", { coverage: coverage.toFixed(1) })}` : ""}`;
           return (
             <Tooltip key={start}>

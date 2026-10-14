@@ -1,4 +1,5 @@
 import { useLocale } from "../lib/locale";
+import { parseDateTime, zoneOffset } from "../shared/time";
 import { useState } from "react";
 import { CalendarIcon } from "lucide-react";
 import { format, parseISO } from "date-fns";
@@ -21,7 +22,7 @@ export function DatePicker({
   onChange,
   placeholder = "Elige una fecha"
 }: DateProps) {
-  const { t, language } = useLocale();
+  const { t, language, timeZone } = useLocale();
   const locale = language === "en" ? enUS : es;
   const [open, setOpen] = useState(false);
   const selected = value ? parseISO(value) : undefined;
@@ -38,7 +39,7 @@ export function DatePicker({
         }
       >
         <CalendarIcon />
-        {selected ? format(selected, "PP", { locale }) : t(placeholder)}
+        {selected ? `${format(selected, "PP", { locale })} (${zoneOffset(timeZone, parseDateTime(`${value}T12:00`, timeZone) ?? undefined)})` : t(placeholder)}
       </PopoverTrigger>
       <PopoverContent align="start" className="w-auto p-0">
         <Calendar
@@ -85,16 +86,17 @@ export function DateTimePicker({
   name: string;
   defaultValue?: string;
 }) {
-  const { t } = useLocale();
+  const { t, timeZone } = useLocale();
   const [date, setDate] = useState(defaultValue.slice(0, 10)),
     [hour, setHour] = useState(defaultValue.slice(11, 13) || "00"),
     [minute, setMinute] = useState(defaultValue.slice(14, 16) || "00");
+  const timestamp = date ? parseDateTime(`${date}T${hour}:${minute}`, timeZone) : null;
   return (
     <div className="flex flex-col gap-3">
       <DatePicker id={id} value={date} onChange={setDate} />
       <div className="grid grid-cols-2 gap-3">
         <Field>
-          <FieldLabel htmlFor={`${id}-hour`}>{t("Hora")}</FieldLabel>
+          <FieldLabel htmlFor={`${id}-hour`}>{t("Hora ({zone})", { zone: zoneOffset(timeZone, timestamp ?? undefined) })}</FieldLabel>
           <ChoiceSelect
             id={`${id}-hour`}
             options={hours}

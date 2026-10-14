@@ -4,6 +4,7 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { useRefresh, type Snapshot } from "../lib/api";
 import { useLocale } from "../lib/locale";
 import { locales } from "../shared/i18n";
+import { utcDay } from "../shared/time";
 import { metricDays, metricTotals, type MetricsData } from "../shared/metrics";
 import { ChoiceSelect } from "./choice-select";
 import { FormField, Notice, Nothing, Panel } from "./common";
@@ -25,7 +26,7 @@ export function Metrics({ data }: { data: Snapshot }) {
   const metrics = useRefresh<MetricsData>(`admin/metrics?${params}`);
   const number = (value: number, digits = 0) => value.toLocaleString(locales[language], { maximumFractionDigits: digits });
   const value = (amount: number | null, unit: string) => amount === null ? t("Sin datos") : `${number(amount, 2)}${unit}`;
-  const dayLabel = (day: string) => new Date(`${day}T00:00:00Z`).toLocaleDateString(locales[language], { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" });
+  const dayLabel = (day: string) => utcDay(day, language);
   const monitors = data.monitors.filter((item) => !project || item.project_id === project);
   const selected = monitors.filter((item) => !monitor || item.id === monitor);
   const total = metricTotals(metrics.data?.stats ?? []);

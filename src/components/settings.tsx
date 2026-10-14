@@ -1,4 +1,5 @@
 import { useLocale } from "../lib/locale";
+import { zoneOffset } from "../shared/time";
 import {
   useState,
   type FormEvent,
@@ -591,6 +592,11 @@ function General({
   const mutation = useMutation();
   const { t } = useLocale();
   const [language, setLanguage] = useState(initial.language);
+  const [timeZone, setTimeZone] = useState(initial.timeZone);
+  const [timeZones] = useState(() => [...new Set([
+    "UTC", "America/El_Salvador", initial.timeZone,
+    ...Intl.supportedValuesOf("timeZone")
+  ])].map((value) => ({ value, label: `${value} (${zoneOffset(value)})` })));
   const [testMode, setTestMode] = useState(initial.testMode);
   const [monitorId, setMonitorId] = useState("");
   const [deletion, setDeletion] = useState<string | null | undefined>();
@@ -606,6 +612,7 @@ function General({
       await mutation.mutate<GeneralSettings>("admin/settings/general", "PUT", {
         language,
         testMode,
+        timeZone,
       });
       setSaved(true);
     } catch (error) {
@@ -641,6 +648,16 @@ function General({
                 { value: "en", label: t("Inglés") },
               ]}
             />
+          </FormField>
+          <FormField id="instance-time-zone" label={t("Zona horaria de la instancia")}>
+            <ChoiceSelect
+              id="instance-time-zone"
+              value={timeZone}
+              disabled={busy}
+              onValueChange={(value) => { setTimeZone(value); setSaved(false); }}
+              options={timeZones}
+            />
+            <FieldDescription>{t("Se usa en el dashboard, las páginas públicas, las alertas y los formularios. Los datos y agregados diarios se conservan en UTC.")}</FieldDescription>
           </FormField>
         </FieldGroup>
       </Panel>

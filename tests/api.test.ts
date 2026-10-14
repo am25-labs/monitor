@@ -184,14 +184,14 @@ it("renders event details with local dates, incident duration and escaped monito
     closed_at: 1900,
     reason: "timeout",
   };
-  const recovered = await mailBody(details, "https://monitor.example.com/");
+  const recovered = await mailBody(details, "https://monitor.example.com/", true, "America/El_Salvador");
   expect(recovered.HtmlBody).not.toContain('<script>alert("x")</script>');
   expect(recovered.HtmlBody).toContain("&lt;script&gt;");
   expect(recovered.HtmlBody).not.toContain("#0000f2");
   expect(recovered.HtmlBody).not.toContain("am25-logo.svg");
   expect(recovered.HtmlBody).toContain("AM25 Monitor");
   expect(recovered.TextBody).toContain("Duración del incidente: 15 min");
-  expect(recovered.TextBody).toContain("El Salvador, UTC−6");
+  expect(recovered.TextBody).toContain("UTC-6");
   expect(recovered.TextBody).toContain("El servicio no respondió a tiempo");
   expect(recovered.TextBody).toContain(
     "https://monitor.example.com/app/monitors/monitor",

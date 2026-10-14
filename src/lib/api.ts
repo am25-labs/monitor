@@ -3,7 +3,8 @@ import type {
   GeneralSettings,
   Language
 } from "../shared/settings";
-import { locales, translate } from "../shared/i18n";
+import { translate } from "../shared/i18n";
+import { defaultTimeZone, formatDate } from "../shared/time";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { RefreshContext } from "./refresh-context";
 import type {
@@ -159,11 +160,10 @@ export function useRefresh<T>(path: string) {
 }
 export function date(
   value: number | null | undefined,
-  language: Language = "es"
+  language: Language = "es",
+  timeZone: string = defaultTimeZone
 ) {
-  return value
-    ? new Date(value * 1000).toLocaleString(locales[language])
-    : translate(language, "Sin datos");
+  return formatDate(value, language, timeZone);
 }
 export function availability(
   stats: Pick<Stat, "observed_seconds" | "up_seconds">[],

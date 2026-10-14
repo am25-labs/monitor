@@ -95,6 +95,7 @@ it("defaults test mode off and blocks deletion without enabling it or confirming
   expect(await generalSettings(env)).toEqual({
     language: "en",
     testMode: true,
+    timeZone: "UTC",
   });
   expect((await reset(null, "wrong")).status).toBe(400);
   expect((await reset(crypto.randomUUID())).status).toBe(404);

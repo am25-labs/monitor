@@ -1,4 +1,5 @@
 import { useLocale } from "../lib/locale";
+import { localDateTime, parseDateTime } from "../shared/time";
 import { useState, type FormEvent } from "react";
 import type { Snapshot } from "../lib/api";
 import { FormField, Notice, Panel } from "./common";
@@ -25,7 +26,7 @@ export function ResourceForm({
   onSave: (resource: Resource, v: unknown, id?: string) => Promise<void>;
   onCancel: () => void;
 }) {
-  const { t } = useLocale();
+  const { t, timeZone } = useLocale();
   const [project, setProject] = useState(
     String(value?.project_id ?? data.projects[0]?.id ?? "")
   );
@@ -50,11 +51,7 @@ export function ResourceForm({
     maintenance: t("ventana de mantenimiento")
   };
   const datetime = (v: unknown) => {
-    if (!v) return "";
-    const d = new Date(Number(v) * 1000);
-    return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
-      .toISOString()
-      .slice(0, 16);
+    return v == null ? "" : localDateTime(Number(v), timeZone).slice(0, 16);
   };
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -90,15 +87,11 @@ export function ResourceForm({
                           ? value.starts_at
                           : Math.floor(Date.now() / 1000)
                       )
-                    : Math.floor(
-                        new Date(String(f.get("starts_at"))).getTime() / 1000
-                      ),
+                    : parseDateTime(String(f.get("starts_at")), timeZone),
                 ends_at:
                   timing === "manual"
                     ? null
-                    : Math.floor(
-                        new Date(String(f.get("ends_at"))).getTime() / 1000
-                      )
+                    : parseDateTime(String(f.get("ends_at")), timeZone)
               };
     try {
       if (
@@ -109,6 +102,9 @@ export function ResourceForm({
         throw new Error(
           t("Elige las fechas de inicio y fin del mantenimiento.")
         );
+      if (resource === "maintenance" && timing === "scheduled" &&
+          "starts_at" in payload && (payload.starts_at === null || payload.ends_at === null))
+        throw new Error(t("La fecha u hora no existe en la zona horaria seleccionada."));
       await onSave(resource, payload, value?.id as string | undefined);
     } catch (e) {
       setError(e instanceof Error ? e.message : t("Revisa los datos."));
@@ -309,14 +305,14 @@ export function ResourceForm({
               </FormField>
               {timing === "scheduled" && (
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <FormField label={t("Inicio (hora local)")} id="starts_at">
+                  <FormField label={t("Inicio ({zone})", { zone: timeZone })} id="starts_at">
                     <DateTimePicker
                       id="starts_at"
                       name="starts_at"
                       defaultValue={datetime(value?.starts_at)}
                     />
                   </FormField>
-                  <FormField label={t("Fin (hora local)")} id="ends_at">
+                  <FormField label={t("Fin ({zone})", { zone: timeZone })} id="ends_at">
                     <DateTimePicker
                       id="ends_at"
                       name="ends_at"

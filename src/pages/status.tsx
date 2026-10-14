@@ -20,6 +20,7 @@ import { cn } from "../lib/utils";
 interface PublicData {
   incidents: PublicIncidentView[];
   language: Language;
+  timeZone: string;
   title: string;
   description: string;
   updatedAt: number;
@@ -134,7 +135,7 @@ export function PublicStatus({
   const { slug } = useParams();
   const snapshot = useRefresh<PublicData>(`public/${slug}`);
   return (
-    <LocaleProvider language={snapshot.data?.language ?? "es"}>
+    <LocaleProvider language={snapshot.data?.language ?? "es"} timeZone={snapshot.data?.timeZone}>
       <StatusView theme={theme} toggleTheme={toggleTheme} {...snapshot} />
     </LocaleProvider>
   );
@@ -154,7 +155,7 @@ function StatusView({
   refresh: (force?: boolean) => Promise<void>;
   loading: boolean;
 }) {
-  const { t, date, availability } = useLocale();
+  const { t, date, availability, timeZoneLabel } = useLocale();
   const [range, setRange] = useState<HistoryRange>("7d");
   const { slug = "" } = useParams();
   const overall = overallStatus(data?.monitors.map(m => m.status) ?? []);
@@ -268,7 +269,7 @@ function StatusView({
         <p>{t("AM25 Monitor · Estado público de los servicios")}</p>
         <p>
           {t(
-            "Actualización automática cada 30 segundos · Fechas en tu hora local"
+            "Actualización automática cada 30 segundos · Zona horaria: {zone}", { zone: timeZoneLabel }
           )}
         </p>
         <p>
