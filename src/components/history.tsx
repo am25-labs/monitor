@@ -100,7 +100,7 @@ export function History({ monitor }: { monitor: SafeMonitor }) {
               POST {location.origin}/api/v1/heartbeats/{monitor.id}
             </p>
             <p>
-              Headers: Authorization: Bearer TOKEN · Content-Type:
+              {t("Encabezados:")} Authorization: Bearer TOKEN · Content-Type:
               application/json
             </p>
             <p className="font-mono text-xs">{'{"ok":true}'}</p>

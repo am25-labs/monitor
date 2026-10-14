@@ -15,7 +15,7 @@
     "db:local": "wrangler d1 migrations apply DB --local --config wrangler.local.jsonc",
     "typegen": "wrangler types --config wrangler.local.jsonc --strict-vars=false",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run && node --test tests/deploy.test.mjs tests/migrations.test.mjs",
+    "test": "vitest run && node --test tests/deploy.test.mjs tests/migrations.test.mjs tests/localization.test.mjs",
     "check": "pnpm typecheck && pnpm test",
     "build": "vite build",
     "deploy": "node scripts/deploy.mjs"

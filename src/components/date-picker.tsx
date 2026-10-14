@@ -3,7 +3,7 @@ import { parseDateTime, zoneOffset } from "../shared/time";
 import { useState } from "react";
 import { CalendarIcon } from "lucide-react";
 import { format, parseISO } from "date-fns";
-import { es, enUS } from "date-fns/locale";
+import { es, enUS } from "react-day-picker/locale";
 import { Calendar } from "./ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Button } from "./ui/button";

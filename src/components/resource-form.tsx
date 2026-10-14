@@ -188,7 +188,7 @@ export function ResourceForm({
                   required
                   pattern="[a-z0-9]+(-[a-z0-9]+)*"
                   defaultValue={String(value?.slug ?? "")}
-                  placeholder="mi-proyecto"
+                  placeholder={t("mi-proyecto")}
                 />
                 <FieldDescription>
                   {t("Se publicará en /status/identificador.")}

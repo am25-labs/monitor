@@ -73,7 +73,7 @@ export function AboutDialog() {
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Card size="sm" className="border shadow-none ring-0">
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2"><Scale className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />Copyright</CardTitle>
+                      <CardTitle className="flex items-center gap-2"><Scale className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />{t("Derechos de autor")}</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <p className="text-sm text-muted-foreground">{copyright}</p>

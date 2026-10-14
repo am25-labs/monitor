@@ -1,9 +1,11 @@
 import { generalSettings, notificationConfig } from "./settings";
 import { defaultTimeZone, formatDate } from "../shared/time";
+import { translate } from "../shared/i18n";
 import {
   channels,
   type NotificationChannel,
-  type NotificationConfig
+  type NotificationConfig,
+  type Language
 } from "../shared/settings";
 import { seal, unseal } from "./crypto";
 import { first, rows, statement } from "./db";
@@ -27,8 +29,8 @@ interface Notification {
   closed_at: number | null;
   reason: string | null;
 }
-function mailDate(timestamp: number, timeZone: string) {
-  return formatDate(timestamp, "es", timeZone, { dateStyle: "long", timeStyle: "short", hourCycle: "h23" });
+function mailDate(timestamp: number, timeZone: string, language: Language) {
+  return formatDate(timestamp, language, timeZone, { dateStyle: "long", timeStyle: "short", hourCycle: "h23" });
 }
 function duration(seconds: number) {
   const days = Math.floor(seconds / 86400),
@@ -51,10 +53,12 @@ export async function mailBody(
   n: Omit<Notification, "incident_id">,
   origin: string,
   includeHtml = true,
-  timeZone = defaultTimeZone
+  timeZone = defaultTimeZone,
+  language: Language = "es"
 ) {
+  const t = (text: string) => translate(language, text);
   const event =
-    n.event === "opened" ? "Caída detectada" : "Servicio recuperado";
+    t(n.event === "opened" ? "Caída detectada" : "Servicio recuperado");
   const recovered = n.event === "recovered";
   const base = origin.replace(/\/+$/, "");
   const url = n.monitor_id
@@ -62,40 +66,40 @@ export async function mailBody(
     : `${base}/app/`;
   const fields = [
     {
-      label: "Estado del evento",
-      value: recovered ? "Recuperado" : "Caída detectada"
+      label: t("Estado del evento"),
+      value: t(recovered ? "Recuperado" : "Caída detectada")
     },
-    { label: "Proyecto", value: n.project_name ?? "Sin proyecto disponible" },
-    { label: "Grupo", value: n.group_name ?? "Sin grupo" },
+    { label: t("Proyecto"), value: n.project_name ?? t("Sin proyecto disponible") },
+    { label: t("Grupo"), value: n.group_name ?? t("Sin grupo") },
     {
-      label: "Tipo",
+      label: t("Tipo"),
       value:
         n.kind === "heartbeat"
           ? "Heartbeat"
-          : (n.kind?.toUpperCase() ?? "Sin datos")
+          : (n.kind?.toUpperCase() ?? t("Sin datos"))
     },
     {
-      label: "Inicio del incidente",
-      value: mailDate(n.opened_at ?? n.created_at, timeZone)
+      label: t("Inicio del incidente"),
+      value: mailDate(n.opened_at ?? n.created_at, timeZone, language)
     },
     {
-      label: "Motivo de la caída",
-      value: reasons[n.reason ?? ""] ?? "El servicio no pasó la comprobación"
+      label: t("Motivo de la caída"),
+      value: t(reasons[n.reason ?? ""] ?? "El servicio no pasó la comprobación")
     }
   ];
   if (recovered) {
     const closed = n.closed_at ?? n.created_at;
-    fields.push({ label: "Recuperación", value: mailDate(closed, timeZone) });
+    fields.push({ label: t("Recuperación"), value: mailDate(closed, timeZone, language) });
     if (n.opened_at != null)
       fields.push({
-        label: "Duración del incidente",
+        label: t("Duración del incidente"),
         value: duration(Math.max(0, closed - n.opened_at))
       });
   }
   const subject = `[Monitor] ${event}: ${n.monitor_name}`;
   return {
     Subject: subject,
-    TextBody: `${event}: ${n.monitor_name}\n\n${fields.map(({ label, value }) => `${label}: ${value}`).join("\n")}\n\nVer monitor: ${url}`,
+    TextBody: `${event}: ${n.monitor_name}\n\n${fields.map(({ label, value }) => `${label}: ${value}`).join("\n")}\n\n${t("Ver monitor")}: ${url}`,
     HtmlBody: includeHtml
       ? await render(
           createElement(MonitorAlertEmail, {
@@ -105,7 +109,8 @@ export async function mailBody(
             fields,
             url,
             fontUrl: `${base}/assets/fonts/MartianMono.ttf`,
-            recovered
+            recovered,
+            language
           })
         )
       : ""
@@ -274,7 +279,8 @@ async function sendNotification(
     );
     n.closed_at = incident?.closed_at ?? n.closed_at;
   }
-  const content = await mailBody(n, env.APP_ORIGIN, channel === "email", (await generalSettings(env)).timeZone);
+  const general = await generalSettings(env);
+  const content = await mailBody(n, env.APP_ORIGIN, channel === "email", general.timeZone, general.language);
   if (await notificationSuppressed(env, n.id, now)) throw new Error("suppressed");
   const url = `${env.APP_ORIGIN.replace(/\/+$/, "")}/app/monitors/${encodeURIComponent(n.monitor_id ?? "")}`;
   let response: Response;

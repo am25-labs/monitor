@@ -1,4 +1,6 @@
 import { EmailLayout } from "./_components/email-layout";
+import { translate } from "../../shared/i18n";
+import type { Language } from "../../shared/settings";
 import {
   EmailButton,
   EmailDetails,
@@ -15,6 +17,7 @@ export interface AlertDetails {
   url: string;
   fontUrl: string;
   recovered: boolean;
+  language?: Language;
 }
 
 export function MonitorAlertEmail({
@@ -24,22 +27,25 @@ export function MonitorAlertEmail({
   fields,
   url,
   fontUrl,
-  recovered
+  recovered,
+  language = "es"
 }: AlertDetails) {
+  const t = (text: string) => translate(language, text);
   return (
     <EmailLayout
       subject={subject}
       preview={`${title}: ${monitor}`}
       fontUrl={fontUrl}
+      lang={language}
     >
       <EmailHeading>{title}</EmailHeading>
       <EmailText>
-        {recovered
+        {t(recovered
           ? "El servicio volvió a responder correctamente y el incidente se cerró."
-          : "El monitor alcanzó su umbral de fallos y se abrió un incidente."}
+          : "El monitor alcanzó su umbral de fallos y se abrió un incidente.")}
       </EmailText>
       <EmailDetails>
-        <EmailField label="Monitor">
+        <EmailField label={t("Monitor")}>
           <strong>{monitor}</strong>
         </EmailField>
         {fields.map(({ label, value }) => (
@@ -48,9 +54,9 @@ export function MonitorAlertEmail({
           </EmailField>
         ))}
       </EmailDetails>
-      <EmailButton href={url}>Ver monitor</EmailButton>
+      <EmailButton href={url}>{t("Ver monitor")}</EmailButton>
       <EmailText>
-        Esta alerta es personal. No se enviaron notificaciones a tus clientes.
+        {t("Esta alerta es personal. No se enviaron notificaciones a tus clientes.")}
       </EmailText>
     </EmailLayout>
   );

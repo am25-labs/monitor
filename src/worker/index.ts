@@ -5,6 +5,8 @@ import type { JobMessage } from "../shared/types";
 import { admin, json, publicPage, receiveHeartbeat } from "./api";
 import { authorize, requireOrigin } from "./auth";
 import { consume } from "./engine";
+import { generalSettings } from "./settings";
+import { validationMessage } from "../shared/validation";
 
 async function route(request: Request, env: Env) {
   const url = new URL(request.url),
@@ -51,12 +53,13 @@ export default {
       response = await route(request, env);
     } catch (error) {
       if (error instanceof Response) response = error;
-      else if (error instanceof ZodError)
+      else if (error instanceof ZodError) {
+        const settings = await generalSettings(env).catch(() => ({ language: "es" as const }));
         response = json(
-          { error: error.issues.map((i) => i.message).join(" ") },
+          { error: validationMessage(error, settings.language) },
           400
         );
-      else {
+      } else {
         const message = error instanceof Error ? error.message : "";
         const conflict = /FOREIGN KEY|UNIQUE constraint|monitor_capacity/.test(
           message

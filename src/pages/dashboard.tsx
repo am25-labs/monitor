@@ -468,7 +468,7 @@ function DashboardView({
                         {t("Frecuencia")}
                       </dt>
                       <dd>
-                        {t("{count} minutos", {
+                        {t(selected.interval_seconds === 60 ? "{count} minuto" : "{count} minutos", {
                           count: selected.interval_seconds / 60
                         })}
                       </dd>

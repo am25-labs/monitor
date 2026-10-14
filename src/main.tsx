@@ -9,6 +9,7 @@ import {
 } from "react-router-dom";
 import { Dashboard } from "./pages/dashboard";
 import { PublicStatus } from "./pages/status";
+import { NotFound } from "./pages/not-found";
 import { TooltipProvider } from "./components/ui/tooltip";
 import "./styles.css";
 
@@ -70,7 +71,7 @@ function ThemedApp({ storageKey }: { storageKey: string }) {
       />
       <Route
         path="*"
-        element={<main className="p-8">Página no encontrada.</main>}
+        element={<NotFound />}
       />
     </Routes>
   );

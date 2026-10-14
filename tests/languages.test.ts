@@ -6,6 +6,10 @@ import { saveNotifications, notificationConfig } from "../src/worker/settings";
 import { translate } from "../src/shared/i18n";
 import { english } from "../src/shared/translations";
 import { date, availability } from "../src/lib/api";
+import { mailBody, deliverNotifications } from "../src/worker/mail";
+import { defaultNotifications } from "../src/shared/settings";
+import { enUS, es } from "react-day-picker/locale";
+import { vi } from "vitest";
 import { createMonitor, createProject, projectId, setup } from "./setup";
 
 beforeEach(async () => {
@@ -225,4 +229,65 @@ it("formats dates and empty availability in the selected language", () => {
   expect(date(1700000000, "es")).toBe(
     "14/11/2023, 22:13:20 (UTC)",
   );
+});
+
+it("formats HTML and plain-text alerts in English while preserving custom content and the selected time zone", async () => {
+  const timestamp = Date.parse("2026-10-14T05:00:00Z") / 1000;
+  const alert = {
+    id: "alert", event: "recovered", monitor_name: "Mi API personalizada", attempts: 0,
+    created_at: timestamp + 60, monitor_id: "monitor", project_name: "Mi proyecto", group_name: null,
+    kind: "http", opened_at: timestamp, closed_at: timestamp + 60, reason: "timeout"
+  };
+  const content = await mailBody(alert, "https://monitor.example.test", true, "America/El_Salvador", "en");
+  expect(content.Subject).toBe("[Monitor] Service recovered: Mi API personalizada");
+  expect(content.TextBody).toContain("Project: Mi proyecto");
+  expect(content.TextBody).toContain("Group: No group");
+  expect(content.TextBody).toContain("Incident duration: 1 min");
+  expect(content.TextBody).toContain("23:00 (UTC-6)");
+  expect(content.TextBody).toContain("Outage reason: Service timed out");
+  expect(content.HtmlBody).toContain('lang="en"');
+  expect(content.HtmlBody).toContain("View monitor");
+  expect(content.HtmlBody).toContain("No notifications were sent to your clients.");
+  expect(content.HtmlBody).not.toContain("Ver monitor");
+  const opening = await mailBody({ ...alert, event: "opened" }, "https://monitor.example.test", true, "UTC", "en");
+  expect(opening.Subject).toContain("Service down");
+  expect(opening.HtmlBody).toContain("The monitor reached its failure threshold");
+});
+
+it("uses the instance language for delivered push alerts", async () => {
+  await worker.fetch(request("admin/settings/general", "PUT", { language: "en", timeZone: "America/El_Salvador" }), env);
+  await saveNotifications(env, { ...defaultNotifications(), telegram: { enabled: true, chatId: "12345", token: "12345:testing" } });
+  const monitor = await createMonitor({ name: "Mi monitor" });
+  await statement(env.DB, "INSERT INTO incidents(id,monitor_id,opened_at,reason) VALUES('english-incident',?,1000,'timeout')", monitor.id).run();
+  await statement(env.DB, "INSERT INTO notifications(id,incident_id,event,monitor_name,created_at,next_attempt) VALUES('english-alert','english-incident','opened','Mi monitor',1000,1000)").run();
+  const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => Response.json({ ok: true }));
+  await deliverNotifications({ ...env, ENVIRONMENT: "production" }, 1000, fetcher);
+  const text = JSON.parse(String(fetcher.mock.calls[0][1]?.body)).text;
+  expect(text).toContain("Service down: Mi monitor");
+  expect(text).toContain("UTC-6");
+  expect(text).not.toContain("Caída detectada");
+});
+
+it("localizes default and custom validation errors per instance without changing validation rules", async () => {
+  const messages = [];
+  for (const language of ["es", "en"] as const) {
+    await worker.fetch(request("admin/settings/general", "PUT", { language }), env);
+    const invalid = await worker.fetch(request("admin/projects", "POST", { name: "" }), env);
+    expect(invalid.status).toBe(400);
+    messages.push((await invalid.json() as { error: string }).error);
+    const custom = await worker.fetch(request("admin/settings/general", "PUT", { language, timeZone: "invalid" }), env);
+    expect(custom.status).toBe(400);
+    expect((await custom.json() as { error: string }).error).toBe(translate(language, "Selecciona una zona horaria válida."));
+  }
+  expect(messages[0]).not.toBe(messages[1]);
+  expect(messages[0]).not.toContain("Too small");
+  expect(messages[1]).toContain("Too small");
+});
+
+it("provides translated calendar navigation and recent interface labels", () => {
+  expect(es.labels?.labelNext).toBe("Ir al mes siguiente");
+  expect(enUS.labels?.labelNext).toBe("Go to the Next Month");
+  expect(translate("en", "Inicio:")).toBe("Started:");
+  expect(translate("en", "mi-proyecto")).toBe("my-project");
+  expect(translate("en", "{count} minuto", { count: 1 })).toBe("1 minute");
 });

@@ -149,7 +149,7 @@ export function MonitorForm({
                   type="url"
                   required
                   defaultValue={http?.url}
-                  placeholder="https://proyecto.example/health"
+                placeholder={t("https://proyecto.example/health")}
                 />
               </FormField>
               <div className="grid gap-4 sm:grid-cols-2">
