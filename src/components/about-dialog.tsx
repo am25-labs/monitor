@@ -77,7 +77,7 @@ export function AboutDialog() {
                     </CardHeader>
                     <CardContent>
                       <p className="text-sm text-muted-foreground">{copyright}</p>
-                      <p className="mt-3 text-xs text-muted-foreground">AM25, S.A.S. de C.V. {t("Todos los derechos reservados.")}</p>
+                      <p className="mt-3 text-xs text-muted-foreground">AM25, S.A.S. de C.V.</p>
                     </CardContent>
                   </Card>
                   <Card size="sm" className="border shadow-none ring-0">
