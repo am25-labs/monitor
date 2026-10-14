@@ -61,7 +61,6 @@ function History({
   const granular = range !== "90d";
   const history = { stats, hourly, short, updatedAt };
   const days = historySegments(history, range);
-  const count = days.length;
   const observed = days.flatMap(({ stat }) => stat?.observed_seconds ? [stat] : []);
   return (
     <div className="flex flex-col gap-3">
@@ -84,6 +83,23 @@ function History({
         <span>{t("Inicio del período")}</span>
         <span>{granular ? t("Ahora") : t("Día más reciente")}</span>
       </div>
+    </div>
+  );
+}
+function HistoryGuide({ monitors, range, updatedAt }: {
+  monitors: PublicData["monitors"];
+  range: HistoryRange;
+  updatedAt: number;
+}) {
+  const { t } = useLocale();
+  const granular = range !== "90d";
+  const segments = monitors.flatMap((monitor) => historySegments({
+    stats: monitor.stats, hourly: monitor.hourly ?? [], short: monitor.short ?? [], updatedAt
+  }, range));
+  const count = segments.length;
+  const observed = segments.filter(({ stat }) => stat?.observed_seconds);
+  return (
+    <div className="mt-4 flex flex-col gap-3">
       <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
         {[
           ["bg-success", t("Sin interrupciones")],
@@ -102,7 +118,7 @@ function History({
       </div>
       <p className="text-xs text-muted-foreground">
         {t(
-          "{observed} de {count} segmentos con registros. Cada segmento representa {duration}.",
+          "Entre todos los monitores: {observed} de {count} segmentos con registros. Cada segmento representa {duration}.",
           {
             observed: observed.length,
             count,
@@ -217,6 +233,7 @@ function StatusView({
                   ]}
                 />
               </div>
+              <HistoryGuide monitors={data.monitors} range={range} updatedAt={data.updatedAt} />
             </Panel>
           )}
           {data.incidents.some(i => i.closed_at === null) && <section className="flex flex-col gap-4" aria-labelledby="active-incidents">

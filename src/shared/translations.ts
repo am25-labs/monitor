@@ -1,4 +1,5 @@
 export const english: Record<string, string> = {
+  "Entre todos los monitores: {observed} de {count} segmentos con registros. Cada segmento representa {duration}.": "Across all monitors: {observed} of {count} segments have records. Each segment represents {duration}.",
   "Acciones en lote": "Bulk actions",
   "Reanudar": "Resume",
   "Mantenimiento manual": "Manual maintenance",
