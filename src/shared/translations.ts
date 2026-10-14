@@ -1,4 +1,13 @@
 export const english: Record<string, string> = {
+  "Período a exportar": "Export period",
+  "Un mes": "One month",
+  "Año completo": "Full year",
+  "Todo el historial": "All history",
+  "Año": "Year",
+  "Mes": "Month",
+  "Incluye todo el historial conservado y permite restaurar los proyectos seleccionados.": "Includes all retained history and allows restoring the selected projects.",
+  "Meses y años calendario en UTC. Incluye únicamente el historial conservado del período y los incidentes y mantenimientos que se traslapen con él. Estos reportes no se pueden restaurar.": "Calendar months and years in UTC. Includes only retained history for the period and overlapping incidents and maintenance. These reports cannot be restored.",
+  "La copia contiene un reporte por período y no se puede restaurar. Usa una copia con todo el historial.": "The file contains a period report and cannot be restored. Use a backup with all history.",
   " Los segmentos más antiguos están a la izquierda y los más recientes, a la derecha.": " Older segments are on the left and more recent ones are on the right.",
   " Rojo indica interrupciones; amarillo, degradación por latencia; verde, sin afectación; gris, sin registros.": " Red indicates interruptions; yellow, latency degradation; green, no impact; gray, no records.",
   "Tipo": "Type",

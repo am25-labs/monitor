@@ -66,6 +66,18 @@ it("rejects incompatible, incomplete, and mismatched-key backups without changes
   expect(await rows(env.DB, "SELECT * FROM monitors")).toEqual(original);
 });
 
+it("rejects period reports before replacing any project history", async () => {
+  const monitor = await createMonitor();
+  await statement(env.DB, "INSERT INTO daily_stats(monitor_id,day) VALUES(?,'2025-01-01')", monitor.id).run();
+  const response = await worker.fetch(new Request(`http://localhost/api/v1/admin/settings/export?scope=projects&project=${projectId}&period=month&year=2026&month=9`), env);
+  const report = await response.json();
+  const result = await restore(report);
+  expect(result.status).toBe(400);
+  expect(await result.text()).toContain("La copia contiene un reporte por período");
+  expect(await rows(env.DB, "SELECT day FROM daily_stats")).toEqual([{ day: "2025-01-01" }]);
+  expect(await rows(env.DB, "SELECT id FROM monitors")).toEqual([{ id: monitor.id }]);
+});
+
 it("rolls back replacement when a scoped restore conflicts with another project", async () => {
   await createMonitor();
   const backup = await download("projects");

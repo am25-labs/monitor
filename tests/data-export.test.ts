@@ -4,11 +4,12 @@ import worker from "../src/worker/index";
 import { rows, statement } from "../src/worker/db";
 import { seal, unseal } from "../src/worker/crypto";
 import { createMonitor, createProject, projectId, setup } from "./setup";
+import { readExportPeriod, type ExportPeriod } from "../src/shared/export-period";
 
 interface ExportFile {
   format: string;
   formatVersion: number;
-  scope: { type: string; projectIds?: string[] };
+  scope: { type: string; projectIds?: string[]; period?: ExportPeriod };
   credentials: string;
   completedAt: string;
   schema: { type: string; name: string; sql: string }[];
@@ -105,6 +106,77 @@ it("includes history beyond a single batch", async () => {
   expect(backup.data.results).toHaveLength(1001);
   expect(new Set(backup.data.results.map((record) => record.id)).size).toBe(1001);
   expect(backup.data.results[1000].checked_at).toBe(1001);
+});
+
+it("filters all history collections to a UTC month while preserving project IDs and overlapping incidents", async () => {
+  const monitor = await seedProject(projectId);
+  const otherProject = crypto.randomUUID();
+  await statement(env.DB, "INSERT INTO projects(id,name,created_at) VALUES(?,'Other',1000)", otherProject).run();
+  await seedProject(otherProject);
+  const start = Date.parse("2026-09-01T00:00:00Z") / 1000;
+  const end = Date.parse("2026-10-01T00:00:00Z") / 1000;
+  const incident = (await rows<{ id: string }>(env.DB, "SELECT id FROM incidents WHERE monitor_id=?", monitor.id))[0].id;
+  const publicIncident = (await rows<{ id: string }>(env.DB, "SELECT id FROM public_incidents WHERE monitor_id=?", monitor.id))[0].id;
+  await env.DB.batch([
+    statement(env.DB, "UPDATE incidents SET closed_at=? WHERE monitor_id=?", start + 60, monitor.id),
+    statement(env.DB, "UPDATE public_incidents SET closed_at=? WHERE monitor_id=?", start + 60, monitor.id),
+    statement(env.DB, "INSERT INTO incidents(id,monitor_id,opened_at,closed_at,reason) VALUES('ended-before',?,?,?,'http_code')", monitor.id, start - 60, start),
+    statement(env.DB, "INSERT INTO incidents(id,monitor_id,opened_at,closed_at,reason) VALUES('starts-after',?,?,?,'http_code')", monitor.id, end, end + 60),
+    ...[start - 1, start, end - 1, end].flatMap((time) => [
+      statement(env.DB, "INSERT INTO results(job_id,monitor_id,checked_at,ok,reason,diagnostic) VALUES(?,?,?,1,'ok','OK')", `period-${time}`, monitor.id, time),
+      statement(env.DB, "INSERT INTO jobs(id,monitor_id,config_version,due_at) VALUES(?,?,1,?)", `period-${time}`, monitor.id, time),
+      statement(env.DB, "INSERT INTO incident_updates(id,incident_id,stage,impact,created_at) VALUES(?,?,'resolved','down',?)", `period-${time}`, publicIncident, time)
+    ]),
+    ...["2026-08-31", "2026-09-01", "2026-09-30", "2026-10-01"].flatMap((day) => [
+      statement(env.DB, "INSERT INTO daily_stats(monitor_id,day) VALUES(?,?)", monitor.id, day),
+      statement(env.DB, "INSERT INTO hourly_stats(monitor_id,hour) VALUES(?,?)", monitor.id, `${day}T00`),
+      statement(env.DB, "INSERT INTO short_stats(monitor_id,slot) VALUES(?,?)", monitor.id, `${day}T00:00`)
+    ]),
+    statement(env.DB, "INSERT INTO notifications(id,incident_id,event,monitor_name,created_at,next_attempt) VALUES('in-period',?,'closed','Monitor',?,?)", incident, start, start),
+    statement(env.DB, "INSERT INTO notification_deliveries(notification_id,channel,next_attempt) VALUES('in-period','email',?)", start),
+    statement(env.DB, "INSERT INTO maintenance(id,scope,title,starts_at,ends_at) VALUES('overlap','global','Global',?,?)", start - 60, start + 60),
+    statement(env.DB, "INSERT INTO maintenance(id,scope,title,starts_at,ends_at) VALUES('ended','global','Global',?,?)", start - 60, start),
+    statement(env.DB, "INSERT INTO maintenance(id,scope,title,starts_at) VALUES('later','global','Global',?)", end)
+  ]);
+  const response = await download(`scope=projects&project=${projectId}&period=month&year=2026&month=9`);
+  expect(response.status).toBe(200);
+  expect(response.headers.get("Content-Disposition")).toContain("monitor-projects-2026-09-");
+  const report = await response.json() as ExportFile;
+  expect(report.scope.period).toEqual({ type: "month", year: 2026, month: 9, timeZone: "UTC", start: "2026-09-01T00:00:00.000Z", end: "2026-10-01T00:00:00.000Z" });
+  expect(report.data.projects.map((row) => row.id)).toEqual([projectId]);
+  expect(report.data.monitors.map((row) => row.id)).toEqual([monitor.id]);
+  expect(report.data.results.map((row) => row.checked_at)).toEqual([start, end - 1]);
+  expect(report.data.jobs.map((row) => row.due_at)).toEqual([start, end - 1]);
+  for (const table of ["daily_stats", "hourly_stats", "short_stats"]) expect(report.data[table]).toHaveLength(2);
+  expect(report.data.incidents.map((row) => row.id)).toEqual([incident]);
+  expect(report.data.public_incidents.map((row) => row.id)).toEqual([publicIncident]);
+  expect(report.data.incident_monitors).toEqual([{ incident_id: publicIncident, monitor_id: monitor.id }]);
+  expect(report.data.incident_updates.map((row) => row.created_at)).toEqual([start, end - 1]);
+  expect(report.data.notifications.map((row) => row.id)).toEqual(["in-period"]);
+  expect(report.data.notification_deliveries.map((row) => row.notification_id)).toEqual(["in-period"]);
+  expect(report.data.maintenance.map((row) => row.id)).toEqual(["overlap"]);
+  expect(report.data.groups).toHaveLength(1);
+  expect(report.data.pages).toHaveLength(1);
+});
+
+it("exports a full UTC calendar year and leaves full backups unfiltered", async () => {
+  const monitor = await createMonitor();
+  for (const day of ["2025-12-31", "2026-01-01", "2026-12-31", "2027-01-01"])
+    await statement(env.DB, "INSERT INTO daily_stats(monitor_id,day) VALUES(?,?)", monitor.id, day).run();
+  const report = await (await download(`scope=projects&project=${projectId}&period=year&year=2026`)).json() as ExportFile;
+  expect(report.scope.period).toEqual({ type: "year", year: 2026, timeZone: "UTC", start: "2026-01-01T00:00:00.000Z", end: "2027-01-01T00:00:00.000Z" });
+  expect(report.data.daily_stats.map((row) => row.day)).toEqual(["2026-01-01", "2026-12-31"]);
+  const full = await (await download("scope=full&period=year&year=2026")).json() as ExportFile;
+  expect(full.scope).toEqual({ type: "full" });
+  expect(full.data.daily_stats).toHaveLength(4);
+});
+
+it("validates reporting periods and handles leap months and December rollover", async () => {
+  const prefix = `scope=projects&project=${projectId}&`;
+  for (const query of ["period=bad&year=2026", "period=month&year=2026", "period=month&year=2026&month=13", "period=month&year=2026&month=0", "period=year&year=bad", "period=year&year=2026.5", "period=year", "period=year&year=9999", "year=2026"])
+    expect((await download(prefix + query)).status, query).toBe(400);
+  expect(readExportPeriod(new URLSearchParams("period=month&year=2024&month=2"))).toMatchObject({ start: "2024-02-01T00:00:00.000Z", end: "2024-03-01T00:00:00.000Z" });
+  expect(readExportPeriod(new URLSearchParams("period=month&year=2026&month=12"))).toMatchObject({ start: "2026-12-01T00:00:00.000Z", end: "2027-01-01T00:00:00.000Z" });
 });
 
 it("rejects missing, malformed, unknown scopes and unauthorized downloads", async () => {

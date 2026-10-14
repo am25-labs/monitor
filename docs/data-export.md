@@ -13,6 +13,50 @@ maintenance windows are included because they apply to the selected projects.
 Global settings, engine state, and SQLite sequences are exclusive to full backups.
 Selecting all projects is therefore distinct from selecting a full backup.
 
+Project exports offer one month, a full year, or all retained history. Month and
+year boundaries are UTC calendar boundaries, independent of the instance's
+display timezone. The month defaults to the current UTC month. Full backups
+always include all retained data.
+
+The admin API accepts `scope=projects&project=<uuid>&period=month&year=2026&month=9`
+or `period=year&year=2026`, with repeated `project` parameters for multiple projects.
+Omit `period`, `year`, and `month` for all history (the existing API behavior).
+Years range from 1970 through 9998; months range from 1 through 12.
+
+Filtered exports add optional `scope.period` metadata without changing version 1:
+
+```json
+{
+  "type": "projects",
+  "projectIds": ["504c69e2-f9d1-45a6-b520-be898bf90631"],
+  "period": {
+    "type": "month",
+    "year": 2026,
+    "month": 9,
+    "timeZone": "UTC",
+    "start": "2026-09-01T00:00:00.000Z",
+    "end": "2026-10-01T00:00:00.000Z"
+  }
+}
+```
+
+Annual periods use `type: "year"`, omit `month`, and end on January 1 of the
+following year. `start` is inclusive and `end` exclusive. Results use
+`checked_at`, jobs use `due_at`, and aggregate buckets use `day`, `hour`, or
+`slot`. Incidents and maintenance are included when their intervals overlap the
+period, even if they began earlier or end later. Original timestamps are not
+clipped; consumers must clip durations to the report interval when calculating
+time inside the period. Technical incidents referenced by overlapping public
+incidents are also retained to preserve that relationship.
+
+Incident monitor associations follow the included public incidents. Updates and
+notifications are restricted to creation times inside the period and to included
+incidents; delivery rows follow included notifications. Earlier/later updates are
+omitted. Projects, groups, monitor configurations, and status pages remain their
+current stored records, including current monitor status and incident stage;
+this is not a reconstruction of configuration or state at the period's end.
+All project and monitor UUIDs remain unchanged.
+
 The JSON contains `format`, `formatVersion`, `appVersion`, `startedAt`, `scope`,
 `consistency`, `credentials`, `schema`, `data`, and `completedAt`. Each key under
 `data` is a table name containing its unmodified database rows. JSON columns
@@ -28,6 +72,10 @@ installation's existing `CONFIG_KEY`; it neither changes that key nor reciphers
 the imported values.
 
 ## Restoring a backup
+
+Only full backups and project exports with all history can be restored. Files
+with `scope.period` are reports and are rejected before replacement, since
+restoring partial history would discard the remaining project data.
 
 Select a JSON file of up to 20 MB. Monitor validates the format, version, table
 columns, relationships, configurations, and encrypted values before replacement.
@@ -133,9 +181,11 @@ stage, message in each language, and event time. Blank messages may occur for
 automatic updates. Incident duration and observed outage seconds are different
 metrics and should not be substituted for each other.
 
-The export contains all retained history, not a pre-filtered reporting month.
+Select a month or year to download a pre-filtered report, or all history for a
+restorable project backup. Use `scope.period` to identify a report's interval.
 Detailed results are retained for six calendar months; daily aggregates and
-resolved incidents are retained for 365 days. An external reporting application
-must filter the requested period and store past exports or reports when needed.
+resolved incidents are retained for 365 days. Selecting an older period can
+therefore return partial or empty history; it does not recover expired records.
+External reporting applications should store past exports or reports when needed.
 It does not need to decrypt credentials, inspect jobs, or read notification
 delivery tokens to calculate these monthly metrics.

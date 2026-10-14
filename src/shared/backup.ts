@@ -1,5 +1,6 @@
 import { z } from "zod";
 import schema from "../../docs/data-export.schema.json";
+import { exportPeriod } from "./export-period";
 
 export const backupLimit = 20 * 1024 * 1024;
 export const backupTables = schema.$defs.fullData.required;
@@ -16,7 +17,7 @@ const backupInput = z.object({
   credentials: z.literal("encrypted-with-original-CONFIG_KEY"),
   scope: z.discriminatedUnion("type", [
     z.object({ type: z.literal("full") }).strict(),
-    z.object({ type: z.literal("projects"), projectIds: z.array(z.uuid()).min(1) }).strict()
+    z.object({ type: z.literal("projects"), projectIds: z.array(z.uuid()).min(1), period: exportPeriod.optional() }).strict()
   ]),
   schema: z.array(z.object({ type: z.string(), name: z.string(), tbl_name: z.string(), sql: z.string() }).strict()),
   data: z.record(z.string(), z.array(z.record(z.string(), z.union([z.string(), z.number(), z.null()]))))
@@ -26,6 +27,8 @@ export function parseBackup(input: unknown) {
   const parsed = backupInput.safeParse(input);
   if (!parsed.success) throw new Error("La copia no es un JSON de Monitor completo y compatible.");
   const backup = parsed.data;
+  if (backup.scope.type === "projects" && backup.scope.period)
+    throw new Error("La copia contiene un reporte por período y no se puede restaurar. Usa una copia con todo el historial.");
   const tables = backup.scope.type === "full" ? backupTables : projectTables;
   const definitions = schema.$defs as Record<string, { required: string[]; properties: Record<string, { type: string | string[] }> }>;
   if (Object.keys(backup.data).length !== tables.length || tables.some((table) => !backup.data[table]))

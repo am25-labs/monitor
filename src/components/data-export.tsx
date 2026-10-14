@@ -2,15 +2,20 @@ import { useState, type FormEvent } from "react";
 import { Download } from "lucide-react";
 import type { Project } from "../shared/types";
 import { useLocale } from "../lib/locale";
+import { locales } from "../shared/i18n";
 import { ChoiceSelect } from "./choice-select";
 import { FormField, Notice, Panel } from "./common";
 import { Button } from "./ui/button";
 import { Checkbox } from "./ui/checkbox";
+import { Input } from "./ui/input";
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "./ui/field";
 
 export function DataExport({ projects }: { projects: Project[] }) {
-  const { t } = useLocale();
+  const { t, language } = useLocale();
   const [scope, setScope] = useState("full");
+  const [period, setPeriod] = useState("month");
+  const [year, setYear] = useState(() => String(new Date().getUTCFullYear()));
+  const [month, setMonth] = useState(() => String(new Date().getUTCMonth() + 1));
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -28,7 +33,14 @@ export function DataExport({ projects }: { projects: Project[] }) {
     setBusy(true);
     setError("");
     const params = new URLSearchParams({ scope });
-    if (scope === "projects") projectIds.forEach((id) => params.append("project", id));
+    if (scope === "projects") {
+      projectIds.forEach((id) => params.append("project", id));
+      if (period !== "all") {
+        params.set("period", period);
+        params.set("year", year);
+        if (period === "month") params.set("month", month);
+      }
+    }
     try {
       const response = await fetch(`/api/v1/admin/settings/export?${params}`, { credentials: "same-origin" });
       if (response.status === 401) {
@@ -69,6 +81,36 @@ export function DataExport({ projects }: { projects: Project[] }) {
                 : t("Incluye los proyectos seleccionados y sus grupos, monitores, historial, incidentes, páginas públicas y mantenimientos. Los ajustes globales se incluyen solo en el backup completo.")}
             </FieldDescription>
           </FormField>
+          {scope === "projects" && (
+            <FieldSet disabled={busy}>
+              <FieldLegend variant="label">{t("Período a exportar")}</FieldLegend>
+              <FieldGroup className="grid gap-4 md:grid-cols-3">
+                <FormField id="export-period" label={t("Período")}>
+                  <ChoiceSelect id="export-period" value={period} disabled={busy} onValueChange={setPeriod} options={[
+                    { value: "month", label: t("Un mes") },
+                    { value: "year", label: t("Año completo") },
+                    { value: "all", label: t("Todo el historial") }
+                  ]} />
+                </FormField>
+                {period !== "all" && (
+                  <FormField id="export-year" label={t("Año")}>
+                    <Input id="export-year" type="number" min={1970} max={9998} step={1} required disabled={busy} value={year} onChange={(event) => setYear(event.target.value)} />
+                  </FormField>
+                )}
+                {period === "month" && (
+                  <FormField id="export-month" label={t("Mes")}>
+                    <ChoiceSelect id="export-month" value={month} disabled={busy} onValueChange={setMonth} options={Array.from({ length: 12 }, (_, index) => ({
+                      value: String(index + 1),
+                      label: new Intl.DateTimeFormat(locales[language], { month: "long", timeZone: "UTC" }).format(new Date(Date.UTC(2000, index, 1)))
+                    }))} />
+                  </FormField>
+                )}
+              </FieldGroup>
+              <FieldDescription>{period === "all"
+                ? t("Incluye todo el historial conservado y permite restaurar los proyectos seleccionados.")
+                : t("Meses y años calendario en UTC. Incluye únicamente el historial conservado del período y los incidentes y mantenimientos que se traslapen con él. Estos reportes no se pueden restaurar.")}</FieldDescription>
+            </FieldSet>
+          )}
           {scope === "projects" && (
             <FieldSet disabled={busy}>
               <FieldLegend variant="label">{t("Proyectos")}</FieldLegend>
