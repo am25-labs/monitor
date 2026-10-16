@@ -548,11 +548,19 @@ export async function tick(env: Env, now = nowSeconds(), scheduledAt = now, sche
     if (schedule.length) await env.DB.batch(schedule);
     const schedulingMs = Date.now() - started;
     const dispatchStarted = Date.now();
-    const dispatch = await dispatchJobs(env, now, scheduler === "alarm");
-    const dispatchMs = Date.now() - dispatchStarted;
     const notificationsStarted = Date.now();
-    await deliverNotifications(env, now);
-    const notificationsMs = Date.now() - notificationsStarted;
+    let dispatchMs = 0, notificationsMs = 0;
+    const [dispatchResult, notificationsResult] = await Promise.allSettled([
+      dispatchJobs(env, now, scheduler === "alarm").finally(() => {
+        dispatchMs = Date.now() - dispatchStarted;
+      }),
+      deliverNotifications(env, now).finally(() => {
+        notificationsMs = Date.now() - notificationsStarted;
+      })
+    ]);
+    if (dispatchResult.status === "rejected") throw dispatchResult.reason;
+    if (notificationsResult.status === "rejected") throw notificationsResult.reason;
+    const dispatch = dispatchResult.value;
     const cleanupStarted = Date.now();
     await cleanup(env, now);
     const cleanupMs = Date.now() - cleanupStarted;

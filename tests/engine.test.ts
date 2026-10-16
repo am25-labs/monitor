@@ -51,6 +51,46 @@ async function sample(id: string, now: number, result: CheckResult) {
   return job;
 }
 describe("engine and persistence", () => {
+  it.each(["cron", "alarm"] as const)("delivers alerts while %s dispatch is stalled and preserves retry without duplicate alerts", async (scheduler) => {
+    const m = await createMonitor();
+    await sample(m.id, 1000, failure);
+    await sample(m.id, 1060, failure);
+    let rejectDispatch!: (error: Error) => void;
+    const stalled = new Promise<void>((_, reject) => { rejectDispatch = reject; });
+    const enqueue = vi.fn().mockReturnValue(stalled);
+    const dispatchEnv = {
+      ...env,
+      CHECKS: { sendBatch: enqueue } as unknown as Env["CHECKS"],
+      CHECK_RUNNERS: { getByName: () => ({ enqueue }) } as unknown as Env["CHECK_RUNNERS"]
+    };
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+    const infoLog = vi.spyOn(console, "info").mockImplementation(() => {});
+    const cycleLog = vi.spyOn(console, "log").mockImplementation(() => {});
+    const cycle = expect(tick(dispatchEnv, 1120, 1120, scheduler)).rejects.toThrow("dispatch unavailable");
+    try {
+      await vi.waitFor(async () => {
+        expect(await rows(env.DB, "SELECT state FROM notifications")).toEqual([{ state: "sent" }]);
+      });
+      expect(enqueue).toHaveBeenCalledOnce();
+    } finally {
+      rejectDispatch(new Error("dispatch unavailable"));
+      await cycle;
+      errorLog.mockRestore();
+    }
+    try {
+      expect(await first(env.DB, "SELECT state,dispatched_at FROM jobs WHERE state='pending'")).toEqual({ state: "pending", dispatched_at: null });
+      expect(await first(env.DB, "SELECT last_error FROM engine WHERE id=1")).toEqual({ last_error: expect.any(String) });
+      enqueue.mockResolvedValue(undefined);
+      await tick(dispatchEnv, 1121, 1121, scheduler);
+      expect(await first(env.DB, "SELECT COUNT(*) AS count FROM jobs WHERE dispatched_at IS NOT NULL")).toEqual({ count: 1 });
+      expect(await rows(env.DB, "SELECT state FROM notifications")).toEqual([{ state: "sent" }]);
+      expect(infoLog).toHaveBeenCalledOnce();
+      expect(await first(env.DB, "SELECT last_error FROM engine WHERE id=1")).toEqual({ last_error: null });
+    } finally {
+      infoLog.mockRestore();
+      cycleLog.mockRestore();
+    }
+  });
   it("releases a lease after a database lookup fails and retries without exposing error details", async () => {
     const now = Math.floor(Date.now() / 1000);
     const m = await createMonitor();
