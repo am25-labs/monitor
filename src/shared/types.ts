@@ -147,6 +147,7 @@ export interface HistoryStat {
 }
 export interface MonitorHistory {
   updatedAt: number;
+  maintenance?: Pick<Window, "starts_at" | "ends_at">[];
   stats: (HistoryStat & { day: string })[];
   hourly: (HistoryStat & { hour: string })[];
   short: (HistoryStat & { slot: string })[];

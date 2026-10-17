@@ -15,9 +15,10 @@ export function HistoryStrip({ range, compact = false, ...history }: MonitorHist
   const segments = historySegments(history, range);
   const labels: Record<string, string> = {
     none: t("Sin registros"),
-    up: t("Sin interrupciones"),
+    up: range === "7d" || range === "90d" ? t("Operativo") : t("Sin interrupciones"),
     down: t("Con interrupciones"),
-    degraded: t("Con degradación")
+    degraded: t("Con degradación"),
+    maintenance: t("Mantenimiento")
   };
   return (
     <div className="overflow-x-auto">
@@ -27,9 +28,9 @@ export function HistoryStrip({ range, compact = false, ...history }: MonitorHist
         role="list"
         aria-label={t("Historial, de más antiguo a más reciente")}
       >
-        {segments.map(({ start, stat, state, coverage, partial }) => {
+        {segments.map(({ start, stat, state, coverage, partial, maintenance }) => {
           const time = range === "90d" ? utcDay(new Date(start * 1000).toISOString().slice(0, 10), language) : date(start);
-          const label = `${time}: ${labels[state]}${stat?.observed_seconds ? ` · ${availability([stat])} · ${t("{outage} s de interrupción / {observed} s observados", { outage: Math.round(stat.observed_seconds - stat.up_seconds), observed: Math.round(stat.observed_seconds) })}` : ""}${partial ? ` · ${t("Cobertura parcial: {coverage}%", { coverage: coverage.toFixed(1) })}` : ""}`;
+          const label = `${time}: ${labels[state]}${stat?.observed_seconds ? ` · ${availability([stat])} · ${t("{outage} s de interrupción / {observed} s observados", { outage: Math.round(stat.observed_seconds - stat.up_seconds), observed: Math.round(stat.observed_seconds) })}` : ""}${maintenance ? ` · ${t("{seconds} s de mantenimiento", { seconds: Math.round(maintenance) })}` : ""}${partial ? ` · ${t("Cobertura parcial: {coverage}%", { coverage: coverage.toFixed(1) })}` : ""}`;
           return (
             <Tooltip key={start}>
               <TooltipTrigger
@@ -43,7 +44,8 @@ export function HistoryStrip({ range, compact = false, ...history }: MonitorHist
                   state === "none" && "bg-muted",
                   state === "up" && "bg-success",
                   state === "down" && "bg-destructive",
-                  state === "degraded" && "bg-warning"
+                  state === "degraded" && "bg-warning",
+                  state === "maintenance" && "bg-maintenance"
                 )}
               />
               <TooltipContent>{label}</TooltipContent>

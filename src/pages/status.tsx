@@ -11,7 +11,7 @@ import { useParams } from "react-router-dom";
 import { Moon, Sun, RefreshCw } from "lucide-react";
 import { useRefresh } from "../lib/api";
 import { Spinner } from "../components/ui/spinner";
-import type { Status } from "../shared/types";
+import type { MonitorHistory, Status } from "../shared/types";
 import { Notice, Nothing, Panel, StatusBadge } from "../components/common";
 import { Button } from "../components/ui/button";
 import { Skeleton } from "../components/ui/skeleton";
@@ -31,6 +31,7 @@ interface PublicData {
     groupId: string | null;
     status: Status;
     lastChecked: number | null;
+    maintenance?: MonitorHistory["maintenance"];
     stats: { day: string; observed_seconds: number; up_seconds: number; degraded_count?: number }[];
     short: { slot: string; observed_seconds: number; up_seconds: number; degraded_count?: number }[];
     hourly: { hour: string; observed_seconds: number; up_seconds: number; degraded_count?: number }[];
@@ -50,18 +51,20 @@ function History({
   stats,
   hourly,
   short,
+  maintenance,
   range,
   updatedAt
 }: {
   stats: DailyStat[];
   hourly: PublicData["monitors"][number]["hourly"];
   short: PublicData["monitors"][number]["short"];
+  maintenance?: MonitorHistory["maintenance"];
   range: HistoryRange;
   updatedAt: number;
 }) {
   const { t, availability } = useLocale();
   const granular = range !== "90d";
-  const history = { stats, hourly, short, updatedAt };
+  const history = { stats, hourly, short, updatedAt, maintenance };
   const days = historySegments(history, range);
   const observed = days.flatMap(({ stat }) => stat?.observed_seconds ? [stat] : []);
   return (
@@ -110,6 +113,7 @@ export function PublicMonitors({ monitors, groups = [], range, updatedAt }: {
           stats={m.stats}
           hourly={m.hourly ?? []}
           short={m.short ?? []}
+          maintenance={m.maintenance}
           range={range}
           updatedAt={updatedAt}
         />
@@ -133,9 +137,8 @@ function HistoryGuide({ monitors, range, updatedAt }: {
   updatedAt: number;
 }) {
   const { t } = useLocale();
-  const granular = range !== "90d";
   const segments = monitors.flatMap((monitor) => historySegments({
-    stats: monitor.stats, hourly: monitor.hourly ?? [], short: monitor.short ?? [], updatedAt
+    stats: monitor.stats, hourly: monitor.hourly ?? [], short: monitor.short ?? [], maintenance: monitor.maintenance, updatedAt
   }, range));
   const count = segments.length;
   const observed = segments.filter(({ stat }) => stat?.observed_seconds);
@@ -143,9 +146,10 @@ function HistoryGuide({ monitors, range, updatedAt }: {
     <div className="mt-4 flex flex-col gap-3">
       <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
         {[
-          ["bg-success", t("Sin interrupciones")],
+          ["bg-success", range === "24h" ? t("Sin interrupciones") : t("Operativo")],
           ["bg-warning", t("Con degradación")],
           ["bg-destructive", t("Con interrupciones")],
+          ["bg-maintenance", t("Mantenimiento")],
           ["bg-muted", t("Sin registros")]
         ].map(([color, label]) => (
           <span key={label} className="flex items-center gap-1.5">
@@ -173,11 +177,11 @@ function HistoryGuide({ monitors, range, updatedAt }: {
           }
         )}
         {t(" Los segmentos más antiguos están a la izquierda y los más recientes, a la derecha.")}
-        {granular
+        {range === "24h"
           ? t(
-              " Rojo indica interrupciones; amarillo, degradación por latencia; verde, sin afectación; gris, sin registros."
+              " Rojo indica interrupciones; amarillo, degradación por latencia; azul, mantenimiento; verde, sin afectación; gris, sin registros."
             )
-          : t(" El historial puede incluir incidentes ya resueltos.")}
+          : t(" Disponibilidad observada por segmento: verde, al menos 99.9%; amarillo, desde 95% hasta menos de 99.9% o degradación por latencia; rojo, menos de 95%; azul, mantenimiento; gris, sin registros. Las interrupciones breves se conservan en el detalle aunque el segmento sea verde.")}
       </p>
     </div>
   );

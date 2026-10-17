@@ -120,8 +120,12 @@ export function historyStatus(stat?: {
   observed_seconds: number;
   up_seconds: number;
   degraded_count?: number;
-}) {
+}, aggregate = false) {
   if (!stat?.observed_seconds) return "none";
-  if (stat.up_seconds < stat.observed_seconds) return "down";
+  if (aggregate) {
+    const availability = stat.up_seconds / stat.observed_seconds;
+    if (availability < 0.95) return "down";
+    if (availability < 0.999) return "degraded";
+  } else if (stat.up_seconds < stat.observed_seconds) return "down";
   return stat.degraded_count ? "degraded" : "up";
 }

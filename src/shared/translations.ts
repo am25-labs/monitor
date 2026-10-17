@@ -1,4 +1,7 @@
 export const english: Record<string, string> = {
+  "{seconds} s de mantenimiento": "{seconds} s of maintenance",
+  " Rojo indica interrupciones; amarillo, degradación por latencia; azul, mantenimiento; verde, sin afectación; gris, sin registros.": " Red indicates interruptions; yellow, latency degradation; blue, maintenance; green, no impact; gray, no records.",
+  " Disponibilidad observada por segmento: verde, al menos 99.9%; amarillo, desde 95% hasta menos de 99.9% o degradación por latencia; rojo, menos de 95%; azul, mantenimiento; gris, sin registros. Las interrupciones breves se conservan en el detalle aunque el segmento sea verde.": " Observed availability per segment: green, at least 99.9%; yellow, from 95% to below 99.9% or latency degradation; red, below 95%; blue, maintenance; gray, no records. Brief interruptions remain in the details even when the segment is green.",
   "Período a exportar": "Export period",
   "Un mes": "One month",
   "Año completo": "Full year",

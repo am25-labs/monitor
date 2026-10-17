@@ -95,7 +95,7 @@ function DashboardView({
       resource: string;
       id: string;
     } | null>(null);
-  const recent = useRefresh<{ updatedAt: number; short: (MonitorHistory["short"][number] & { monitor_id: string })[] }>(
+  const recent = useRefresh<{ updatedAt: number; short: (MonitorHistory["short"][number] & { monitor_id: string })[]; maintenance: Record<string, MonitorHistory["maintenance"]> }>(
     section === "monitors" && !id ? "admin/monitor-history" : ""
   );
   async function refresh() {
@@ -589,7 +589,7 @@ function DashboardView({
                             </TableCell>
                             <TableCell>
                               <div className="w-max">
-                                {recent.data ? <HistoryStrip range="1h" updatedAt={recent.data.updatedAt} short={recent.data.short.filter((stat) => stat.monitor_id === m.id)} stats={[]} hourly={[]} compact /> : <Skeleton className="h-4 w-18" />}
+                                {recent.data ? <HistoryStrip range="1h" updatedAt={recent.data.updatedAt} short={recent.data.short.filter((stat) => stat.monitor_id === m.id)} maintenance={recent.data.maintenance?.[m.id]} stats={[]} hourly={[]} compact /> : <Skeleton className="h-4 w-18" />}
                               </div>
                             </TableCell>
                             <TableCell>

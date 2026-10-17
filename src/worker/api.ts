@@ -31,7 +31,7 @@ import { check } from "./checks";
 import { digest, seal, token, unseal } from "./crypto";
 import { first, rows, statement, nowSeconds } from "./db";
 import { heartbeat, windows } from "./engine";
-import { displayStatus } from "./state";
+import { displayStatus, historyMaintenance } from "./state";
 import { verifyHeartbeat } from "./auth";
 import { exportData } from "./export";
 import { restoreData } from "./restore";
@@ -159,8 +159,12 @@ export async function admin(
       return json(await saveIncident(env, await body(request), now, id), id ? 200 : 201);
   }
   if (resource === "monitor-history" && method === "GET") {
+    const [monitors, activeWindows] = await Promise.all([
+      rows<Monitor>(env.DB, "SELECT * FROM monitors"), windows(env)
+    ]);
     return json({
       updatedAt: now,
+      maintenance: Object.fromEntries(monitors.map((monitor) => [monitor.id, historyMaintenance(monitor, activeWindows, Math.floor(now / 300) * 300 - 11 * 300, now)])),
       short: await rows(env.DB, "SELECT monitor_id,slot,observed_seconds,up_seconds,degraded_count FROM short_stats WHERE slot>=? ORDER BY slot", new Date((Math.floor(now / 300) * 300 - 11 * 300) * 1000).toISOString().slice(0, 16))
     });
   }
@@ -365,13 +369,13 @@ export async function admin(
   }
   if (resource === "monitors") {
     if (action === "history" && method === "GET") {
-      await monitor(env, id);
+      const m = await monitor(env, id);
       const [stats, hourly, short] = await Promise.all([
         rows(env.DB, "SELECT day,observed_seconds,up_seconds,degraded_count FROM daily_stats WHERE monitor_id=? AND day>=? ORDER BY day", id, new Date((now - 89 * 86400) * 1000).toISOString().slice(0, 10)),
         rows(env.DB, "SELECT hour,observed_seconds,up_seconds,degraded_count FROM hourly_stats WHERE monitor_id=? AND hour>=? ORDER BY hour", id, new Date((now - 167 * 3600) * 1000).toISOString().slice(0, 13)),
         rows(env.DB, "SELECT slot,observed_seconds,up_seconds,degraded_count FROM short_stats WHERE monitor_id=? AND slot>=? ORDER BY slot", id, new Date((Math.floor(now / 300) * 300 - 287 * 300) * 1000).toISOString().slice(0, 16))
       ]);
-      return json({ updatedAt: now, stats, hourly, short });
+      return json({ updatedAt: now, stats, hourly, short, maintenance: historyMaintenance(m, await windows(env), Math.floor(now / 86400) * 86400 - 89 * 86400, now) });
     }
     if (action === "results" && method === "GET") {
       await monitor(env, id);
@@ -726,6 +730,7 @@ export async function publicPage(env: Env, slug: string, query = new URLSearchPa
         groupId: groups.length ? m.group_id : null,
         status: publicStatus(displayStatus(m, activeWindows, now), reports.incidents.filter(i => i.origin === "manual" && i.closed_at === null && i.monitors.some(target => target.id === m.id)).map(i => i.impact)),
         lastChecked: m.last_checked,
+        maintenance: historyMaintenance(m, activeWindows, Math.floor(now / 86400) * 86400 - 89 * 86400, now),
         stats,
         hourly,
         short,

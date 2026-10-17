@@ -21,6 +21,12 @@ export function applies(m: Monitor, w: Window) {
         ? w.target_id === m.group_id
         : w.target_id === m.project_id;
 }
+export function historyMaintenance(m: Monitor, windows: Window[], start: number, end: number) {
+  return windows
+    .filter((window) => applies(m, window) && window.starts_at < end && (window.ends_at === null || window.ends_at > start))
+    .map((window) => ({ starts_at: Math.max(window.starts_at, m.created_at, start), ends_at: Math.min(window.ends_at ?? end, end) }))
+    .filter((window) => window.ends_at > window.starts_at);
+}
 export function displayStatus(
   m: Monitor,
   windows: Window[],

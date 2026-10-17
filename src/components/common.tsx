@@ -34,7 +34,8 @@ export function StatusBadge({ status, compact = false }: { status: Status; compa
       className={cn(
         status === "up" && "text-success",
         status === "down" && "text-destructive",
-        (status === "maintenance" || status === "degraded") && "text-warning"
+        status === "degraded" && "text-warning",
+        status === "maintenance" && "text-maintenance"
       )}
     >
       <span className="size-1.5 rounded-full bg-current" />
