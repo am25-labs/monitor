@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   TriangleAlert,
   Clock,
-  Mail,
   Server
 } from "lucide-react";
 import { type Snapshot } from "../lib/api";
@@ -18,7 +17,7 @@ import {
   CardTitle
 } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { Button, buttonVariants } from "./ui/button";
+import { buttonVariants } from "./ui/button";
 import {
   Table,
   TableBody,
@@ -31,15 +30,7 @@ import { Notice, Nothing, Panel } from "./common";
 import { cn } from "../lib/utils";
 import { MetricCharts } from "./metric-charts";
 
-export function Overview({
-  data,
-  busy,
-  onRetry
-}: {
-  data: Snapshot;
-  busy: boolean;
-  onRetry: (id: string) => Promise<void>;
-}) {
+export function Overview({ data }: { data: Snapshot }) {
   const { t, date, availability } = useLocale();
   const up = data.monitors.filter((m) => m.display_status === "up").length;
   const down = data.monitors.filter((m) => m.display_status === "down").length;
@@ -48,7 +39,6 @@ export function Overview({
   const open = data.incidents.filter((i) => !i.closed_at).length;
   const allUp = data.monitors.length > 0 && up === data.monitors.length;
   const needsAttention = data.monitors.length > 0 && !allUp && down === 0;
-  const failed = data.notifications.filter((n) => n.state === "failed").length;
   const end = new Date().toISOString().slice(0, 10);
   const start = new Date(Date.parse(`${end}T00:00:00Z`) - 29 * 86400000).toISOString().slice(0, 10);
   const stats = data.stats.filter((stat) => stat.day >= start && stat.day <= end);
@@ -158,7 +148,7 @@ export function Overview({
         <MetricCharts stats={stats} start={start} end={end} />
         <Link to="/app/metrics" className={buttonVariants({ variant: "outline", className: "self-end" })}>{t("Ver todas las métricas")}</Link>
       </div>
-      <div className="grid items-stretch gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="flex min-w-0 flex-col gap-6">
         <Panel
           title={t("Incidentes recientes")}
           description={t("Las 10 caídas más recientes y su recuperación.")}
@@ -214,100 +204,6 @@ export function Overview({
             <Link to="/app/incident-history" className={buttonVariants({ variant: "outline" })}>{t("Ver todos los incidentes")}</Link>
           </div>
         </Panel>
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Mail className="size-4" />
-              {t("Alertas personales")}
-            </CardTitle>
-            <CardDescription>
-              {t("Notificaciones de apertura y recuperación, solo para ti.")}
-            </CardDescription>
-            <CardAction>
-              <Badge
-                variant="outline"
-                className={failed ? "text-destructive" : undefined}
-              >
-                {failed
-                  ? t("{count} fallidas", { count: failed })
-                  : data.notifications.length
-                    ? t("{count} pendientes", {
-                        count: data.notifications.length
-                      })
-                    : t("Sin pendientes")}
-              </Badge>
-            </CardAction>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-wrap items-center gap-2">
-                {(["email", "telegram", "pushover", "ntfy"] as const)
-                  .filter(
-                    (channel) => data.settings.notifications[channel].enabled
-                  )
-                  .map((channel) => (
-                    <Badge key={channel} variant="outline">
-                      {channel === "email"
-                        ? t("Correo · Postmark")
-                        : channel === "telegram"
-                          ? "Telegram"
-                          : channel === "pushover"
-                            ? "Pushover"
-                            : "ntfy"}
-                    </Badge>
-                  ))}
-                {!Object.values(data.settings.notifications).some(
-                  (value) => typeof value === "object" && value.enabled
-                ) && (
-                  <span className="text-sm text-muted-foreground">
-                    {t("Sin canales activos")}
-                  </span>
-                )}
-              </div>
-              {data.notifications.length ? (
-                <div className="flex flex-col gap-3 border-t pt-4">
-                  {data.notifications.map((n) => (
-                    <div
-                      key={`${n.id}:${n.channel ?? "unconfigured"}`}
-                      className="flex flex-wrap items-center justify-between gap-3"
-                    >
-                      <div>
-                        <p className="font-medium">{n.monitor_name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {n.state === "failed"
-                            ? t("Entrega fallida")
-                            : t("Pendiente")}{" "}
-                          · {n.channel ?? t("Sin canal")} · {n.attempts}{" "}
-                          {t("intentos")}
-                        </p>
-                        {n.error && (
-                          <p className="text-xs text-muted-foreground">
-                            {t(n.error)}
-                          </p>
-                        )}
-                      </div>
-                      {n.state === "failed" && (
-                        <Button
-                          variant="outline"
-                          disabled={busy}
-                          onClick={() =>
-                            void onRetry(n.id).catch(() => undefined)
-                          }
-                        >
-                          {t("Reintentar")}
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  {t("No hay notificaciones pendientes o fallidas.")}
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </>
   );

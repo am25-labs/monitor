@@ -350,13 +350,7 @@ function DashboardView({
               <Settings data={data} />
             )}
             {section === "overview" && (
-              <Overview
-                data={data}
-                busy={busy}
-                onRetry={async (id) => {
-                  await mutate(`notifications/${id}/retry`, "POST", {});
-                }}
-              />
+              <Overview data={data} />
             )}
             {section === "metrics" && <Metrics data={data} />}
             {section === "incident-history" && <IncidentHistory />}
