@@ -1,4 +1,5 @@
 import type { Stat } from "./types";
+import { historyStatus } from "./incidents";
 
 export interface IncidentCount {
   monitor_id: string;
@@ -39,10 +40,13 @@ export function metricDays(stats: Stat[], start: string, end: string) {
     bucket.push(stat);
     buckets.set(stat.day, bucket);
   }
-  const days = [];
+  const days: (ReturnType<typeof metricTotals> & { day: string; state: ReturnType<typeof historyStatus> })[] = [];
   for (let time = Date.parse(`${start}T00:00:00Z`); time <= Date.parse(`${end}T00:00:00Z`); time += 86400000) {
     const day = new Date(time).toISOString().slice(0, 10);
-    days.push({ day, ...metricTotals(buckets.get(day) ?? []) });
+    const bucket = buckets.get(day) ?? [];
+    const total = metricTotals(bucket);
+    const state = historyStatus({ observed_seconds: total.observed, up_seconds: total.up, degraded_count: bucket.reduce((sum, stat) => sum + (stat.degraded_count ?? 0), 0) }, true);
+    days.push({ day, ...total, state });
   }
   return days;
 }

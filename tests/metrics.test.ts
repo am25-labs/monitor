@@ -31,6 +31,22 @@ it("fills missing UTC days with null metrics and never treats them as 100% avail
   const days = metricDays([stat({ day: "2026-10-02", observed_seconds: 60, up_seconds: 60 })], "2026-10-01", "2026-10-03");
   expect(days.map((day) => day.availability)).toEqual([null, 100, null]);
   expect(days.map((day) => day.day)).toEqual(["2026-10-01", "2026-10-02", "2026-10-03"]);
+  expect(days.map((day) => day.state)).toEqual(["none", "up", "none"]);
+});
+
+it("uses history thresholds on weighted daily availability and preserves latency degradation", () => {
+  const state = (stats: Stat[]) => metricDays(stats, "2026-10-01", "2026-10-01")[0].state;
+  for (const [observed_seconds, up_seconds, expected] of [
+    [86400, 86340, "up"], [3600, 3540, "degraded"],
+    [1000, 999, "up"], [1000000, 998999, "degraded"],
+    [1000, 950, "degraded"], [1000000, 949999, "down"],
+    [60, 0, "down"]
+  ] as const) expect(state([stat({ observed_seconds, up_seconds })])).toBe(expected);
+  expect(state([
+    stat({ observed_seconds: 60, up_seconds: 0 }),
+    stat({ observed_seconds: 86340, up_seconds: 86340 })
+  ])).toBe("up");
+  expect(state([stat({ observed_seconds: 60, up_seconds: 60, degraded_count: 1 })])).toBe("degraded");
 });
 
 it("returns exactly the requested UTC window and isolates project and monitor filters", async () => {

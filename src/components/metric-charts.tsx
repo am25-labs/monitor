@@ -7,9 +7,17 @@ import type { Stat } from "../shared/types";
 import { Nothing, Panel } from "./common";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "./ui/chart";
 
+const availabilityColors = {
+  up: "var(--success)",
+  degraded: "var(--warning)",
+  down: "var(--destructive)",
+  none: "var(--muted)"
+};
+
 export function MetricCharts({ stats, start, end }: { stats: Stat[]; start: string; end: string }) {
   const { t, language } = useLocale();
   const days = metricDays(stats, start, end);
+  const availabilityDays = days.map((day) => ({ ...day, fill: availabilityColors[day.state] }));
   const formatDate = (day: string) => utcDay(day, language, true);
   const charts = [
     { key: "availability", title: t("Disponibilidad diaria"), description: t("Porcentaje del tiempo observado sin interrupciones. Días en UTC."), color: "var(--success)", unit: "%", component: BarChart },
@@ -21,7 +29,7 @@ export function MetricCharts({ stats, start, end }: { stats: Stat[]; start: stri
         <Panel key={chart.key} title={chart.title} description={chart.description}>
           {days.some((day) => day[chart.key] !== null) ? (
             <ChartContainer config={{ [chart.key]: { label: chart.title, color: chart.color } }} className="h-56 w-full" aria-label={chart.title}>
-              <chart.component accessibilityLayer data={days} margin={{ top: 12, left: 0, right: 12 }}>
+              <chart.component accessibilityLayer data={chart.key === "availability" ? availabilityDays : days} margin={{ top: 12, left: 0, right: 12 }}>
                 <CartesianGrid vertical={false} />
                 <XAxis dataKey="day" tickLine={false} axisLine={false} tickFormatter={formatDate} minTickGap={24} />
                 <YAxis width={48} tickLine={false} axisLine={false} domain={chart.key === "availability" ? [0, 100] : [0, "auto"]} tickFormatter={(value: number) => `${value}${chart.unit}`} />
