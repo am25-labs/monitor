@@ -3,6 +3,27 @@ import { readFileSync, readdirSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { test } from "node:test";
 
+test("provider outage migration preserves notification and general settings", () => {
+  const db = new DatabaseSync(":memory:");
+  try {
+    const directory = new URL("../migrations/", import.meta.url);
+    for (const file of readdirSync(directory).sort()) {
+      if (file >= "0009_provider_outage.sql") break;
+      db.exec(readFileSync(new URL(file, directory), "utf8"));
+    }
+    db.exec("INSERT INTO app_settings VALUES('notifications','encrypted-fixture',1000),('general','{\"language\":\"en\"}',1001)");
+    const before = db.prepare("SELECT * FROM app_settings ORDER BY id").all();
+    db.exec(readFileSync(new URL("0009_provider_outage.sql", directory), "utf8"));
+    assert.deepEqual(db.prepare("SELECT * FROM app_settings ORDER BY id").all(), before);
+    db.exec("INSERT INTO app_settings VALUES('provider-outage','{}',1002)");
+    assert.equal(db.prepare("SELECT COUNT(*) AS count FROM app_settings").get().count, 3);
+    assert.throws(() => db.exec("INSERT INTO app_settings VALUES('invalid','{}',1003)"));
+    assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
+  } finally {
+    db.close();
+  }
+});
+
 test("public incident migration preserves existing history and backfills stable communication links", () => {
   const db = new DatabaseSync(":memory:");
   try {

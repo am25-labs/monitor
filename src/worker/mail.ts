@@ -13,6 +13,7 @@ import { createElement } from "react";
 import { render } from "react-email";
 import { MonitorAlertEmail } from "../templates/mail/monitor-alert";
 import { reasons, readBounded } from "./checks";
+import { providerOutageActive } from "./provider-outage";
 
 interface Notification {
   id: string;
@@ -134,7 +135,7 @@ async function providerResponse(response: Response) {
     id?: string;
   };
 }
-const silencedMonitor = `m.paused=1 OR EXISTS(SELECT 1 FROM maintenance w WHERE w.starts_at<=? AND (w.ends_at IS NULL OR w.ends_at>?) AND (w.scope='global' OR (w.scope='monitor' AND w.target_id=m.id) OR (w.scope='project' AND w.target_id=m.project_id) OR (w.scope='group' AND w.target_id=m.group_id)))`;
+const silencedMonitor = `m.paused=1 OR (n.event='opened' AND ${providerOutageActive}) OR EXISTS(SELECT 1 FROM maintenance w WHERE w.starts_at<=? AND (w.ends_at IS NULL OR w.ends_at>?) AND (w.scope='global' OR (w.scope='monitor' AND w.target_id=m.id) OR (w.scope='project' AND w.target_id=m.project_id) OR (w.scope='group' AND w.target_id=m.group_id)))`;
 
 async function notificationSuppressed(env: Env, id: string, now: number) {
   return Boolean(await first(

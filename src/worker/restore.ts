@@ -4,6 +4,7 @@ import { nowSeconds } from "./db";
 import { projectFilter } from "./export";
 import { monitorInput } from "../shared/schema";
 import { generalInput, notificationInput } from "../shared/settings";
+import { providerOutageInput } from "../shared/provider-outage";
 
 const deletionOrder = ["notification_deliveries", "notifications", "incident_updates", "incident_monitors", "public_incidents", "incidents", "results", "jobs", "daily_stats", "hourly_stats", "short_stats", "pages", "maintenance", "monitors", "groups", "projects", "app_settings", "engine", "sqlite_sequence"];
 
@@ -88,6 +89,10 @@ async function validateKey(backup: Backup, key: string) {
       let value: unknown;
       try { value = JSON.parse(String(row.value)); } catch { invalid(); }
       if (!generalInput.safeParse(value).success) invalid();
+    } else if (row.id === "provider-outage") {
+      let value: unknown;
+      try { value = JSON.parse(String(row.value)); } catch { invalid(); }
+      if (!providerOutageInput.safeParse(value).success) invalid();
     }
   }
   for (const row of backup.data.notification_deliveries)

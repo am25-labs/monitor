@@ -39,6 +39,7 @@ import { backupLimit } from "../shared/backup";
 import { metricsData } from "./metrics";
 import { suppressNotifications } from "./mail";
 import { bulkMonitors, validateMonitorMove } from "./bulk-monitors";
+import { changeProviderOutage, providerOutage } from "./provider-outage";
 
 export function json(value: unknown, status = 200) {
   return Response.json(value, {
@@ -148,6 +149,15 @@ export async function admin(
     }
   }
   if (resource === "incidents") {
+    if (id === "provider" && !action) {
+      if (method === "GET") return json({ outage: await providerOutage(env) });
+      if (method === "PUT") {
+        const outage = await changeProviderOutage(env, await body(request), now);
+        await suppressNotifications(env, now);
+        return json({ outage });
+      }
+      return json({ error: "Ruta no encontrada." }, 404);
+    }
     if (method === "GET") return json(id ? await incidentDetail(env, id) : await incidentList(env, new URL(request.url).searchParams.get("monitor") ?? undefined));
     if (method === "POST" && action === "publish" && id) {
       await publishIncident(env, id, now); return json({ ok: true });
@@ -683,6 +693,7 @@ export async function publicPage(env: Env, slug: string, query = new URLSearchPa
   const reports = await publicIncidents(env, page.project_id, included, page.language, now, archive,
     cursorTime !== null && cursorId !== null ? { time:Number(cursorTime), id:cursorId } : undefined);
   if (archive) return json(reports);
+  const provider = await providerOutage(env);
   const visibleGroups = groups.length ? (await rows<Pick<Group, "id" | "name">>(
     env.DB, "SELECT id,name FROM groups WHERE project_id=? ORDER BY name,id", page.project_id
   )).filter((group) => groups.includes(group.id) && included.some((monitor) => monitor.group_id === group.id)) : [];
@@ -728,7 +739,7 @@ export async function publicPage(env: Env, slug: string, query = new URLSearchPa
         id: m.id,
         name: m.name,
         groupId: groups.length ? m.group_id : null,
-        status: publicStatus(displayStatus(m, activeWindows, now), reports.incidents.filter(i => i.origin === "manual" && i.closed_at === null && i.monitors.some(target => target.id === m.id)).map(i => i.impact)),
+        status: publicStatus(displayStatus(m, activeWindows, now), reports.incidents.filter(i => i.origin === "manual" && i.closed_at === null && !provider?.incident_ids.includes(i.id) && i.monitors.some(target => target.id === m.id)).map(i => i.impact)),
         lastChecked: m.last_checked,
         maintenance: historyMaintenance(m, activeWindows, Math.floor(now / 86400) * 86400 - 89 * 86400, now),
         stats,

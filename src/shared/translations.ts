@@ -1,4 +1,12 @@
 export const english: Record<string, string> = {
+  "Proveedor de infraestructura": "Infrastructure provider",
+  "Publica un incidente para todos los monitores y pausa las alertas de caída, incluidos los reintentos y las repeticiones de emergencia. Las comprobaciones continúan y las recuperaciones se siguen notificando.": "Publish an incident for all monitors and pause downtime alerts, including retries and emergency repeats. Checks continue and recoveries are still notified.",
+  "Incidente del proveedor activo desde {date}.": "Provider incident active since {date}.",
+  "Finalizar incidente del proveedor": "End provider incident",
+  "Activar incidente del proveedor": "Activate provider incident",
+  "Al finalizar, las alertas de caída vuelven a habilitarse. Los avisos silenciados no se reenvían.": "Ending the incident enables downtime alerts again. Silenced alerts are not resent.",
+  "Agrega un monitor antes de activar el incidente del proveedor.": "Add a monitor before activating the provider incident.",
+  "Finaliza el incidente desde el control del proveedor de infraestructura.": "End the incident using the infrastructure provider control.",
   "{seconds} s de mantenimiento": "{seconds} s of maintenance",
   " Rojo indica interrupciones; amarillo, degradación por latencia; azul, mantenimiento; verde, sin afectación; gris, sin registros.": " Red indicates interruptions; yellow, latency degradation; blue, maintenance; green, no impact; gray, no records.",
   " Disponibilidad observada por segmento: verde, al menos 99.9%; amarillo, desde 95% hasta menos de 99.9% o degradación por latencia; rojo, menos de 95%; azul, mantenimiento; gris, sin registros. Las interrupciones breves se conservan en el detalle aunque el segmento sea verde.": " Observed availability per segment: green, at least 99.9%; yellow, from 95% to below 99.9% or latency degradation; red, below 95%; blue, maintenance; gray, no records. Brief interruptions remain in the details even when the segment is green.",

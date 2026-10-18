@@ -11,6 +11,7 @@ import { translate } from "../shared/i18n";
 import type { Language } from "../shared/settings";
 import type { Monitor, StatusPage } from "../shared/types";
 import { first, rows, statement } from "./db";
+import { providerOutage } from "./provider-outage";
 
 function invalid(message: string, status = 400): never {
   throw new Response(message, { status });
@@ -270,6 +271,8 @@ export async function addUpdate(
     detail = await incidentDetail(env, id);
   if (!detail.published)
     invalid("Publica el incidente antes de añadir actualizaciones.", 409);
+  if ((await providerOutage(env))?.incident_ids.includes(id) && (value.stage === "resolved" || value.impact !== detail.impact))
+    invalid("Finaliza el incidente desde el control del proveedor de infraestructura.", 409);
   if (detail.closed_at !== null && value.stage !== "resolved")
     invalid("Un incidente resuelto no puede reabrirse.", 409);
   if (detail.closed_at !== null && value.impact !== detail.impact)

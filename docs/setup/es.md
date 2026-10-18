@@ -256,6 +256,8 @@ Las alertas son personales y se envían a todos los canales activos por apertura
 
 La configuración anterior de un solo canal se conserva automáticamente al actualizar. Hasta guardar la configuración, no se entregan notificaciones; los intentos pendientes pueden terminar en fallo. Si guardas todos los canales desactivados, los nuevos eventos no enviarán alertas. Desactivar Pushover no cancela inmediatamente una alarma ya enviada: puedes confirmarla en la app; Monitor también la cancela cuando procesa la recuperación. Si una respuesta del proveedor se pierde, puede haber envíos duplicados.
 
+En **Incidentes → Proveedor de infraestructura**, usa **Activar incidente del proveedor** ante una falla externa general. Publica un aviso en español e inglés para todos los monitores, agrupado por proyecto, y silencia las alertas de caída, sus reintentos y las repeticiones de emergencia de Pushover. Las comprobaciones, el historial de disponibilidad y las notificaciones de recuperación de cada monitor continúan. Los estados de los servicios pueden recuperarse aunque el aviso general siga abierto. Usa **Finalizar incidente del proveedor** para cerrar los avisos y volver a habilitar las alertas de caída; los avisos silenciados no se reenvían. Las pausas y mantenimientos conservan su comportamiento habitual.
+
 En **Ajustes → General**, elige el idioma del dashboard. Español es el valor predeterminado; cada página pública configura su idioma por separado.
 
 ## 10. Añadir servicios y comprobar la instalación

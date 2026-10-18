@@ -24,6 +24,8 @@ import { Textarea } from "./ui/textarea";
 import { FieldGroup } from "./ui/field";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
+import { ProviderOutageControl } from "./provider-outage-control";
+import type { ProviderOutageState } from "../shared/provider-outage";
 
 function Messages({
   title = false,
@@ -239,7 +241,7 @@ function DraftForm({
     </Panel>
   );
 }
-function IncidentEditor({ data, id }: { data: Snapshot; id: string }) {
+function IncidentEditor({ data, id, provider = false }: { data: Snapshot; id: string; provider?: boolean }) {
   const mutation = useMutation();
   const { t, date, language } = useLocale();
   const navigate = useNavigate();
@@ -361,13 +363,15 @@ function IncidentEditor({ data, id }: { data: Snapshot; id: string }) {
                 impact={impact ?? incident.impact}
                 onStage={setStage}
                 onImpact={setImpact}
-                automatic={incident.origin === "automatic"}
+                automatic={incident.origin === "automatic" || provider}
                 resolved={incident.closed_at !== null}
               />
               <Messages />
               <p className="text-sm text-muted-foreground">
                 {t(
-                  "Las correcciones se añaden a la cronología. Los incidentes automáticos se resuelven cuando el servicio se recupera."
+                  provider
+                    ? "Finaliza el incidente desde el control del proveedor de infraestructura."
+                    : "Las correcciones se añaden a la cronología. Los incidentes automáticos se resuelven cuando el servicio se recupera."
                 )}
               </p>
               <Button disabled={busy}>{t("Publicar actualización")}</Button>
@@ -388,7 +392,9 @@ export function Incidents({ data }: { data: Snapshot }) {
     `admin/incidents${monitorId ? `?monitor=${monitorId}` : ""}`
   );
   const [creating, setCreating] = useState(false);
-  if (id) return <IncidentEditor key={id} data={data} id={id} />;
+  const provider = useRefresh<ProviderOutageState>("admin/incidents/provider");
+  const providerControl = <ProviderOutageControl state={provider.data} error={provider.error} hasMonitors={data.monitors.length > 0} />;
+  if (id) return <div className="flex flex-col gap-6">{providerControl}<IncidentEditor key={id} data={data} id={id} provider={provider.data?.outage?.incident_ids.includes(id)} /></div>;
   if (creating)
     return (
       <DraftForm
@@ -403,6 +409,7 @@ export function Incidents({ data }: { data: Snapshot }) {
     );
   return (
     <div className="flex flex-col gap-6">
+      {providerControl}
       <Button
         className="self-start"
         disabled={!data.monitors.length}

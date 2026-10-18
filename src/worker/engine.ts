@@ -19,6 +19,7 @@ import {
 } from "./state";
 import { automaticStatements } from "./incidents";
 import { deliverNotifications } from "./mail";
+import { providerOutageActive } from "./provider-outage";
 
 class JobBusyError extends Error {}
 
@@ -198,7 +199,7 @@ export async function record(
     batch.push(
       statement(
         env.DB,
-        `INSERT OR IGNORE INTO notifications(id,incident_id,event,monitor_name,created_at,next_attempt) SELECT ?,id,'opened',?,?,? FROM incidents WHERE id=?`,
+        `INSERT OR IGNORE INTO notifications(id,incident_id,event,monitor_name,created_at,next_attempt,state) SELECT ?,id,'opened',?,?,?,CASE WHEN ${providerOutageActive} THEN 'cancelled' ELSE 'pending' END FROM incidents WHERE id=?`,
         crypto.randomUUID(),
         m.name,
         now,

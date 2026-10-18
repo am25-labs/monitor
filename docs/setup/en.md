@@ -256,6 +256,8 @@ Alerts are personal and are sent to all enabled channels on incident opening and
 
 Previous single-channel settings are automatically preserved on upgrade. Until settings are saved, notifications are not delivered; pending attempts may ultimately fail. If you save all channels disabled, new events will not send alerts. Disabling Pushover does not immediately cancel an alarm already sent: you can acknowledge it in the app; Monitor also cancels it when processing recovery. A lost provider response may cause duplicate sends.
 
+In **Incidents → Infrastructure provider**, use **Activate provider incident** for a widespread external failure. This publishes a Spanish and English notice for all monitors, grouped by project, and silences downtime alerts, their retries, and Pushover emergency repeats. Checks, availability history, and each monitor's recovery notifications continue. Service statuses can recover while the general notice remains open. Use **End provider incident** to close the notices and enable downtime alerts again; silenced alerts are not resent. Pauses and maintenance retain their usual behavior.
+
 In **Settings → General**, choose the dashboard language. Spanish is the default; each public page configures its language separately.
 
 ## 10. Add services and check the installation
