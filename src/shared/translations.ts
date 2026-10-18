@@ -1,4 +1,8 @@
 export const english: Record<string, string> = {
+  "Las 10 caídas más recientes y su recuperación.": "The 10 most recent outages and their recovery.",
+  "Ver todos los incidentes": "View all incidents",
+  "Historial de incidentes": "Incident history",
+  "Todas las caídas y recuperaciones conservadas, de más recientes a más antiguas. Hasta 50 registros por página.": "All retained outages and recoveries, newest first. Up to 50 records per page.",
   "Proveedor de infraestructura": "Infrastructure provider",
   "Publica un incidente para todos los monitores y pausa las alertas de caída, incluidos los reintentos y las repeticiones de emergencia. Las comprobaciones continúan y las recuperaciones se siguen notificando.": "Publish an incident for all monitors and pause downtime alerts, including retries and emergency repeats. Checks continue and recoveries are still notified.",
   "Incidente del proveedor activo desde {date}.": "Provider incident active since {date}.",

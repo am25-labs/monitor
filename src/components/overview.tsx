@@ -161,7 +161,7 @@ export function Overview({
       <div className="grid items-stretch gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <Panel
           title={t("Incidentes recientes")}
-          description={t("Caídas y recuperaciones de tus servicios.")}
+          description={t("Las 10 caídas más recientes y su recuperación.")}
         >
           {data.incidents.length ? (
             <Table>
@@ -174,7 +174,7 @@ export function Overview({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.incidents.map((i) => (
+                {data.incidents.slice(0, 10).map((i) => (
                   <TableRow key={i.id}>
                     <TableCell>
                       <Link
@@ -210,6 +210,9 @@ export function Overview({
               description={t("Las caídas y recuperaciones aparecerán aquí.")}
             />
           )}
+          <div className="mt-4 flex justify-end">
+            <Link to="/app/incident-history" className={buttonVariants({ variant: "outline" })}>{t("Ver todos los incidentes")}</Link>
+          </div>
         </Panel>
         <Card>
           <CardHeader>

@@ -4,6 +4,7 @@ import { Settings } from "../components/settings";
 import { LocaleProvider } from "../lib/locale";
 import { Overview } from "../components/overview";
 import { Metrics } from "../components/metrics";
+import { IncidentHistory } from "../components/incident-history";
 import { ConfirmDialog } from "../components/confirm-dialog";
 import { CopyId } from "../components/copy-id";
 import { useState } from "react";
@@ -194,6 +195,7 @@ function DashboardView({
   const titles: Record<string, string> = {
     overview: t("Resumen"),
     metrics: t("Métricas"),
+    "incident-history": t("Historial de incidentes"),
     monitors: t("Monitores"),
     projects: t("Proyectos y grupos"),
     pages: t("Páginas públicas"),
@@ -225,7 +227,7 @@ function DashboardView({
         <div className="mt-4 lg:hidden">
           <ChoiceSelect
             aria-label={t("Navegación principal")}
-            value={section === "metrics" ? "overview" : section}
+            value={section === "metrics" || section === "incident-history" ? "overview" : section}
             options={nav.map((item) => ({ value: item.to, label: item.label }))}
             onValueChange={(value) => {
               setEditor(null);
@@ -357,6 +359,7 @@ function DashboardView({
               />
             )}
             {section === "metrics" && <Metrics data={data} />}
+            {section === "incident-history" && <IncidentHistory />}
             {section === "monitors" && selected && (
               <>
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">

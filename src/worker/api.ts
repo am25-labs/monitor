@@ -178,6 +178,19 @@ export async function admin(
       short: await rows(env.DB, "SELECT monitor_id,slot,observed_seconds,up_seconds,degraded_count FROM short_stats WHERE slot>=? ORDER BY slot", new Date((Math.floor(now / 300) * 300 - 11 * 300) * 1000).toISOString().slice(0, 16))
     });
   }
+  if (resource === "incident-history" && !id && method === "GET") {
+    const params = new URL(request.url).searchParams;
+    const before = params.get("before"), cursorId = params.get("id");
+    if ((before === null) !== (cursorId === null) || (before !== null && (!/^\d+$/.test(before) || !Number.isSafeInteger(Number(before)))) || (cursorId !== null && (!cursorId.length || cursorId.length > 250)))
+      throw new Response("Cursor inválido.", { status: 400 });
+    const records = await rows<Incident>(env.DB,
+      `SELECT i.*,m.name AS monitor_name FROM incidents i JOIN monitors m ON m.id=i.monitor_id ${before !== null ? "WHERE i.opened_at<? OR (i.opened_at=? AND i.id<?)" : ""} ORDER BY i.opened_at DESC,i.id DESC LIMIT 51`,
+      ...(before !== null ? [Number(before), Number(before), cursorId] : [])
+    );
+    const incidents = records.slice(0, 50);
+    const last = incidents.at(-1);
+    return json({ incidents, nextCursor: records.length > 50 && last ? { opened_at: last.opened_at, id: last.id } : null });
+  }
   if (resource === "snapshot" && method === "GET") {
     const [
       projects,
@@ -204,7 +217,7 @@ export async function admin(
       >(env.DB, "SELECT * FROM pages ORDER BY title"),
       rows<Incident>(
         env.DB,
-        "SELECT i.*,m.name AS monitor_name FROM incidents i JOIN monitors m ON m.id=i.monitor_id ORDER BY i.opened_at DESC LIMIT 100"
+        "SELECT i.*,m.name AS monitor_name FROM incidents i JOIN monitors m ON m.id=i.monitor_id ORDER BY i.opened_at DESC,i.id DESC LIMIT 100"
       ),
       first(env.DB, "SELECT * FROM engine WHERE id=1"),
       rows(

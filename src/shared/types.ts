@@ -75,6 +75,10 @@ export interface Incident {
   reason: string;
   monitor_name?: string;
 }
+export interface IncidentHistory {
+  incidents: Incident[];
+  nextCursor: Pick<Incident, "opened_at" | "id"> | null;
+}
 export interface Window {
   id: string;
   scope: "global" | "project" | "group" | "monitor";
