@@ -113,3 +113,17 @@ it("preserves stored references to deleted monitors in public pages", async () =
   expect((await restore(backup)).status).toBe(200);
   expect(await rows(env.DB, "SELECT * FROM pages")).toEqual(backup.data.pages);
 });
+
+it("restores pre-analytics backups with unknown hourly counters and preserves new credential metadata", async () => {
+  const monitor = await createMonitor();
+  await statement(env.DB, "INSERT INTO hourly_stats(monitor_id,hour,observed_seconds,up_seconds) VALUES(?,'2026-10-01T00',60,30)", monitor.id).run();
+  const { changeAgentToken, agentTokens } = await import("../src/worker/agent-access");
+  const created = await changeAgentToken(env, { name: "Agent", expiresInDays: 30 });
+  const backup = await download();
+  for (const row of backup.data.hourly_stats)
+    for (const column of ["check_count", "success_count", "latency_sum", "latency_count"]) delete row[column];
+  expect((await restore(backup)).status).toBe(200);
+  expect(await rows(env.DB, "SELECT observed_seconds,up_seconds,check_count,latency_sum FROM hourly_stats"))
+    .toEqual([{ observed_seconds: 60, up_seconds: 30, check_count: null, latency_sum: null }]);
+  expect(await agentTokens(env)).toEqual(created.tokens);
+});

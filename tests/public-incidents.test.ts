@@ -614,7 +614,7 @@ it("paginates only visible resolved incidents over 90 days and keeps recent reso
   expect((await call("public/test?archive=1&before=1")).status).toBe(400);
 });
 
-it("purges expired public incidents and resets their linked history in test mode", async () => {
+it("retains old public incidents until their history is explicitly reset in test mode", async () => {
   const m = await createMonitor({ failure_threshold: 1 });
   await sample(m.id, now() - 400 * 86400, 0, false);
   await sample(m.id, now() - 400 * 86400 + 60);
@@ -622,16 +622,16 @@ it("purges expired public incidents and resets their linked history in test mode
     await rows<PublicIncident>(env.DB, "SELECT * FROM public_incidents")
   )[0];
   await cleanup(env, now());
-  expect(await rows(env.DB, "SELECT * FROM public_incidents")).toHaveLength(0);
+  expect(await rows(env.DB, "SELECT * FROM public_incidents")).toHaveLength(1);
   expect(
     await rows(
       env.DB,
       "SELECT * FROM incident_updates WHERE incident_id=?",
       old.id
     )
-  ).toHaveLength(0);
+  ).toHaveLength(2);
   await sample(m.id, now() - 60, 0, false);
-  expect(await rows(env.DB, "SELECT * FROM public_incidents")).toHaveLength(1);
+  expect(await rows(env.DB, "SELECT * FROM public_incidents")).toHaveLength(2);
   await call("admin/settings/general", "PUT", { testMode: true });
   expect(
     (

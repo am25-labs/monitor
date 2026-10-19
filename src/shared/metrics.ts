@@ -8,6 +8,7 @@ export interface IncidentCount {
 }
 export interface IncidentDay { day: string; opened: number; closed: number }
 export interface MetricsData {
+  query?: string;
   start: string;
   end: string;
   stats: Stat[];

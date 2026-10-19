@@ -11,6 +11,11 @@
       "license": "MIT"
     },
     {
+      "name": "@modelcontextprotocol/sdk",
+      "version": "1.32.1",
+      "license": "MIT"
+    },
+    {
       "name": "@tailwindcss/vite",
       "version": "4.3.3",
       "license": "MIT"
@@ -131,5 +136,5 @@
       "license": "MIT"
     }
   ],
-  "packageCount": 364
+  "packageCount": 439
 }

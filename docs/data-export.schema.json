@@ -541,7 +541,11 @@
         "hour",
         "observed_seconds",
         "up_seconds",
-        "degraded_count"
+        "degraded_count",
+        "check_count",
+        "success_count",
+        "latency_sum",
+        "latency_count"
       ],
       "additionalProperties": false,
       "properties": {
@@ -561,6 +565,30 @@
         },
         "degraded_count": {
           "type": "integer"
+        },
+        "check_count": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "success_count": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "latency_sum": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "latency_count": {
+          "type": [
+            "integer",
+            "null"
+          ]
         }
       }
     },

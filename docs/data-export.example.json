@@ -38,6 +38,12 @@
     },
     {
       "type": "index",
+      "name": "incidents_history",
+      "tbl_name": "incidents",
+      "sql": "CREATE INDEX incidents_history ON incidents(opened_at,id)"
+    },
+    {
+      "type": "index",
       "name": "incidents_open",
       "tbl_name": "incidents",
       "sql": "CREATE UNIQUE INDEX incidents_open ON incidents(monitor_id) WHERE closed_at IS NULL"
@@ -124,7 +130,7 @@
       "type": "table",
       "name": "hourly_stats",
       "tbl_name": "hourly_stats",
-      "sql": "CREATE TABLE hourly_stats (\n  monitor_id TEXT NOT NULL REFERENCES monitors(id) ON DELETE CASCADE,\n  hour TEXT NOT NULL,\n  observed_seconds INTEGER NOT NULL DEFAULT 0,\n  up_seconds INTEGER NOT NULL DEFAULT 0, degraded_count INTEGER NOT NULL DEFAULT 0,\n  PRIMARY KEY(monitor_id, hour)\n)"
+      "sql": "CREATE TABLE hourly_stats (\n  monitor_id TEXT NOT NULL REFERENCES monitors(id) ON DELETE CASCADE,\n  hour TEXT NOT NULL,\n  observed_seconds INTEGER NOT NULL DEFAULT 0,\n  up_seconds INTEGER NOT NULL DEFAULT 0, degraded_count INTEGER NOT NULL DEFAULT 0, check_count INTEGER, success_count INTEGER, latency_sum REAL, latency_count INTEGER,\n  PRIMARY KEY(monitor_id, hour)\n)"
     },
     {
       "type": "table",

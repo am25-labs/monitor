@@ -1,5 +1,7 @@
 export { MonitorScheduler } from "./scheduler";
 export { MonitorRunner } from "./runner";
+import { authorizeAgent } from "./agent-access";
+import { analyticsApi } from "./analytics-api";
 import { ZodError } from "zod";
 import type { JobMessage } from "../shared/types";
 import { admin, json, publicPage, receiveHeartbeat } from "./api";
@@ -13,6 +15,13 @@ async function route(request: Request, env: Env) {
     path = url.pathname;
   if (env.ENVIRONMENT !== "local" && url.origin !== env.APP_ORIGIN)
     return json({ error: "Dominio no autorizado." }, 404);
+  if (path === "/mcp" || path.startsWith("/api/v1/analytics/")) {
+    const origin = request.headers.get("Origin");
+    if (origin && origin !== env.APP_ORIGIN) return json({ error: "Origen no autorizado." }, 403);
+    await authorizeAgent(request, env);
+    if (path === "/mcp") return (await import("./mcp")).mcp(request, env);
+    return analyticsApi(request, env, path.slice("/api/v1/analytics/".length));
+  }
   if (path === "/") return Response.redirect(new URL("/app/", url), 302);
   if (
     path === "/app" ||

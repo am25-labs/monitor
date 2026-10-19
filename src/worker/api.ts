@@ -36,6 +36,7 @@ import { verifyHeartbeat } from "./auth";
 import { exportData } from "./export";
 import { restoreData } from "./restore";
 import { backupLimit } from "../shared/backup";
+import { agentTokens, changeAgentToken } from "./agent-access";
 import { metricsData } from "./metrics";
 import { suppressNotifications } from "./mail";
 import { bulkMonitors, validateMonitorMove } from "./bulk-monitors";
@@ -133,6 +134,11 @@ export async function admin(
   const [resource, id, action] = path.split("/").filter(Boolean),
     method = request.method,
     now = nowSeconds();
+  if (resource === "agent-tokens" && !action) {
+    if (method === "GET" && !id) return json({ tokens: await agentTokens(env) });
+    if (method === "POST" && !id) return json(await changeAgentToken(env, await body(request)), 201);
+    if (method === "DELETE" && id) return json(await changeAgentToken(env, undefined, z.uuid().parse(id)));
+  }
   if (resource === "metrics" && !id && method === "GET")
     return json(await metricsData(request, env));
   if (resource === "monitors" && id === "bulk" && !action && method === "POST")

@@ -11,7 +11,7 @@ AM25 Monitor te permite supervisar tus sitios, APIs y procesos en segundo plano 
 - Monitores HTTP/HTTPS, conexiones TCP y heartbeats para procesos sin dominio.
 - Proyectos y grupos, incidentes, pausas y ventanas de mantenimiento.
 - Hasta 100 monitores, con intervalos desde un minuto.
-- Comprobaciones individuales durante seis meses calendario; agregados diarios e incidentes cerrados durante 365 días.
+- Comprobaciones individuales durante seis meses calendario; agregados horarios durante 90 días; agregados diarios e incidentes sin vencimiento automático.
 - Hub multicanal de alertas personales con Postmark, Telegram, Pushover y ntfy.
 - Páginas públicas con selección de servicios e historial de 24 horas, 7 días o 90 días.
 - Dashboard y páginas públicas en español o inglés, con tema claro y oscuro.
@@ -51,7 +51,7 @@ AM25 Monitor lets you monitor websites, APIs, and background processes from Clou
 - HTTP/HTTPS monitors, TCP connections, and heartbeats for processes without a domain.
 - Projects and groups, incidents, pauses, and maintenance windows.
 - Up to 100 monitors, with intervals starting at one minute.
-- Individual checks retained for six calendar months; daily aggregates and closed incidents retained for 365 days.
+- Individual checks retained for six calendar months; hourly aggregates retained for 90 days; daily aggregates and incidents without automatic expiry.
 - Multichannel personal alert hub with Postmark, Telegram, Pushover, and ntfy.
 - Public pages with selected services and 24-hour, 7-day, or 90-day history.
 - Dashboard and public pages in Spanish or English, with light and dark themes.
@@ -81,3 +81,7 @@ Creating a Release or a tag does not deploy: the current workflow runs on a push
 Created by Alejandro Mártir. Copyright 2026 AM25, S.A.S. DE C.V.
 
 Available under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE) for project attribution. Dependencies retain their own licenses.
+
+Consulta la [documentación de API y MCP de análisis](docs/analytics.md) para retención, credenciales, filtros y conexión de agentes.
+
+See the [analytics API and MCP documentation](docs/analytics.md) for retention, credentials, filters and agent connections.

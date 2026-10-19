@@ -770,7 +770,7 @@ it("splits hourly observations and excludes overlapping maintenance and stale da
     env.DB,
     "INSERT INTO hourly_stats(monitor_id,hour,observed_seconds,up_seconds) VALUES(?,?,?,?)",
     m.id,
-    "1969-12-20T00",
+    "1969-09-20T00",
     60,
     60
   ).run();
@@ -858,4 +858,14 @@ it("keeps complete five-minute coverage when independent checks finish with norm
       { slot: "2026-10-13T21:00", observed_seconds: 300, up_seconds: 300 },
       { slot: "2026-10-13T21:05", observed_seconds: 300, up_seconds: 300 }
     ]);
+});
+
+it("records hourly measured latency once per check and excludes failed or missing measurements", async () => {
+  const monitor = await createMonitor();
+  const job = await sample(monitor.id, 1000, success);
+  await record(env, job, monitor, success, "lease", 1000);
+  await sample(monitor.id, 1060, failure);
+  await sample(monitor.id, 1120, { ...success, latency: null });
+  expect(await first(env.DB, "SELECT check_count,success_count,latency_sum,latency_count FROM hourly_stats WHERE monitor_id=?", monitor.id))
+    .toEqual({ check_count: 3, success_count: 2, latency_sum: 100, latency_count: 1 });
 });

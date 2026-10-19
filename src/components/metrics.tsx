@@ -5,11 +5,13 @@ import { useRefresh, type Snapshot } from "../lib/api";
 import { useLocale } from "../lib/locale";
 import { locales } from "../shared/i18n";
 import { utcDay } from "../shared/time";
+import { retention } from "../shared/analytics";
 import { metricDays, metricTotals, type MetricsData } from "../shared/metrics";
 import { ChoiceSelect } from "./choice-select";
 import { FormField, Notice, Nothing, Panel } from "./common";
 import { MetricCharts } from "./metric-charts";
-import { buttonVariants } from "./ui/button";
+import { Input } from "./ui/input";
+import { Button, buttonVariants } from "./ui/button";
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "./ui/chart";
 import { FieldGroup } from "./ui/field";
 import { Skeleton } from "./ui/skeleton";
@@ -19,34 +21,58 @@ export function Metrics({ data }: { data: Snapshot }) {
   const { t, language } = useLocale();
   const [period, setPeriod] = useState("30");
   const [project, setProject] = useState("");
+  const [group, setGroup] = useState("");
+  const today = new Date().toISOString().slice(0, 10);
+  const [start, setStart] = useState(new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10));
+  const [end, setEnd] = useState(today);
   const [monitor, setMonitor] = useState("");
-  const params = new URLSearchParams({ days: period });
+  const params = new URLSearchParams(period === "custom" ? { start, end } : { days: period });
   if (project) params.set("project", project);
+  if (group) params.set("group", group);
   if (monitor) params.set("monitor", monitor);
   const metrics = useRefresh<MetricsData>(`admin/metrics?${params}`);
   const number = (value: number, digits = 0) => value.toLocaleString(locales[language], { maximumFractionDigits: digits });
   const value = (amount: number | null, unit: string) => amount === null ? t("Sin datos") : `${number(amount, 2)}${unit}`;
   const dayLabel = (day: string) => utcDay(day, language);
-  const monitors = data.monitors.filter((item) => !project || item.project_id === project);
+  const monitors = data.monitors.filter((item) => (!project || item.project_id === project) && (!group || item.group_id === group));
   const selected = monitors.filter((item) => !monitor || item.id === monitor);
   const total = metricTotals(metrics.data?.stats ?? []);
   const days = metrics.data ? metricDays(metrics.data.stats, metrics.data.start, metrics.data.end) : [];
   const rows = selected.map((item) => ({ monitor: item, ...metricTotals(metrics.data?.stats.filter((stat) => stat.monitor_id === item.id) ?? []), incidents: metrics.data?.incidents.find((incident) => incident.monitor_id === item.id)?.overlapping ?? 0 })).sort((a, b) => b.outage - a.outage || a.monitor.name.localeCompare(b.monitor.name));
+  function exportMetrics() {
+    if (!metrics.data || metrics.loading || metrics.error || metrics.data.query !== params.toString()) return;
+    const payload = { schemaVersion: 1, retention, exportedAt: new Date().toISOString(), timezone: "UTC", filters: { project: project || null, group: group || null, monitor: monitor || null }, units: { duration: "seconds", latency: "milliseconds", availability: "percent" }, limitations: ["Availability is based on observed time across selected monitors. Missing data is not uptime. Maintenance is excluded from observed availability. Latency uses successful measured checks. Telemetry cannot prove root cause."], ...metrics.data, monitors: selected.map(({ id, name, project_id, group_id, kind }) => ({ id, name, project_id, group_id, kind })), totals: total, daily: days };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `monitor-metrics-${metrics.data.start}-${metrics.data.end}.json`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
   return (
     <div className="flex min-w-0 flex-col gap-6">
       <Link to="/app/" className={buttonVariants({ variant: "outline", className: "self-start" })}>{t("Volver al resumen")}</Link>
-      <Panel title={t("Explorar métricas")} description={t("Filtra los agregados diarios por período, proyecto y monitor. Todos los días se agrupan en UTC; el día actual está en curso.")}>
+      <Panel title={t("Explorar métricas")} description={t("Filtra los agregados diarios por período, proyecto, grupo y monitor. Todos los días se agrupan en UTC; el día actual está en curso.")}>
         <FieldGroup className="grid gap-4 sm:grid-cols-3">
           <FormField id="metrics-period" label={t("Período")}>
-            <ChoiceSelect id="metrics-period" value={period} onValueChange={setPeriod} options={[{ value: "7", label: t("Últimos 7 días") }, { value: "30", label: t("Últimos 30 días") }, { value: "90", label: t("Últimos 90 días") }]} />
+            <ChoiceSelect id="metrics-period" value={period} onValueChange={setPeriod} options={[{ value: "7", label: t("Últimos 7 días") }, { value: "30", label: t("Últimos 30 días") }, { value: "90", label: t("Últimos 90 días") }, { value: "custom", label: t("Personalizado") }]} />
           </FormField>
           <FormField id="metrics-project" label={t("Proyecto")}>
-            <ChoiceSelect id="metrics-project" value={project} onValueChange={(id) => { setProject(id); setMonitor(""); }} options={[{ value: "", label: t("Todos los proyectos") }, ...data.projects.map((item) => ({ value: item.id, label: item.name }))]} />
+            <ChoiceSelect id="metrics-project" value={project} onValueChange={(id) => { setProject(id); setGroup(""); setMonitor(""); }} options={[{ value: "", label: t("Todos los proyectos") }, ...data.projects.map((item) => ({ value: item.id, label: item.name }))]} />
           </FormField>
+          <FormField id="metrics-group" label={t("Grupo")}>
+            <ChoiceSelect id="metrics-group" value={group} onValueChange={(id) => { setGroup(id); setMonitor(""); }} options={[{ value: "", label: t("Todos los grupos") }, ...data.groups.filter((item) => !project || item.project_id === project).map((item) => ({ value: item.id, label: item.name }))]} />
+          </FormField>
+          {period === "custom" && <>
+            <FormField id="metrics-start" label={t("Desde (UTC)")}><Input id="metrics-start" type="date" value={start} max={end < today ? end : today} onChange={(event) => setStart(event.target.value)} /></FormField>
+            <FormField id="metrics-end" label={t("Hasta (UTC)")}><Input id="metrics-end" type="date" value={end} min={start} max={today} onChange={(event) => setEnd(event.target.value)} /></FormField>
+          </>}
           <FormField id="metrics-monitor" label={t("Monitor")}>
             <ChoiceSelect id="metrics-monitor" value={monitor} onValueChange={setMonitor} options={[{ value: "", label: t("Todos los monitores") }, ...monitors.map((item) => ({ value: item.id, label: item.name }))]} />
           </FormField>
         </FieldGroup>
+        <Button variant="outline" className="mt-4" disabled={!metrics.data || metrics.data.query !== params.toString() || metrics.loading || Boolean(metrics.error)} onClick={exportMetrics}>{t("Exportar métricas JSON")}</Button>
+        <p className="mt-2 text-xs text-muted-foreground">{t("Hasta 366 días por consulta. La exportación incluye únicamente el período y los filtros seleccionados.")}</p>
       </Panel>
       <Notice message={metrics.error} destructive />
       {!metrics.data && !metrics.error && <Skeleton className="h-64 w-full" />}

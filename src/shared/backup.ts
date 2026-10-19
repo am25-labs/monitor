@@ -27,6 +27,9 @@ export function parseBackup(input: unknown) {
   const parsed = backupInput.safeParse(input);
   if (!parsed.success) throw new Error("La copia no es un JSON de Monitor completo y compatible.");
   const backup = parsed.data;
+  for (const row of backup.data.hourly_stats ?? [])
+    for (const column of ["check_count", "success_count", "latency_sum", "latency_count"])
+      if (!Object.hasOwn(row, column)) row[column] = null;
   if (backup.scope.type === "projects" && backup.scope.period)
     throw new Error("La copia contiene un reporte por período y no se puede restaurar. Usa una copia con todo el historial.");
   const tables = backup.scope.type === "full" ? backupTables : projectTables;

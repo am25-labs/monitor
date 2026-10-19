@@ -106,3 +106,32 @@ test("public incident migration preserves existing history and backfills stable 
     db.close();
   }
 });
+
+test("analytics migration preserves history and leaves legacy hourly measurements unknown", () => {
+  const db = new DatabaseSync(":memory:");
+  try {
+    const directory = new URL("../migrations/", import.meta.url);
+    for (const file of readdirSync(directory).sort()) {
+      if (file >= "0010_analytics.sql") break;
+      db.exec(readFileSync(new URL(file, directory), "utf8"));
+    }
+    db.exec(`
+      INSERT INTO projects(id,name,created_at) VALUES('project','Project',1);
+      INSERT INTO monitors(id,project_id,name,kind,config,interval_seconds,next_due,created_at) VALUES('monitor','project','Monitor','http','encrypted',60,1,1);
+      INSERT INTO hourly_stats(monitor_id,hour,observed_seconds,up_seconds,degraded_count) VALUES('monitor','2026-10-01T00',600,540,1);
+      INSERT INTO app_settings VALUES('general','{"language":"en"}',1000),('provider-outage','{}',1001);
+    `);
+    const before = db.prepare("SELECT * FROM app_settings ORDER BY id").all();
+    db.exec(readFileSync(new URL("0010_analytics.sql", directory), "utf8"));
+    assert.deepEqual(db.prepare("SELECT * FROM app_settings WHERE id!='analytics' ORDER BY id").all(), before);
+    const hourly = db.prepare("SELECT * FROM hourly_stats").get();
+    assert.equal(hourly.observed_seconds, 600);
+    assert.equal(hourly.up_seconds, 540);
+    assert.equal(hourly.degraded_count, 1);
+    for (const column of ["check_count", "success_count", "latency_sum", "latency_count"]) assert.equal(hourly[column], null);
+    const metadata = JSON.parse(db.prepare("SELECT value FROM app_settings WHERE id='analytics'").get().value);
+    assert.deepEqual(metadata.tokens, []);
+    assert.ok(metadata.hourly_metrics_since > 0);
+    assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
+  } finally { db.close(); }
+});

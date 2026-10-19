@@ -150,6 +150,10 @@ export async function record(
       )
     );
   const day = new Date(now * 1000).toISOString().slice(0, 10);
+  batch.push(statement(env.DB,
+    `INSERT INTO hourly_stats(monitor_id,hour,check_count,success_count,latency_sum,latency_count) SELECT ?,?,1,?,?,? WHERE ${guarded} ON CONFLICT(monitor_id,hour) DO UPDATE SET check_count=COALESCE(check_count,0)+1,success_count=COALESCE(success_count,0)+excluded.success_count,latency_sum=COALESCE(latency_sum,0)+excluded.latency_sum,latency_count=COALESCE(latency_count,0)+excluded.latency_count`,
+    m.id, new Date(now * 1000).toISOString().slice(0, 13), +result.ok, result.ok ? (result.latency ?? 0) : 0, +(result.ok && result.latency !== null), job.id, now, lease
+  ));
   batch.push(
     statement(
       env.DB,
@@ -415,8 +419,7 @@ export async function heartbeat(env: Env, m: Monitor, ok: boolean) {
 }
 
 export async function cleanup(env: Env, now: number) {
-  const detailed = sixMonthsAgo(now),
-    annual = now - 365 * 86400;
+  const detailed = sixMonthsAgo(now);
   await env.DB.batch([
     statement(
       env.DB,
@@ -430,24 +433,13 @@ export async function cleanup(env: Env, now: number) {
     ),
     statement(
       env.DB,
-      "DELETE FROM daily_stats WHERE rowid IN (SELECT rowid FROM daily_stats WHERE day<? LIMIT 1000)",
-      new Date(annual * 1000).toISOString().slice(0, 10)
-    ),
-    statement(
-      env.DB,
       "DELETE FROM short_stats WHERE rowid IN (SELECT rowid FROM short_stats WHERE slot<? LIMIT 1000)",
       new Date((now - 48 * 3600) * 1000).toISOString().slice(0, 16)
     ),
     statement(
       env.DB,
       "DELETE FROM hourly_stats WHERE rowid IN (SELECT rowid FROM hourly_stats WHERE hour<? LIMIT 1000)",
-      new Date((now - 8 * 86400) * 1000).toISOString().slice(0, 13)
-    ),
-    statement(env.DB, "DELETE FROM public_incidents WHERE id IN (SELECT id FROM public_incidents WHERE closed_at<? LIMIT 1000)", annual),
-    statement(
-      env.DB,
-      "DELETE FROM incidents WHERE id IN (SELECT id FROM incidents WHERE closed_at<? LIMIT 1000)",
-      annual
+      new Date((now - 90 * 86400) * 1000).toISOString().slice(0, 13)
     )
   ]);
 }

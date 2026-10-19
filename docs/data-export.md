@@ -183,8 +183,8 @@ metrics and should not be substituted for each other.
 
 Select a month or year to download a pre-filtered report, or all history for a
 restorable project backup. Use `scope.period` to identify a report's interval.
-Detailed results are retained for six calendar months; daily aggregates and
-resolved incidents are retained for 365 days. Selecting an older period can
+Detailed results are retained for six calendar months; hourly aggregates for
+90 days. Daily aggregates and incidents have no automatic expiry. Selecting an older period can
 therefore return partial or empty history; it does not recover expired records.
 External reporting applications should store past exports or reports when needed.
 It does not need to decrypt credentials, inspect jobs, or read notification

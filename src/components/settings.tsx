@@ -18,6 +18,7 @@ import type {
 } from "../shared/settings";
 import { ChoiceSelect } from "./choice-select";
 import { AboutDialog } from "./about-dialog";
+import { AgentAccess } from "./agent-access";
 import { DataExport } from "./data-export";
 import { DataRestore } from "./data-restore";
 import { ConfirmDialog } from "./confirm-dialog";
@@ -801,6 +802,7 @@ export function Settings({
           <TabsTrigger value="about">{t("Acerca de")}</TabsTrigger>
           <TabsTrigger value="general">{t("General")}</TabsTrigger>
           <TabsTrigger value="notifications">{t("Notificaciones")}</TabsTrigger>
+          <TabsTrigger value="integrations">{t("Integraciones")}</TabsTrigger>
           <TabsTrigger value="export">{t("Exportar")}</TabsTrigger>
         </TabsList>
         <TabsContent value="about" className="grid gap-6 lg:grid-cols-2">
@@ -809,7 +811,7 @@ export function Settings({
             <div className="flex flex-col gap-3 text-sm text-muted-foreground">
               <p>
                 {t(
-                  "El historial individual se conserva seis meses calendario; los agregados diarios y los incidentes, 365 días. Las páginas públicas solo muestran los monitores seleccionados y datos sanitizados.",
+                  "Las comprobaciones se conservan seis meses calendario y los agregados horarios, 90 días. Los agregados diarios y los incidentes no vencen automáticamente. Las páginas públicas solo muestran los monitores seleccionados y datos sanitizados.",
                 )}
               </p>
               <p>
@@ -831,6 +833,7 @@ export function Settings({
             initial={data.settings.notifications}
           />
         </TabsContent>
+        <TabsContent value="integrations"><AgentAccess /></TabsContent>
         <TabsContent value="export" className="flex flex-col gap-6">
           <DataExport projects={data.projects} />
           <DataRestore />
