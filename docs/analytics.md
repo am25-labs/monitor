@@ -21,9 +21,14 @@ Storage grows with monitor count and retained history; review D1 usage as it gro
 
 Migration `0010_analytics.sql` adds hourly check/success counters and latency
 sum/count without reconstructing measurements that were never stored. Existing
-hourly rows retain null counters until measurements arrive in that hour. The
-`hourly_metrics_since` timestamp identifies the start of the new collection.
-Daily latency is already available for retained daily data.
+hourly rows initially retain null counters. The `hourly_metrics_since` timestamp
+identifies the start of live collection, not a restriction on recovered history.
+Migration `0011_hourly_measurements.sql` reconstructs missing hourly counters and
+the partially collected migration hour from retained individual checks. It only
+uses monitor-days whose check count, success count, latency sample count and
+latency sum match the daily aggregates. Incomplete history stays unknown. The
+repair preserves availability, degradation, incidents and notifications, and is
+safe to repeat. Daily latency is already available for retained daily data.
 
 ## Credentials
 

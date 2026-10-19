@@ -135,3 +135,81 @@ test("analytics migration preserves history and leaves legacy hourly measurement
     assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
   } finally { db.close(); }
 });
+
+function hourlyRecoveryDatabase() {
+  const db = new DatabaseSync(":memory:");
+  const directory = new URL("../migrations/", import.meta.url);
+  for (const file of readdirSync(directory).sort()) {
+    if (file >= "0011_hourly_measurements.sql") break;
+    db.exec(readFileSync(new URL(file, directory), "utf8"));
+  }
+  db.exec(`
+    INSERT INTO projects(id,name,created_at) VALUES('project','Project',1);
+    INSERT INTO monitors(id,project_id,name,kind,config,interval_seconds,next_due,created_at)
+      VALUES('monitor','project','Monitor','http','encrypted',60,1,1);
+    UPDATE app_settings SET value=json_set(value,'$.hourly_metrics_since',unixepoch('2026-10-01T01:30:00')) WHERE id='analytics';
+  `);
+  return { db, migration: readFileSync(new URL("0011_hourly_measurements.sql", directory), "utf8") };
+}
+
+test("hourly recovery restores weighted measurements and the partial migration hour without changing other history", () => {
+  const { db, migration } = hourlyRecoveryDatabase();
+  try {
+    db.exec(`
+      INSERT INTO results(job_id,monitor_id,checked_at,ok,latency,reason,diagnostic,maintenance) VALUES
+        ('a','monitor',unixepoch('2026-10-01T00:00:00'),1,100,'ok','',0),
+        ('b','monitor',unixepoch('2026-10-01T00:59:59'),1,300,'ok','',0),
+        ('c','monitor',unixepoch('2026-10-01T01:00:00'),1,200,'ok','',0),
+        ('d','monitor',unixepoch('2026-10-01T01:01:00'),1,NULL,'ok','',0),
+        ('e','monitor',unixepoch('2026-10-01T01:02:00'),0,999,'timeout','',0),
+        ('f','monitor',unixepoch('2026-10-01T01:40:00'),1,500,'ok','',1),
+        ('g','monitor',unixepoch('2026-10-01T02:00:00'),1,250,'ok','',0);
+      INSERT INTO daily_stats(monitor_id,day,check_count,success_count,latency_sum,latency_count)
+        VALUES('monitor','2026-10-01',7,6,1350,5);
+      INSERT INTO hourly_stats(monitor_id,hour,observed_seconds,up_seconds,degraded_count,check_count,success_count,latency_sum,latency_count) VALUES
+        ('monitor','2026-10-01T00',3600,3500,2,NULL,NULL,NULL,NULL),
+        ('monitor','2026-10-01T01',3000,2800,3,1,1,500,1),
+        ('monitor','2026-10-01T02',3600,3600,0,1,1,250,1),
+        ('monitor','2026-10-01T03',60,60,0,NULL,NULL,NULL,NULL);
+      INSERT INTO incidents VALUES('incident','monitor',100,200,'timeout');
+      INSERT INTO notifications(id,incident_id,event,monitor_name,created_at,next_attempt,state)
+        VALUES('notification','incident','opened','Monitor',100,100,'delivered');
+    `);
+    const tables = ["results", "daily_stats", "incidents", "notifications", "app_settings"];
+    const before = Object.fromEntries(tables.map((table) => [table, db.prepare(`SELECT * FROM ${table}`).all()]));
+    const availability = db.prepare("SELECT monitor_id,hour,observed_seconds,up_seconds,degraded_count FROM hourly_stats ORDER BY hour").all();
+    const complete = db.prepare("SELECT * FROM hourly_stats WHERE hour='2026-10-01T02'").get();
+    db.exec(migration);
+    const recovered = db.prepare("SELECT check_count,success_count,latency_sum,latency_count FROM hourly_stats ORDER BY hour").all();
+    assert.deepEqual(recovered.map((row) => Object.values(row)), [
+      [2, 2, 400, 2], [4, 3, 700, 2], [1, 1, 250, 1], [0, 0, 0, 0]
+    ]);
+    assert.equal((recovered[0].latency_sum + recovered[1].latency_sum) / (recovered[0].latency_count + recovered[1].latency_count), 275);
+    assert.deepEqual(db.prepare("SELECT * FROM hourly_stats WHERE hour='2026-10-01T02'").get(), complete);
+    assert.deepEqual(db.prepare("SELECT monitor_id,hour,observed_seconds,up_seconds,degraded_count FROM hourly_stats ORDER BY hour").all(), availability);
+    for (const table of tables) assert.deepEqual(db.prepare(`SELECT * FROM ${table}`).all(), before[table]);
+    const after = db.prepare("SELECT * FROM hourly_stats ORDER BY hour").all();
+    db.exec(migration);
+    assert.deepEqual(db.prepare("SELECT * FROM hourly_stats ORDER BY hour").all(), after);
+    assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
+  } finally { db.close(); }
+});
+
+for (const [column, value] of [["check_count", 2], ["success_count", 0], ["latency_sum", 500], ["latency_count", 0]]) {
+  test(`hourly recovery leaves history unknown when daily ${column} disagrees`, () => {
+    const { db, migration } = hourlyRecoveryDatabase();
+    try {
+      db.exec(`
+        INSERT INTO results(job_id,monitor_id,checked_at,ok,latency,reason,diagnostic)
+          VALUES('a','monitor',unixepoch('2026-10-01T00:00:00'),1,100,'ok','');
+        INSERT INTO daily_stats(monitor_id,day,check_count,success_count,latency_sum,latency_count)
+          VALUES('monitor','2026-10-01',1,1,100,1);
+        UPDATE daily_stats SET ${column}=${value};
+        INSERT INTO hourly_stats(monitor_id,hour) VALUES('monitor','2026-10-01T00');
+      `);
+      const before = db.prepare("SELECT * FROM hourly_stats").all();
+      db.exec(migration);
+      assert.deepEqual(db.prepare("SELECT * FROM hourly_stats").all(), before);
+    } finally { db.close(); }
+  });
+}
