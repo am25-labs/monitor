@@ -20,6 +20,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
       - run: pnpm build
+        env:
+          VITE_GIT_SHA: ${{ github.sha }}
       - name: Migrate and deploy
         run: pnpm run deploy
         env:

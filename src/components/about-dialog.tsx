@@ -9,6 +9,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 
 const copyright = "© 2026 AM25";
 const licenseUrl = `${product.repository}/blob/main/LICENSE`;
+const buildSha = import.meta.env.VITE_GIT_SHA;
+const commitSha = typeof buildSha === "string" && /^[a-f\d]{40}$/i.test(buildSha) ? buildSha : null;
 
 function AboutLogo() {
   return <Activity className="size-28" aria-hidden="true" />;
@@ -46,9 +48,12 @@ export function AboutDialog() {
     <Card className="w-full text-center">
       <CardHeader className="flex flex-col items-center gap-5">
         <AboutLogo />
-        <div className="flex flex-col gap-2">
-          <CardTitle><h2>{product.name}</h2></CardTitle>
-          <CardDescription>{copyright} · {t("Versión")} {product.version}</CardDescription>
+        <div className="flex flex-col gap-1">
+          <CardTitle><h2 className="text-2xl">{product.name}</h2></CardTitle>
+          <CardDescription>
+            <a href="https://am25.work" target="_blank" rel="noopener" referrerPolicy="origin">{copyright}</a>
+            <p className="mt-1 text-xs">{t("Versión")} {product.version}</p>
+          </CardDescription>
         </div>
       </CardHeader>
       <CardFooter className="justify-center border-t-0 bg-card">
@@ -66,7 +71,10 @@ export function AboutDialog() {
                 <AboutLogo />
                 <div className="mt-3 flex flex-col gap-2">
                   <Dialog.Title className="text-lg font-medium">{product.name}</Dialog.Title>
-                  <Dialog.Description className="text-xs text-muted-foreground">{t("Versión")} {product.version}</Dialog.Description>
+                  <Dialog.Description className="text-xs text-muted-foreground">
+                    {t("Versión")} {product.version}
+                    {commitSha && <> · <a href={`${product.repository}/commit/${commitSha}`} target="_blank" rel="noopener" title={commitSha} className="font-mono underline underline-offset-4">{commitSha.slice(0, 7)}</a></>}
+                  </Dialog.Description>
                 </div>
               </div>
               <div className="flex flex-col gap-6 px-6 sm:px-8 py-6">
