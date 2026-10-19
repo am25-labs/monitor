@@ -107,6 +107,14 @@ responses and stateless requests. Use a client that supports an explicit
 clients that only accept OAuth connections can use the included stdio bridge
 if they support local MCP servers, or use the REST API with OpenAPI instead.
 
+Optional MCP fields may be omitted or set to null. Null scope filters mean all
+projects/groups/monitors; null pagination, granularity and status fields use their
+defaults. This also supports clients that normalize tool schemas into strict
+function calling and require a value for every property. Never invent placeholder
+UUIDs. Call `list_monitors` with `{}` or null scope fields to discover actual IDs.
+After deploying a schema change, refresh tool discovery in the client. In
+KIZUNA Assistant, use **Tools > Monitor > Manage > Test** ("Probar").
+
 The seven tools are `get_data_policy`, `list_monitors`, `get_metrics`,
 `compare_periods`, `list_incidents`, `get_incident` and `list_checks`. Every tool
 is annotated read-only, idempotent and non-destructive. The SDK supplies protocol
@@ -170,6 +178,11 @@ measurement. Aggregates cannot provide valid p95/p99 or explain root causes.
 hourly or paginated; do not add page summaries together. Hourly series can contain
 null counters for legacy data and need not cover the full requested range.
 Use daily data for long-range trends and retained checks for closer inspection.
+`get_data_policy` includes `current_time` from the server in UTC. For a recent-hours
+request, query hourly series across the relevant UTC dates, follow pagination and
+select the applicable buckets. Report the actual bucket window, especially when
+the requested boundary falls inside an hour. A daily summary spanning those dates
+must not be presented as an exact rolling 48-hour summary.
 
 Metrics in the dashboard supports custom UTC dates, project/group/monitor filters
 and a JSON download of the selected daily dataset. This is an analysis report,

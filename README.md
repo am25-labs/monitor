@@ -28,7 +28,7 @@ El límite de cien monitores no garantiza comprobaciones exactas cada minuto. Co
 
 ### Versiones y Releases
 
-Los GitHub Releases se crean manualmente y son independientes de los despliegues por push a `main`. La versión de `package.json`, la etiqueta `X.Y.Z` y el Release deben corresponder al mismo estado del código al publicar una versión. En Ajustes → Acerca de, el diálogo muestra la versión y el SHA corto del commit desplegado, con enlace al commit completo. GitHub Actions incorpora ese SHA al compilar la interfaz mediante `VITE_GIT_SHA`; si no se proporciona, como en desarrollo local, se muestra únicamente la versión.
+Los GitHub Releases se crean manualmente y son independientes de los despliegues por push a `main`. La versión de `package.json`, la etiqueta `X.Y.Z` y el Release deben corresponder al mismo estado del código al publicar una versión. En Ajustes → Acerca de, el diálogo muestra la versión y el SHA corto del commit desplegado, con enlace al Release de la versión instalada. GitHub Actions incorpora ese SHA al compilar la interfaz mediante `VITE_GIT_SHA`; si no se proporciona, como en desarrollo local, se muestra únicamente la versión.
 
 Se usará versionado semántico: `MAJOR.MINOR.PATCH`. Los cambios incompatibles incrementan la versión mayor, las funciones compatibles la menor y las correcciones la revisión. Durante `0.x`, las versiones menores pueden introducir cambios incompatibles, que se indicarán en las notas del Release.
 
@@ -68,7 +68,7 @@ The hundred-monitor limit does not guarantee checks exactly every minute. See ho
 
 ### Versions and Releases
 
-GitHub Releases are created manually and are independent of deployments triggered by pushes to `main`. The version in `package.json`, the `X.Y.Z` tag, and the Release must correspond to the same code state when publishing a version. In Settings → About, the dialog displays the version and the deployed commit's short SHA, linked to the full commit. GitHub Actions embeds this SHA when compiling the interface through `VITE_GIT_SHA`; when it is absent, as in local development, only the version is displayed.
+GitHub Releases are created manually and are independent of deployments triggered by pushes to `main`. The version in `package.json`, the `X.Y.Z` tag, and the Release must correspond to the same code state when publishing a version. In Settings → About, the dialog displays the version and the deployed commit's short SHA, linked to the installed version’s Release. GitHub Actions embeds this SHA when compiling the interface through `VITE_GIT_SHA`; when it is absent, as in local development, only the version is displayed.
 
 Semantic versioning will use `MAJOR.MINOR.PATCH`. Breaking changes increase the major version, compatible features the minor version, and fixes the patch version. During `0.x`, minor versions may introduce breaking changes, which will be stated in the Release notes.
 

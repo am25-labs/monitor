@@ -73,7 +73,7 @@ export function AboutDialog() {
                   <Dialog.Title className="text-lg font-medium">{product.name}</Dialog.Title>
                   <Dialog.Description className="text-xs text-muted-foreground">
                     {t("Versión")} {product.version}
-                    {commitSha && <> · <a href={`${product.repository}/commit/${commitSha}`} target="_blank" rel="noopener" title={commitSha} className="font-mono underline underline-offset-4">{commitSha.slice(0, 7)}</a></>}
+                    {commitSha && <> · <a href={`${product.repository}/releases/tag/${encodeURIComponent(product.version)}`} target="_blank" rel="noopener" title={commitSha} className="font-mono underline underline-offset-4">{commitSha.slice(0, 7)}</a></>}
                   </Dialog.Description>
                 </div>
               </div>

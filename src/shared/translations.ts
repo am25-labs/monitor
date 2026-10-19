@@ -1,4 +1,7 @@
 export const english: Record<string, string> = {
+  "No se pudo copiar. Selecciona el texto y cópialo manualmente.": "Unable to copy. Select the text and copy it manually.",
+  "Copiado al portapapeles": "Copied to clipboard",
+  "Copiar {label}": "Copy {label}",
   "Selecciona el período, proyecto, grupo y monitor para la exportación. Estos filtros no cambian las métricas de la página.": "Select the period, project, group and monitor for the export. These filters do not change the metrics on the page.",
   "Hasta 366 días por consulta. La exportación incluye únicamente el período y los filtros seleccionados.": "Up to 366 days per query. Exports include only the selected period and filters.",
   "Exportar métricas JSON": "Export metrics JSON",

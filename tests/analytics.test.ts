@@ -177,3 +177,52 @@ it("paginates individual observations and incident ties without leaking other mo
   const successful = await (await request(`checks?start=2026-10-01&end=2026-10-01&monitor=${monitor.id}&result=success`, token)).json() as any;
   expect(successful.data).toEqual([]);
 });
+
+it("discovers monitors and queries 48 hourly buckets when a strict client sends null optional fields", async () => {
+  const now = Date.parse("2026-10-03T00:00:00Z");
+  vi.spyOn(Date, "now").mockReturnValue(now);
+  const client = new Client({ name: "strict-agent", version: "1.0.0" });
+  try {
+    const token = await credential(), monitor = await createMonitor();
+    await addStat(monitor.id, "2026-10-01", 86400, 86400, 2400, 24);
+    await addStat(monitor.id, "2026-10-02", 86400, 86400, 2400, 24);
+    await env.DB.batch(Array.from({ length: 48 }, (_, index) => statement(env.DB,
+      "INSERT INTO hourly_stats(monitor_id,hour,observed_seconds,up_seconds,check_count,success_count,latency_sum,latency_count) VALUES(?,?,3600,3600,1,1,100,1)",
+      monitor.id, new Date(now - (48 - index) * 3600000).toISOString().slice(0, 13))));
+    await client.connect(new StreamableHTTPClientTransport(new URL("http://localhost/mcp"), {
+      requestInit: { headers: { Authorization: `Bearer ${token}` } },
+      fetch: async (input, init) => worker.fetch(new Request(input, init), env)
+    }));
+    const tools = await client.listTools();
+    const discover = tools.tools.find((tool) => tool.name === "list_monitors")!;
+    expect(discover.inputSchema.required ?? []).toEqual([]);
+    const { z } = await import("zod");
+    const discoverySchema = z.fromJSONSchema(discover.inputSchema as Parameters<typeof z.fromJSONSchema>[0]);
+    expect(discoverySchema.safeParse({}).success).toBe(true);
+    const noFilters = { project: null, group: null, monitor: null };
+    expect(discoverySchema.safeParse(noFilters).success).toBe(true);
+    const strictSchema = z.fromJSONSchema({ ...discover.inputSchema, required: Object.keys(discover.inputSchema.properties ?? {}) } as Parameters<typeof z.fromJSONSchema>[0]);
+    expect(strictSchema.safeParse({}).success).toBe(false);
+    expect(strictSchema.safeParse(noFilters).success).toBe(true);
+    const monitors = await client.callTool({ name: "list_monitors", arguments: noFilters });
+    expect(monitors.isError).not.toBe(true);
+    expect(monitors.structuredContent).toMatchObject({ data: [{ id: monitor.id }] });
+    const policy = await client.callTool({ name: "get_data_policy", arguments: {} });
+    expect(policy.structuredContent).toMatchObject({ current_time: "2026-10-03T00:00:00.000Z" });
+    const metrics = await client.callTool({ name: "get_metrics", arguments: { start: "2026-10-01", end: "2026-10-02", ...noFilters, granularity: "hour", limit: null, cursor: null } });
+    expect(metrics.isError).not.toBe(true);
+    const result = metrics.structuredContent as { data: { hour: string }[]; summary: { totals: { observed: number; availability: number; latency: number } } };
+    expect(result.data).toHaveLength(48);
+    expect(result.data[0].hour).toBe("2026-10-01T00");
+    expect(result.data[47].hour).toBe("2026-10-02T23");
+    expect(result.summary.totals).toMatchObject({ observed: 172800, availability: 100, latency: 100 });
+    const defaults = await client.callTool({ name: "get_metrics", arguments: { start: "2026-10-01", end: "2026-10-02", ...noFilters, granularity: null, limit: null, cursor: null } });
+    expect(defaults.isError).not.toBe(true);
+    expect(defaults.structuredContent).toMatchObject({ granularity: "day" });
+    const compared = await client.callTool({ name: "compare_periods", arguments: { baseline: { start: "2026-10-01", end: "2026-10-01", ...noFilters }, current: { start: "2026-10-02", end: "2026-10-02", ...noFilters } } });
+    expect(compared.isError).not.toBe(true);
+    expect(compared.structuredContent).toMatchObject({ delta: { availability_percentage_points: 0, latency_ms: 0 } });
+    const invalid = await client.callTool({ name: "list_monitors", arguments: { project: "all", group: null, monitor: null } });
+    expect(invalid.isError).toBe(true);
+  } finally { await client.close(); vi.restoreAllMocks(); }
+});
