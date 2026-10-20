@@ -255,6 +255,7 @@ export async function record(
 }
 
 export async function runJob(env: Env, id: string) {
+  if (id.startsWith("heartbeat:")) return;
   const started = Date.now();
   const now = nowSeconds(),
     lease = crypto.randomUUID();
@@ -454,9 +455,9 @@ async function dispatchJobs(env: Env, now: number, direct: boolean) {
         AND jobs.due_at>=?-m.interval_seconds*2)`, now, now, now),
     statement(env.DB,
       `UPDATE jobs SET dispatched_at=? WHERE id IN (
-        SELECT id FROM jobs WHERE
+        SELECT id FROM jobs WHERE id NOT LIKE 'heartbeat:%' AND (
         (state='pending' AND (dispatched_at IS NULL OR dispatched_at<?))
-        OR (state='running' AND lease_until<? AND (dispatched_at IS NULL OR dispatched_at<?))
+        OR (state='running' AND lease_until<? AND (dispatched_at IS NULL OR dispatched_at<?)))
         ORDER BY due_at,id LIMIT 100
       ) RETURNING *`, now, now - 120, now, now - 120)
   ]);

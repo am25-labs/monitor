@@ -268,6 +268,53 @@ describe("engine and persistence", () => {
         ?.failures
     ).toBe(0);
   });
+  it.each([
+    ["cron", "pending"], ["cron", "running"],
+    ["alarm", "pending"], ["alarm", "running"]
+  ] as const)("keeps interrupted %s heartbeat reports in state %s out of absence checks", async (scheduler, state) => {
+    const now = Math.floor(Date.now() / 1000);
+    const m = await createMonitor({ kind: "heartbeat", created_at: now - 600, next_due: now - 1 });
+    const reportId = `heartbeat:${m.id}:${m.config_version}:${Math.floor(now / 60)}`;
+    await statement(env.DB,
+      "INSERT INTO jobs(id,monitor_id,config_version,due_at,state,lease_until) VALUES(?,?,?,?,?,?)",
+      reportId, m.id, m.config_version, now - 30, state, state === "running" ? now - 1 : null
+    ).run();
+    const enqueue = vi.fn().mockResolvedValue(undefined);
+    const dispatchEnv = {
+      ...env,
+      CHECKS: { sendBatch: enqueue } as unknown as Env["CHECKS"],
+      CHECK_RUNNERS: { getByName: () => ({ enqueue }) } as unknown as Env["CHECK_RUNNERS"]
+    };
+    await tick(dispatchEnv, now, now, scheduler);
+    expect(await first(env.DB, "SELECT dispatched_at FROM jobs WHERE id=?", reportId))
+      .toEqual({ dispatched_at: null });
+    await runJob(env, reportId);
+    expect(await rows(env.DB, "SELECT * FROM results")).toHaveLength(0);
+    const missing = (await first<Job>(env.DB, "SELECT * FROM jobs WHERE id<>?", reportId))!;
+    expect(enqueue).toHaveBeenCalledOnce();
+    if (scheduler === "alarm") expect(enqueue).toHaveBeenCalledWith(missing.id);
+    else expect(enqueue).toHaveBeenCalledWith([{ body: { id: missing.id } }], { delaySeconds: 0 });
+    await runJob(env, missing.id);
+    expect(await rows(env.DB, "SELECT reason FROM results"))
+      .toEqual([{ reason: "heartbeat_missing" }]);
+    expect(await first(env.DB, "SELECT failures,status FROM monitors WHERE id=?", m.id))
+      .toEqual({ failures: 1, status: "pending" });
+    expect(await rows(env.DB, "SELECT * FROM incidents")).toHaveLength(0);
+  });
+  it("allows an interrupted heartbeat report to be retried by its sender", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const m = await createMonitor({ kind: "heartbeat", next_due: now + 120 });
+    const id = `heartbeat:${m.id}:${m.config_version}:${Math.floor(now / m.interval_seconds)}`;
+    await statement(env.DB,
+      "INSERT INTO jobs(id,monitor_id,config_version,due_at) VALUES(?,?,?,?)",
+      id, m.id, m.config_version, now
+    ).run();
+    await tick(env, now);
+    await runJob(env, id);
+    await heartbeat(env, m, true);
+    expect(await rows(env.DB, "SELECT reason FROM results")).toEqual([{ reason: "ok" }]);
+    expect(await first(env.DB, "SELECT state FROM jobs WHERE id=?", id)).toEqual({ state: "completed" });
+  });
   it("opens after two failures, recovers after one success and deduplicates results", async () => {
     const m = await createMonitor();
     await sample(m.id, 1000, failure);
