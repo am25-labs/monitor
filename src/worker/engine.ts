@@ -20,6 +20,7 @@ import {
 import { automaticStatements } from "./incidents";
 import { deliverNotifications } from "./mail";
 import { providerOutageActive } from "./provider-outage";
+import { durableCall } from "./durable-call";
 
 class JobBusyError extends Error {}
 
@@ -465,11 +466,15 @@ async function dispatchJobs(env: Env, now: number, direct: boolean) {
   if (!jobs.length) return { dispatched: 0, cancelled: cancelled.meta.changes };
   try {
     if (direct) {
-      const dispatched = await Promise.allSettled(jobs.map((job) =>
-        env.CHECK_RUNNERS.getByName(job.monitor_id).enqueue(job.id)
-      ));
-      const failed = dispatched.find((result) => result.status === "rejected");
-      if (failed?.status === "rejected") throw failed.reason;
+      for (let offset = 0; offset < jobs.length; offset += 10) {
+        const dispatched = await Promise.allSettled(
+          jobs.slice(offset, offset + 10).map((job) => durableCall(() =>
+            env.CHECK_RUNNERS.getByName(job.monitor_id).enqueue(job.id)
+          ))
+        );
+        const failed = dispatched.find((result) => result.status === "rejected");
+        if (failed?.status === "rejected") throw failed.reason;
+      }
     } else {
       await env.CHECKS.sendBatch(jobs.map((job) => ({ body: { id: job.id } })), { delaySeconds: 0 });
     }

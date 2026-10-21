@@ -5,7 +5,7 @@ export class MonitorRunner extends DurableObject<Env> {
   async enqueue(id: string) {
     await this.ctx.storage.transaction(async (storage) => {
       await storage.put(`job:${id}`, id);
-      await storage.setAlarm(Date.now());
+      if (await storage.getAlarm() === null) await storage.setAlarm(Date.now());
     });
   }
 

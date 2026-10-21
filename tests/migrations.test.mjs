@@ -213,3 +213,37 @@ for (const [column, value] of [["check_count", 2], ["success_count", 0], ["laten
     } finally { db.close(); }
   });
 }
+
+test("job retention uses an indexed cutoff and preserves recent or unfinished work", () => {
+  const db = new DatabaseSync(":memory:");
+  try {
+    const directory = new URL("../migrations/", import.meta.url);
+    for (const file of readdirSync(directory).sort()) {
+      if (file >= "0012_jobs_retention.sql") break;
+      db.exec(readFileSync(new URL(file, directory), "utf8"));
+    }
+    db.exec(`
+      INSERT INTO projects(id,name,created_at) VALUES('project','Project',1);
+      INSERT INTO monitors(id,project_id,name,kind,config,interval_seconds,next_due,created_at)
+        VALUES('monitor','project','Monitor','http','encrypted',60,1,1);
+      WITH RECURSIVE entries(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM entries WHERE n<2500)
+      INSERT INTO jobs(id,monitor_id,config_version,due_at,state,completed_at)
+        SELECT 'recent:'||n,'monitor',1,1,'completed',200 FROM entries;
+      INSERT INTO jobs(id,monitor_id,config_version,due_at,state,completed_at) VALUES
+        ('expired-completed','monitor',1,1,'completed',99),
+        ('expired-cancelled','monitor',1,1,'cancelled',99),
+        ('boundary','monitor',1,1,'completed',100),
+        ('running','monitor',1,1,'running',NULL),
+        ('pending','monitor',1,1,'pending',NULL);
+    `);
+    const before = db.prepare("SELECT * FROM jobs ORDER BY id").all();
+    db.exec(readFileSync(new URL("0012_jobs_retention.sql", directory), "utf8"));
+    assert.deepEqual(db.prepare("SELECT * FROM jobs ORDER BY id").all(), before);
+    const sql = "DELETE FROM jobs WHERE id IN (SELECT id FROM jobs WHERE state IN ('completed','cancelled') AND completed_at<? LIMIT 1000)";
+    const plan = db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(100);
+    assert.ok(plan.some(({ detail }) => detail.includes("jobs_retention") && detail.includes("completed_at<?")));
+    assert.equal(db.prepare(sql).run(100).changes, 2);
+    assert.equal(db.prepare("SELECT count(*) AS total FROM jobs").get().total, 2503);
+    assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
+  } finally { db.close(); }
+});

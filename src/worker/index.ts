@@ -9,6 +9,7 @@ import { authorize, requireOrigin } from "./auth";
 import { consume } from "./engine";
 import { generalSettings } from "./settings";
 import { validationMessage } from "../shared/validation";
+import { durableCall } from "./durable-call";
 
 async function route(request: Request, env: Env) {
   const url = new URL(request.url),
@@ -102,7 +103,7 @@ export default {
     return secured;
   },
   async scheduled(_controller: ScheduledController, env: Env) {
-    await env.SCHEDULER.getByName("engine").ensure();
+    await durableCall(() => env.SCHEDULER.getByName("engine").ensure());
   },
   async queue(batch: MessageBatch<JobMessage>, env: Env) {
     await consume(batch, env);

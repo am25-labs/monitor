@@ -105,3 +105,13 @@ it("finishes a healthy monitor while another runner is still waiting for its res
     await running;
   }
 }, 10000);
+
+it("duplicate dispatches preserve the pending alarm and stored job", async () => {
+  const { id, runner } = await queue(await createMonitor());
+  await runInDurableObject(runner, async (instance, state) => {
+    const scheduled = await state.storage.getAlarm();
+    await instance.enqueue(id);
+    expect(await state.storage.getAlarm()).toBe(scheduled);
+    expect(await state.storage.list({ prefix: "job:" })).toEqual(new Map([[`job:${id}`, id]]));
+  });
+});

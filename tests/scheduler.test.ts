@@ -51,10 +51,18 @@ it.each([25, 100])("schedules %i monitors and keeps running without additional c
   await scheduler.ensure();
   await runInDurableObject(scheduler, async (instance, state) => {
     const bindings = (instance as unknown as { env: Env }).env;
-    const publish = vi.spyOn(bindings.CHECK_RUNNERS, "getByName").mockReturnValue({ enqueue: vi.fn().mockResolvedValue(undefined) } as unknown as ReturnType<Env["CHECK_RUNNERS"]["getByName"]>);
+    let active = 0, peak = 0;
+    const enqueue = vi.fn(async () => {
+      active++;
+      peak = Math.max(peak, active);
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      active--;
+    });
+    const publish = vi.spyOn(bindings.CHECK_RUNNERS, "getByName").mockReturnValue({ enqueue } as unknown as ReturnType<Env["CHECK_RUNNERS"]["getByName"]>);
     try {
       await instance.alarm();
       expect(publish).toHaveBeenCalledTimes(count);
+      expect(peak).toBe(10);
       expect(await first(env.DB, "SELECT COUNT(*) AS count FROM jobs WHERE dispatched_at IS NOT NULL")).toEqual({ count });
       expect(await state.storage.getAlarm()).toBeGreaterThan(Date.now());
       await instance.alarm();
@@ -107,4 +115,27 @@ it("rearms after a platform alarm fires without a cron call", async () => {
   expect(await runDurableObjectAlarm(scheduler)).toBe(true);
   expect(await runInDurableObject(scheduler, (_, state) => state.storage.getAlarm())).toBeGreaterThan(Date.now());
   expect(await first(env.DB, "SELECT last_finished FROM engine WHERE id=1")).toEqual({ last_finished: expect.any(Number) });
+});
+
+it("recreates a disconnected runner stub and queues the job once", async () => {
+  await createMonitor({ next_due: Math.floor(Date.now() / 1000) });
+  vi.spyOn(console, "log").mockImplementation(() => {});
+  await scheduler.ensure();
+  await runInDurableObject(scheduler, async (instance, state) => {
+    const bindings = (instance as unknown as { env: Env }).env;
+    const disconnected = Object.assign(new Error("Connection closed"), { retryable: true });
+    const failed = vi.fn().mockRejectedValue(disconnected);
+    const recovered = vi.fn().mockResolvedValue(undefined);
+    const publish = vi.spyOn(bindings.CHECK_RUNNERS, "getByName")
+      .mockReturnValueOnce({ enqueue: failed } as unknown as ReturnType<Env["CHECK_RUNNERS"]["getByName"]>)
+      .mockReturnValue({ enqueue: recovered } as unknown as ReturnType<Env["CHECK_RUNNERS"]["getByName"]>);
+    try {
+      await instance.alarm();
+      expect(failed).toHaveBeenCalledTimes(1);
+      expect(recovered).toHaveBeenCalledTimes(1);
+      expect(publish).toHaveBeenCalledTimes(2);
+      expect(await first(env.DB, "SELECT COUNT(*) AS count FROM jobs WHERE dispatched_at IS NOT NULL")).toEqual({ count: 1 });
+      expect(await state.storage.getAlarm()).toBeGreaterThan(Date.now());
+    } finally { publish.mockRestore(); }
+  });
 });
