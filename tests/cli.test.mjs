@@ -451,6 +451,7 @@ test("Cloudflare pagination and errors do not expose response bodies or tokens",
 test("publishing requires official stable release on GitHub-hosted Actions", () => {
   const env = { GITHUB_ACTIONS: "true", GITHUB_EVENT_NAME: "release", RUNNER_ENVIRONMENT: "github-hosted", GITHUB_REPOSITORY: "am25-labs/monitor", GITHUB_REF: "refs/tags/0.12.5", MONITOR_RELEASE_TAG: "0.12.5", MONITOR_RELEASE_PRERELEASE: "false", MONITOR_RELEASE_DRAFT: "false", GITHUB_SHA: sha };
   assertPublishEnvironment(env, "0.12.5");
+  assert.throws(() => assertPublishEnvironment({ ...env, MONITOR_RELEASE_TAG: "0.13.0", GITHUB_REF: "refs/tags/0.13.0" }, "0.12.5"), /Release 0\.13\.0 does not match package version 0\.12\.5/);
   for (const [key, value] of Object.entries({ GITHUB_ACTIONS: "false", GITHUB_EVENT_NAME: "push", GITHUB_REPOSITORY: "other/monitor", RUNNER_ENVIRONMENT: "self-hosted", MONITOR_RELEASE_PRERELEASE: "true", MONITOR_RELEASE_DRAFT: "true", GITHUB_REF: "refs/tags/1.0.0" })) assert.throws(() => assertPublishEnvironment({ ...env, [key]: value }, "0.12.5"));
 });
 
