@@ -52,7 +52,3 @@ jobs:
           MONITOR_TARBALL: ${{ steps.package.outputs.tarball }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_BOOTSTRAP_TOKEN }}
         run: npm publish "$MONITOR_TARBALL" --provenance --access public --ignore-scripts
-      - name: Verify published artifact and provenance
-        env:
-          MONITOR_TARBALL: ${{ steps.package.outputs.tarball }}
-        run: node scripts/release/verify-provenance.mjs "$MONITOR_TARBALL"

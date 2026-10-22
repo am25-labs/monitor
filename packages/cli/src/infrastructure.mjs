@@ -128,7 +128,10 @@ export async function inspectResources(cf, state, secrets, { worker = true } = {
   const settings = await cf.get(prefix(`/workers/scripts/${encodeURIComponent(state.name)}/settings`));
   const bindings = settings.bindings ?? [];
   const allowedBindings = new Set(["ASSETS", "DB", "CHECKS", "SCHEDULER", "CHECK_RUNNERS", "ENVIRONMENT", "APP_ORIGIN", "ACCESS_TEAM_DOMAIN", "ACCESS_AUDIENCES", "MONITOR_VERSION", "MONITOR_SOURCE_SHA", "CONFIG_KEY", "ACCESS_EMAIL"]);
-  requireValue(bindings.every((binding) => allowedBindings.has(binding.name)), "El Worker tiene bindings adicionales que requieren conciliación manual.", "Additional Worker bindings require manual reconciliation.");
+  const additional = bindings.filter((binding) => !allowedBindings.has(binding.name)
+    && !(binding.name === "POSTMARK_TOKEN" && binding.type === "secret_text"));
+  const names = additional.map((binding) => `${binding.name} (${binding.type})`).join(", ");
+  requireValue(additional.length === 0, `El Worker tiene bindings adicionales que requieren conciliación manual: ${names}.`, `Additional Worker bindings require manual reconciliation: ${names}.`);
   requireValue(bindings.some((binding) => binding.name === "DB" && binding.type === "d1" && (binding.database_id ?? binding.id) === state.resources.database.id), "El Worker usa otra base de datos.", "The Worker uses another database.");
   requireValue(bindings.some((binding) => binding.name === "CHECKS" && binding.type === "queue" && binding.queue_name === state.resources.queue.name), "El Worker usa otra cola.", "The Worker uses another queue.");
   const expected = { ENVIRONMENT: "production", APP_ORIGIN: `https://${state.hostname}`, ACCESS_TEAM_DOMAIN: state.teamDomain, ACCESS_AUDIENCES: state.resources.access.aud };

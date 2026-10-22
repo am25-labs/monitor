@@ -381,6 +381,27 @@ test("adoption backs up and deploys locally without creating resources or requir
   assert.deepEqual(context.state.resources.namespaces, { SCHEDULER: "scheduler-id", CHECK_RUNNERS: "runner-id" });
 });
 
+test("adoption preserves a legacy Postmark secret without reading or rewriting its value", async (t) => {
+  const context = await adoptionFixture(t);
+  const legacy = { name: "POSTMARK_TOKEN", type: "secret_text" };
+  context.cf.settings.bindings.push(legacy);
+  const publish = context.cf.publish.bind(context.cf);
+  context.cf.publish = (manifest) => { publish(manifest); context.cf.settings.bindings.push(legacy); };
+  await adopt(context);
+  assert.equal(context.state.phase, "ready");
+  assert.ok(context.cf.settings.bindings.includes(legacy));
+  assert.deepEqual(await context.store.secrets(), secrets);
+});
+
+test("adoption still rejects unknown bindings and a non-secret Postmark binding before deploying", async (t) => {
+  for (const binding of [{ name: "CUSTOM_SECRET", type: "secret_text" }, { name: "POSTMARK_TOKEN", type: "plain_text" }]) {
+    const context = await adoptionFixture(t);
+    context.cf.settings.bindings.push({ ...binding, text: "private-test-value" });
+    await assert.rejects(adopt(context), (error) => error.message.includes(`${binding.name} (${binding.type})`) && !error.message.includes("private-test-value"));
+    assert.equal(context.calls.length, 0);
+  }
+});
+
 test("adoption accepts an existing installation without release markers", async (t) => {
   const context = await adoptionFixture(t, { markerless: true });
   await adopt(context);

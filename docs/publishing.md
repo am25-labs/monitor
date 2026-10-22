@@ -25,11 +25,11 @@ La Action valida repositorio, evento, etiqueta y versiones; ejecuta `pnpm check`
 
 Instala el tarball en una carpeta temporal sin código fuente de la aplicación y verifica que Wrangler procese el runtime con `--no-bundle --dry-run`. Publica ese mismo tarball mediante `npm publish --provenance --access public --ignore-scripts` y conserva el artefacto y checksum en GitHub Actions.
 
-Después comprueba la integridad publicada y la atestación de provenance contra repositorio, commit y digest esperados. Si la verificación posterior falla, la versión podría estar publicada: revisá npm antes de actuar y no intentes republicar una versión existente.
+El workflow termina cuando `npm publish --provenance` confirma la publicación. npm genera y adjunta provenance durante ese paso; no se ejecuta una consulta posterior automática al registro. Si la publicación devuelve un error, revisá npm antes de actuar y no intentes republicar una versión existente.
 
 La compilación, el empaquetado oficial y la publicación están restringidos a GitHub Actions. Localmente se prueban runtimes sintéticos. Los scripts de release rechazan ejecuciones fuera del entorno de publicación.
 
-La primera publicación real debe completar la verificación de provenance; esto no puede certificarse con pruebas locales. Referencias: [Trusted Publishing](https://docs.npmjs.com/trusted-publishers/) y [provenance](https://docs.npmjs.com/generating-provenance-statements/).
+La publicación exige `--provenance` e `id-token: write`. Su generación real depende de npm y GitHub Actions; las pruebas locales no certifican una publicación. Referencias: [Trusted Publishing](https://docs.npmjs.com/trusted-publishers/) y [provenance](https://docs.npmjs.com/generating-provenance-statements/).
 
 ## Publicación frente a despliegue
 
@@ -43,4 +43,4 @@ Reuse an existing AM25 token with permission to publish `@am25/monitor`, stored 
 
 Pushes to `main` do not trigger Actions; source checks run manually or when publishing a Release. Installation, adoption and deployments run locally through the CLI. Adoption backs up and deploys using existing resources, without GitHub variables or Cloudflare secrets in Actions.
 
-The workflow builds, packs, installs and checks the exact tarball without application source, then publishes that artifact and verifies registry integrity and provenance. Declare compatible upgrade sources in `packages/cli/compatibility.json`; new migrations must remain compatible with the running previous release. Real provenance verification completes only after publishing to npm.
+The workflow builds, packs, installs and checks the exact tarball without application source, then publishes that artifact with mandatory `--provenance`. It ends when npm confirms publication, without a separate automated registry check. Declare compatible upgrade sources in `packages/cli/compatibility.json`; new migrations must remain compatible with the running previous release.

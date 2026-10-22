@@ -1,6 +1,6 @@
 {
   "name": "am25-monitor",
-  "version": "0.13.2",
+  "version": "0.13.3",
   "description": "AM25 Monitor: website, API, and background process monitoring on Cloudflare",
   "private": true,
   "type": "module",
