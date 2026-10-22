@@ -36,11 +36,11 @@ El límite de cien monitores no garantiza comprobaciones exactas cada minuto. Co
 
 ### Versiones y Releases
 
-Los GitHub Releases se crean manualmente y son independientes de los despliegues mediante la CLI. La versión de `package.json`, la etiqueta `X.Y.Z` y el Release deben corresponder al mismo estado del código al publicar una versión. En Ajustes → Acerca de, el diálogo muestra la versión y el SHA corto del commit desplegado, con enlace al Release de la versión instalada. GitHub Actions incorpora ese SHA al compilar la interfaz mediante `VITE_GIT_SHA`; si no se proporciona, como en desarrollo local, se muestra únicamente la versión.
+Los GitHub Releases se crean manualmente y son independientes de los despliegues mediante la CLI. Las versiones de `package.json` y `packages/cli/package.json`, la etiqueta `X.Y.Z` y el Release deben corresponder al mismo estado del código al publicar una versión. En Ajustes → Acerca de, el diálogo muestra la versión y el SHA corto del commit desplegado, con enlace al Release de la versión instalada. GitHub Actions incorpora ese SHA al compilar la interfaz mediante `VITE_GIT_SHA`; si no se proporciona, como en desarrollo local, se muestra únicamente la versión.
 
 Se usará versionado semántico: `MAJOR.MINOR.PATCH`. Los cambios incompatibles incrementan la versión mayor, las funciones compatibles la menor y las correcciones la revisión. Durante `0.x`, las versiones menores pueden introducir cambios incompatibles, que se indicarán en las notas del Release.
 
-Los Releases incluirán los cambios, requisitos de configuración y migraciones relevantes. Para instalar una versión concreta, utiliza su etiqueta o su archivo de código fuente en [Releases](https://github.com/am25-labs/monitor/releases), en lugar del estado más reciente de `main`. Conserva la configuración de tu instalación cuando actualices.
+Los Releases incluirán los cambios, requisitos de configuración y migraciones relevantes. Para instalar una versión concreta, usá `pnpm dlx @am25/monitor@X.Y.Z init .` y consultá sus notas en [Releases](https://github.com/am25-labs/monitor/releases). Conserva la configuración de tu instalación cuando actualices.
 
 Publicar un Release estable activa la [publicación del paquete en npm](docs/publishing.md); no despliega instancias. La adopción desde tu computadora hace el respaldo y el primer despliegue con la CLI sobre los recursos existentes. Las actualizaciones con CLI son explícitas. Volver a código anterior tampoco revierte la base de datos: consultá la guía antes de recuperar una versión.
 
@@ -49,6 +49,8 @@ Publicar un Release estable activa la [publicación del paquete en npm](docs/pub
 Creado por Alejandro Mártir. Copyright 2026 AM25, S.A.S. DE C.V.
 
 Disponible bajo [Apache License 2.0](LICENSE). Consulta [NOTICE](NOTICE) para la atribución del proyecto. Las dependencias conservan sus propias licencias.
+
+Consulta la [documentación de API y MCP de análisis](docs/analytics.md) para retención, credenciales, filtros y conexión de agentes.
 
 ## English
 
@@ -68,13 +70,13 @@ React, Vite, TypeScript, and shadcn/ui power the interface. Cloudflare Workers r
 
 ### Install
 
-Install the compiled application with the CLI:
+The CLI installs the compiled application in your Cloudflare account:
 
 ```sh
-pnpm dlx @am25/monitor init . --language en
+pnpm dlx @am25/monitor init .
 ```
 
-See the [CLI guide](docs/cli/en.md) for installation, adoption, diagnosis and updates. The command requires a published npm release; this repository prepares publishing through GitHub Actions with provenance. [Free validation](docs/free-plan.md) distinguishes tested behavior from pending live measurements. External PRs are not accepted; see [CONTRIBUTING.md](CONTRIBUTING.md).
+See the [CLI guide](docs/cli/en.md) for installation, adoption, diagnosis and updates. The command requires a published npm release; this repository prepares publishing through GitHub Actions with provenance. [Free validation](docs/free-plan.md#english) distinguishes tested behavior from pending live measurements. External PRs are not accepted; see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 The [previous setup guide](docs/setup/en.md) remains as a technical reference for existing installations. Each installation uses its own accounts, resources, and credentials.
 
@@ -84,20 +86,18 @@ The hundred-monitor limit does not guarantee checks exactly every minute. See ho
 
 ### Versions and Releases
 
-GitHub Releases are created manually and are independent of deployments through the CLI. The version in `package.json`, the `X.Y.Z` tag, and the Release must correspond to the same code state when publishing a version. In Settings → About, the dialog displays the version and the deployed commit's short SHA, linked to the installed version’s Release. GitHub Actions embeds this SHA when compiling the interface through `VITE_GIT_SHA`; when it is absent, as in local development, only the version is displayed.
+GitHub Releases are created manually and are independent of deployments through the CLI. The versions in `package.json` and `packages/cli/package.json`, the `X.Y.Z` tag, and the Release must correspond to the same code state when publishing a version. In Settings → About, the dialog displays the version and the deployed commit's short SHA, linked to the installed version’s Release. GitHub Actions embeds this SHA when compiling the interface through `VITE_GIT_SHA`; when it is absent, as in local development, only the version is displayed.
 
 Semantic versioning will use `MAJOR.MINOR.PATCH`. Breaking changes increase the major version, compatible features the minor version, and fixes the patch version. During `0.x`, minor versions may introduce breaking changes, which will be stated in the Release notes.
 
-Releases will describe changes, configuration requirements, and relevant migrations. To install a specific version, use its tag or source archive from [Releases](https://github.com/am25-labs/monitor/releases), rather than the latest state of `main`. Preserve your installation configuration when updating.
+Releases will describe changes, configuration requirements, and relevant migrations. To install a specific version, use `pnpm dlx @am25/monitor@X.Y.Z init .` and read its notes in [Releases](https://github.com/am25-labs/monitor/releases). Preserve your installation configuration when updating.
 
-Publishing a stable Release triggers [npm package publishing](docs/publishing.md), without deploying instances. Adoption from your computer backs up and performs the first CLI deployment using existing resources. CLI updates are explicit. Reverting code does not revert the database: consult the guide before recovering a version.
+Publishing a stable Release triggers [npm package publishing](docs/publishing.md#english), without deploying instances. Adoption from your computer backs up and performs the first CLI deployment using existing resources. CLI updates are explicit. Reverting code does not revert the database: consult the guide before recovering a version.
 
 ### Author and license
 
 Created by Alejandro Mártir. Copyright 2026 AM25, S.A.S. DE C.V.
 
 Available under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE) for project attribution. Dependencies retain their own licenses.
-
-Consulta la [documentación de API y MCP de análisis](docs/analytics.md) para retención, credenciales, filtros y conexión de agentes.
 
 See the [analytics API and MCP documentation](docs/analytics.md) for retention, credentials, filters and agent connections.
