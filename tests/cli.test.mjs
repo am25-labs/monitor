@@ -13,7 +13,7 @@ import { adopt, verifyEncryptionKey } from "../packages/cli/src/adoption.mjs";
 import { doctor } from "../packages/cli/src/doctor.mjs";
 import { assertPublishEnvironment } from "../packages/cli/src/publish-guard.mjs";
 import { Cancelled } from "../packages/cli/src/messages.mjs";
-import { assertArtifactIntegrity, matchesProvenance } from "../scripts/release/provenance.mjs";
+import { assertArtifactIntegrity, matchesProvenance, readRegistryJson } from "../scripts/release/provenance.mjs";
 
 const sha = "a".repeat(40);
 const account = "b".repeat(32);
@@ -471,6 +471,19 @@ test("missing permissions stop installation before confirmation or mutation", as
   await assert.rejects(install({ ...context, source: context.release.directory, ui: { log() {}, async confirm() { confirmations++; } } }));
   assert.equal(confirmations, 0);
   assert.equal(context.cf.writes.length, 0);
+});
+
+test("registry verification retries transient failures but rejects permanent failures", async () => {
+  const url = "https://registry.npmjs.org/@am25%2fmonitor/0.13.0";
+  for (const error of [new DOMException("Timed out", "TimeoutError"), new DOMException("Aborted", "AbortError"), new TypeError("fetch failed")]) {
+    assert.equal(await readRegistryJson(url, async () => { throw error; }), null);
+  }
+  for (const status of [404, 408, 429, 503]) {
+    assert.equal(await readRegistryJson(url, async () => new Response(null, { status })), null);
+  }
+  assert.deepEqual(await readRegistryJson(url, async () => Response.json({ version: "0.13.0" })), { version: "0.13.0" });
+  await assert.rejects(readRegistryJson(url, async () => new Response(null, { status: 403 })), /HTTP 403/);
+  await assert.rejects(readRegistryJson(url, async () => new Response("invalid JSON")), SyntaxError);
 });
 
 test("provenance is bound to workflow, tag, source commit, hosted builder and artifact", () => {

@@ -1,5 +1,23 @@
 import { requireValue } from "../../packages/cli/src/messages.mjs";
 
+export async function readRegistryJson(url, fetcher = fetch) {
+  let response;
+  try {
+    response = await fetcher(url, { signal: AbortSignal.timeout(30000) });
+    if (response.ok) return await response.json();
+  } catch (error) {
+    if (error?.name === "TimeoutError" || error?.name === "AbortError" || error instanceof TypeError) {
+      console.warn(`Registry request failed (${error.name}); retrying verification.`);
+      return null;
+    }
+    throw error;
+  }
+  requireValue(response.status === 404 || response.status === 408 || response.status === 429 || response.status >= 500,
+    `No se pudo consultar npm: HTTP ${response.status}.`, `Could not query npm: HTTP ${response.status}.`);
+  console.warn(`Registry returned HTTP ${response.status}; retrying verification.`);
+  return null;
+}
+
 export function matchesProvenance(bundle, { version, sha, digest }) {
   try {
     const statement = JSON.parse(Buffer.from(bundle.dsseEnvelope.payload, "base64").toString("utf8"));
