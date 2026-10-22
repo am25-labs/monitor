@@ -72,6 +72,8 @@ pnpm dlx @am25/monitor init . --adopt
 
 El wizard pide la ruta al `wrangler.jsonc` original, el correo del propietario y la llave original de producción mediante entrada oculta. No tenés que configurar variables en GitHub ni ejecutar otra vez el pipeline anterior. El token de Cloudflare se ingresa en el mismo wizard.
 
+El `wrangler.jsonc` del repositorio contiene valores de ejemplo. Para adoptar, proporcioná el archivo con la configuración real de tu instancia. Si conservás una copia local como `wrangler.instance.jsonc`, ese nombre está excluido de Git; ingresá su ruta completa en el wizard.
+
 La CLI verifica recursos, Access, las migraciones existentes y la llave contra datos cifrados. También verifica que la versión seleccionada esté publicada con provenance. Para adoptar, el esquema debe coincidir con esa versión; las instalaciones sin metadatos de versión previos también se aceptan. Si no hay datos cifrados pide confirmar que conservás la llave original.
 
 Al confirmar, respalda configuración, secretos y D1, y despliega la versión de la CLI sobre el mismo Worker, base, cola, dominio y namespaces. Solo marca la adopción como terminada después de verificar la publicación. Si falla, repetí el mismo comando con la misma versión de CLI: reutiliza el respaldo y los datos ya solicitados.

@@ -182,7 +182,7 @@ Si no ves la aplicación, revisa la cuenta seleccionada y el hostname antes de c
 
 ## 5. Configurar el Worker y el dominio
 
-Edita `wrangler.jsonc` reemplazando los valores de la instalación original:
+Edita `wrangler.jsonc` reemplazando los valores de ejemplo:
 
 | Campo | Tu valor |
 | --- | --- |

@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "am25-monitor",
+  "name": "my-monitor",
   "account_id": "00000000000000000000000000000000",
   "main": "src/worker/index.ts",
   "compatibility_date": "2026-10-10",
@@ -35,7 +35,7 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "am25-monitor",
+      "database_name": "my-monitor-db",
       "database_id": "00000000-0000-0000-0000-000000000000",
       "migrations_dir": "migrations"
     }
@@ -44,12 +44,12 @@
     "producers": [
       {
         "binding": "CHECKS",
-        "queue": "am25-monitor-checks"
+        "queue": "my-monitor-checks"
       }
     ],
     "consumers": [
       {
-        "queue": "am25-monitor-checks",
+        "queue": "my-monitor-checks",
         "max_batch_size": 5,
         "max_batch_timeout": 0,
         "max_concurrency": 20,

@@ -182,7 +182,7 @@ If you cannot see the application, check the selected account and hostname befor
 
 ## 5. Configure the Worker and domain
 
-Edit `wrangler.jsonc`, replacing the original installation values:
+Edit `wrangler.jsonc`, replacing the example values:
 
 | Field | Your value |
 | --- | --- |

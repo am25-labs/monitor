@@ -53,6 +53,8 @@ pnpm dlx @am25/monitor init . --adopt
 
 The wizard asks for the original `wrangler.jsonc` path, owner email and original production encryption key through hidden input. Enter your Cloudflare token in the wizard. No GitHub variables or previous pipeline deployment are required.
 
+The repository's `wrangler.jsonc` contains example values. For adoption, provide your instance's actual configuration file. A local copy named `wrangler.instance.jsonc` is excluded from Git; enter its full path in the wizard.
+
 Adoption verifies resources, Access, the published package/provenance metadata, matching migration names and the key against existing encrypted data. Existing installations without release markers are accepted. If there is no encrypted sample, confirm the original backed-up key.
 
 After confirmation, it backs up configuration, secrets and D1, and deploys the CLI release using the same Worker, database, queue, domain and namespaces. It marks adoption complete only after verifying publication. Repeat the same command and CLI version after failure to resume without repeating questions or replacing the original backup.
