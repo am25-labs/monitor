@@ -1,0 +1,37 @@
+{
+  "name": "@am25/monitor",
+  "version": "0.12.5",
+  "description": "Install and maintain AM25 Monitor on your Cloudflare account",
+  "type": "module",
+  "bin": { "monitor": "bin/monitor.mjs" },
+  "files": ["bin/", "src/", "runtime/", "LICENSE", "NOTICE", "README.md"],
+  "engines": { "node": ">=22.14.0" },
+  "dependencies": { "wrangler": "4.149.0" },
+  "scripts": { "prepublishOnly": "node src/publish-guard.mjs" },
+  "publishConfig": { "access": "public", "provenance": true },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/am25-labs/monitor.git",
+    "directory": "packages/cli"
+  },
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Alejandro Mártir",
+    "url": "https://alemartir.com"
+  },
+  "homepage": "https://github.com/am25-labs/monitor#readme",
+  "bugs": {
+    "url": "https://github.com/am25-labs/monitor/issues"
+  },
+  "keywords": [
+    "monitoring",
+    "uptime",
+    "status-page",
+    "heartbeats",
+    "cloudflare",
+    "workers",
+    "cli",
+    "am25",
+    "monitor"
+  ]
+}

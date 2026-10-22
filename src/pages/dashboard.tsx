@@ -217,9 +217,15 @@ function DashboardView({
       <aside className="border-b bg-card p-5 lg:sticky lg:top-0 lg:h-screen lg:border-r lg:border-b-0">
         <Link
           to="/app/"
-          className="flex items-center gap-2 text-lg font-semibold"
+          className="flex items-center"
         >
-          AM25 Monitor
+          <img
+            src={theme === "dark" ? "/am25-monitor-logo-w.svg" : "/am25-monitor-logo-k.svg"}
+            alt="AM25 Monitor"
+            width={3620}
+            height={1080}
+            className="h-12 w-auto"
+          />
         </Link>
         <p className="mt-1 text-xs text-muted-foreground">
           {t("Tu infraestructura, en observación")}

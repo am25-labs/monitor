@@ -1,14 +1,14 @@
-name: Deploy production
+name: Check source
 on:
   push:
     branches: [main]
 permissions:
   contents: read
 concurrency:
-  group: monitor-production
+  group: monitor-source-checks
   cancel-in-progress: false
 jobs:
-  deploy:
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,13 +19,3 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
-      - run: pnpm build
-        env:
-          VITE_GIT_SHA: ${{ github.sha }}
-      - name: Migrate and deploy
-        run: pnpm run deploy
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          MONITOR_CONFIG_KEY: ${{ secrets.MONITOR_CONFIG_KEY }}
-          ACCESS_EMAIL: ${{ secrets.ACCESS_EMAIL }}

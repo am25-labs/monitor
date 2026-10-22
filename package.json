@@ -1,6 +1,7 @@
 {
   "name": "am25-monitor",
   "version": "0.12.5",
+  "description": "AM25 Monitor: website, API, and background process monitoring on Cloudflare",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.23.0",
@@ -15,41 +16,41 @@
     "db:local": "wrangler d1 migrations apply DB --local --config wrangler.local.jsonc",
     "typegen": "wrangler types --config wrangler.local.jsonc --strict-vars=false",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run && node --test tests/deploy.test.mjs tests/migrations.test.mjs tests/localization.test.mjs tests/mcp-bridge.test.mjs",
+    "test": "vitest run && node --test tests/deploy.test.mjs tests/migrations.test.mjs tests/localization.test.mjs tests/mcp-bridge.test.mjs tests/cli.test.mjs",
     "check": "pnpm typecheck && pnpm test",
     "build": "vite build",
     "deploy": "node scripts/deploy.mjs"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.32.1",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "jose": "^6.1.0",
-    "lucide-react": "^0.544.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "react-router-dom": "^7.9.3",
-    "tailwind-merge": "^3.3.1",
-    "zod": "^4.1.11",
-    "@base-ui/react": "^1.0.0",
-    "date-fns": "^4.4.0",
-    "react-day-picker": "^10.0.2",
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "jose": "6.2.12",
+    "lucide-react": "0.544.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-router-dom": "7.18.4",
+    "tailwind-merge": "3.7.0",
+    "zod": "4.6.5",
+    "@base-ui/react": "1.9.0",
+    "date-fns": "4.4.0",
+    "react-day-picker": "10.0.2",
     "react-email": "6.11.1",
     "recharts": "3.8.0"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.1.14",
-    "@types/node": "^22.18.6",
-    "@types/react": "^19.2.0",
-    "@types/react-dom": "^19.2.0",
-    "@vitejs/plugin-react": "^5.0.4",
-    "tailwindcss": "^4.1.14",
-    "tw-animate-css": "^1.4.0",
-    "typescript": "^5.9.3",
-    "vite": "^8.0.0",
-    "vitest": "^4.1.0",
-    "wrangler": "^4.145.0",
-    "@cloudflare/vitest-plugin": "^1.4.0"
+    "@tailwindcss/vite": "4.3.3",
+    "@types/node": "22.20.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "5.2.0",
+    "tailwindcss": "4.3.3",
+    "tw-animate-css": "1.4.0",
+    "typescript": "5.9.3",
+    "vite": "8.3.4",
+    "vitest": "4.1.11",
+    "wrangler": "4.149.0",
+    "@cloudflare/vitest-plugin": "1.4.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -58,9 +59,26 @@
     ]
   },
   "license": "Apache-2.0",
-  "author": "AM25",
+  "author": {
+    "name": "Alejandro Mártir",
+    "url": "https://alemartir.com"
+  },
+  "homepage": "https://github.com/am25-labs/monitor#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/am25-labs/monitor.git"
-  }
+    "url": "git+https://github.com/am25-labs/monitor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/am25-labs/monitor/issues"
+  },
+  "keywords": [
+    "monitoring",
+    "uptime",
+    "status-page",
+    "heartbeats",
+    "cloudflare",
+    "workers",
+    "am25",
+    "monitor"
+  ]
 }

@@ -1,8 +1,10 @@
-# Set up AM25 Monitor
+# Previous AM25 Monitor setup
 
 [Español](es.md) · [Introduction](../../README.md)
 
-This guide installs AM25 Monitor in your Cloudflare account using GitHub Actions. Examples use `monitor.example.com` and `owner@example.com`: replace them with your own values. Do not copy the AM25 installation identifiers that may be present in the repository configuration.
+This guide documents the previous workflow as a reference for existing installations. The current workflow checks source code without deploying. Use the [CLI](../cli/en.md) to install or adopt from your computer; no GitHub variables or Cloudflare secrets are needed in GitHub.
+
+Historical examples use `monitor.example.com` and `owner@example.com`. Do not copy AM25 installation identifiers.
 
 ## Agent-assisted installation (optional)
 

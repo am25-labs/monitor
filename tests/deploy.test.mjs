@@ -69,7 +69,7 @@ test("migrations and secrets are completed before deploying", () => {
   assert.match(calls[2], /wrangler deploy/);
   assert.match(calls[2], /--secrets-file \/temporary\/secrets.json/);
 });
-test("production workflow triggers only on main, checks before build and serializes deploys", () => {
+test("source workflow validates main without deploying or requiring Cloudflare secrets", () => {
   const workflow = readFileSync(
     new URL("../.github/workflows/deploy.yml", import.meta.url),
     "utf8"
@@ -77,10 +77,8 @@ test("production workflow triggers only on main, checks before build and seriali
   assert.match(workflow, /branches: \[main\]/);
   assert.doesNotMatch(workflow, /pull_request|workflow_dispatch|develop/);
   assert.match(workflow, /cancel-in-progress: false/);
-  assert.ok(workflow.indexOf("pnpm check") < workflow.indexOf("pnpm build"));
-  assert.ok(
-    workflow.indexOf("pnpm build") < workflow.indexOf("pnpm run deploy")
-  );
+  assert.match(workflow, /pnpm check/);
+  assert.doesNotMatch(workflow, /pnpm build|pnpm run deploy|secrets\.|vars\.|CLOUDFLARE|MONITOR_CLI_MANAGED/);
 });
 test("local configuration never binds production resources or enables a cron", () => {
   const config = JSON.parse(

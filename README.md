@@ -20,9 +20,17 @@ React, Vite, TypeScript y shadcn/ui forman la interfaz. Cloudflare Workers ejecu
 
 ### Instalar
 
-Sigue la [guía de configuración en español](docs/setup/es.md). Explica cómo preparar tu repositorio, crear los recursos de Cloudflare, proteger el acceso, conectar tu dominio y activar las notificaciones. Cada instalación utiliza sus propias cuentas, recursos y credenciales.
+La CLI instala la aplicación compilada en tu cuenta de Cloudflare:
 
-El despliegue utiliza GitHub Actions y se activa únicamente con cambios en `main`. Funciona con repositorios públicos o privados. El consumo y los límites dependen de tu plan de Cloudflare; la retención de seis meses no implica que toda instalación quepa en el plan gratuito.
+```sh
+pnpm dlx @am25/monitor init .
+```
+
+Consultá la [guía de la CLI](docs/cli/es.md) para instalar, adoptar una instancia existente, diagnosticar y actualizar. El comando requiere una versión publicada en npm; este repositorio prepara su publicación con GitHub Actions y provenance. La [validación en Free](docs/free-plan.md) distingue lo probado de lo pendiente. No se aceptan PR externos; consultá [CONTRIBUTING.md](CONTRIBUTING.md).
+
+La [guía anterior](docs/setup/es.md) se conserva como referencia técnica para instalaciones existentes. Cada instalación utiliza sus propias cuentas, recursos y credenciales.
+
+Los pushes a `main` ejecutan verificaciones de código; los despliegues se administran con la CLI. El consumo y los límites dependen de tu plan de Cloudflare; la retención de seis meses no implica que toda instalación quepa en el plan gratuito.
 
 El límite de cien monitores no garantiza comprobaciones exactas cada minuto. Consulta cómo [validar la fiabilidad del motor](docs/reliability/es.md) con pruebas de carga y mediciones en producción.
 
@@ -34,7 +42,7 @@ Se usará versionado semántico: `MAJOR.MINOR.PATCH`. Los cambios incompatibles 
 
 Los Releases incluirán los cambios, requisitos de configuración y migraciones relevantes. Para instalar una versión concreta, utiliza su etiqueta o su archivo de código fuente en [Releases](https://github.com/am25-labs/monitor/releases), en lugar del estado más reciente de `main`. Conserva la configuración de tu instalación cuando actualices.
 
-Crear un Release o una etiqueta no despliega: el workflow actual se activa por un push a `main`. Los Releases identifican las versiones publicadas; no existe un actualizador automático. Volver a código anterior tampoco revierte la base de datos: consulta la guía antes de recuperar una versión.
+Publicar un Release estable activa la [publicación del paquete en npm](docs/publishing.md); no despliega instancias. La adopción desde tu computadora hace el respaldo y el primer despliegue con la CLI sobre los recursos existentes. Las actualizaciones con CLI son explícitas. Volver a código anterior tampoco revierte la base de datos: consultá la guía antes de recuperar una versión.
 
 ### Autoría y licencia
 
@@ -60,9 +68,17 @@ React, Vite, TypeScript, and shadcn/ui power the interface. Cloudflare Workers r
 
 ### Install
 
-Follow the [English setup guide](docs/setup/en.md). It explains how to prepare your repository, create Cloudflare resources, secure access, connect your domain, and enable notifications. Each installation uses its own accounts, resources, and credentials.
+Install the compiled application with the CLI:
 
-Deployment uses GitHub Actions and runs only on changes to `main`. It works with public or private repositories. Usage and limits depend on your Cloudflare plan; six-month retention does not mean every installation fits within the free plan.
+```sh
+pnpm dlx @am25/monitor init . --language en
+```
+
+See the [CLI guide](docs/cli/en.md) for installation, adoption, diagnosis and updates. The command requires a published npm release; this repository prepares publishing through GitHub Actions with provenance. [Free validation](docs/free-plan.md) distinguishes tested behavior from pending live measurements. External PRs are not accepted; see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+The [previous setup guide](docs/setup/en.md) remains as a technical reference for existing installations. Each installation uses its own accounts, resources, and credentials.
+
+Pushes to `main` check source code; deployments are managed with the CLI. Usage and limits depend on your Cloudflare plan; six-month retention does not mean every installation fits within the free plan.
 
 The hundred-monitor limit does not guarantee checks exactly every minute. See how to [validate engine reliability](docs/reliability/en.md) with load tests and production measurements.
 
@@ -74,7 +90,7 @@ Semantic versioning will use `MAJOR.MINOR.PATCH`. Breaking changes increase the 
 
 Releases will describe changes, configuration requirements, and relevant migrations. To install a specific version, use its tag or source archive from [Releases](https://github.com/am25-labs/monitor/releases), rather than the latest state of `main`. Preserve your installation configuration when updating.
 
-Creating a Release or a tag does not deploy: the current workflow runs on a push to `main`. Releases identify published versions; there is no automatic updater. Reverting code does not revert the database either: consult the guide before recovering a version.
+Publishing a stable Release triggers [npm package publishing](docs/publishing.md), without deploying instances. Adoption from your computer backs up and performs the first CLI deployment using existing resources. CLI updates are explicit. Reverting code does not revert the database: consult the guide before recovering a version.
 
 ### Author and license
 

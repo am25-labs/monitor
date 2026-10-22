@@ -1,8 +1,10 @@
-# Configurar AM25 Monitor
+# Configuración anterior de AM25 Monitor
 
 [English](en.md) · [Presentación](../../README.md)
 
-Esta guía instala AM25 Monitor en tu cuenta de Cloudflare usando GitHub Actions. Los ejemplos usan `monitor.example.com` y `owner@example.com`: reemplázalos por tus datos. No copies los identificadores de la instalación de AM25 que pueda contener la configuración del repositorio.
+Esta guía describe el flujo anterior y se conserva como referencia de instalaciones existentes. El workflow actual verifica código, sin desplegar. Para instalar o adoptar desde tu computadora, usá la [CLI](../cli/es.md); no necesitás configurar variables ni secretos de Cloudflare en GitHub.
+
+Los ejemplos históricos usan `monitor.example.com` y `owner@example.com`. No copies identificadores de la instalación de AM25.
 
 ## Instalación asistida con un agente (opcional)
 

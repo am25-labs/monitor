@@ -1,0 +1,58 @@
+name: Publish npm package
+on:
+  release:
+    types: [published]
+permissions:
+  contents: read
+concurrency:
+  group: monitor-npm-publish
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.repository == 'am25-labs/monitor' && !github.event.repository.private && !github.event.release.prerelease && !github.event.release.draft
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      MONITOR_RELEASE_TAG: ${{ github.event.release.tag_name }}
+      MONITOR_RELEASE_PRERELEASE: ${{ toJSON(github.event.release.prerelease) }}
+      MONITOR_RELEASE_DRAFT: ${{ toJSON(github.event.release.draft) }}
+      WRANGLER_SEND_METRICS: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+      - run: npm install --global npm@11.5.1
+      - run: node packages/cli/src/publish-guard.mjs
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - name: Compile and pack release
+        id: package
+        run: node scripts/release/prepare.mjs
+      - name: Test compiled package without application source
+        env:
+          MONITOR_TARBALL: ${{ steps.package.outputs.tarball }}
+        run: node scripts/release/smoke.mjs "$MONITOR_TARBALL"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: monitor-npm-package
+          path: |
+            .release/*.tgz
+            .release/artifact.sha256
+          include-hidden-files: true
+      - name: Publish validated artifact with provenance
+        env:
+          MONITOR_TARBALL: ${{ steps.package.outputs.tarball }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_BOOTSTRAP_TOKEN }}
+        run: npm publish "$MONITOR_TARBALL" --provenance --access public --ignore-scripts
+      - name: Verify published artifact and provenance
+        env:
+          MONITOR_TARBALL: ${{ steps.package.outputs.tarball }}
+        run: node scripts/release/verify-provenance.mjs "$MONITOR_TARBALL"

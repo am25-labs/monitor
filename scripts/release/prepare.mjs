@@ -1,0 +1,48 @@
+import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { resolve, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
+import { assertPublishEnvironment } from "../../packages/cli/src/publish-guard.mjs";
+import { baseConfig, checksum, filesIn, verifyRuntime } from "../../packages/cli/src/runtime.mjs";
+import { readJson, writeJson } from "../../packages/cli/src/store.mjs";
+import { requireValue } from "../../packages/cli/src/messages.mjs";
+
+const root = fileURLToPath(new URL("../../", import.meta.url));
+const app = await readJson(join(root, "package.json"));
+const cli = await readJson(join(root, "packages/cli/package.json"));
+assertPublishEnvironment(process.env, app.version);
+requireValue(app.version === cli.version, "Las versiones de app y CLI deben coincidir.", "App and CLI versions must match.");
+const sha = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+requireValue(sha === process.env.GITHUB_SHA, "El checkout no coincide con el Release.", "Checkout does not match the Release.");
+const output = join(root, ".release");
+await mkdir(output);
+const destination = join(output, "package");
+await mkdir(destination);
+for (const path of ["bin", "src", "README.md"]) await cp(join(root, "packages/cli", path), join(destination, path), { recursive: true });
+for (const path of ["LICENSE", "NOTICE"]) await cp(join(root, path), join(destination, path));
+await writeJson(join(destination, "package.json"), { ...cli, gitHead: sha });
+const runtime = join(destination, "runtime");
+await mkdir(runtime);
+execFileSync("pnpm", ["build"], { cwd: root, stdio: "inherit", env: { ...process.env, VITE_GIT_SHA: sha } });
+await cp(join(root, "dist"), join(runtime, "assets"), { recursive: true });
+await cp(join(root, "migrations"), join(runtime, "migrations"), { recursive: true });
+await writeJson(join(runtime, "config.json"), baseConfig());
+const config = baseConfig();
+config.main = join(root, "src/worker/index.ts");
+config.assets.directory = join(runtime, "assets");
+config.d1_databases[0].migrations_dir = join(runtime, "migrations");
+const buildConfig = join(output, "build.json");
+await writeJson(buildConfig, config);
+execFileSync("pnpm", ["exec", "wrangler", "deploy", "--dry-run", "--config", buildConfig, "--outdir", join(runtime, "worker")], {
+  cwd: root, stdio: "inherit", env: { ...process.env, WRANGLER_SEND_METRICS: "false" }
+});
+const { compatibleFrom } = await readJson(join(root, "packages/cli/compatibility.json"));
+const files = {};
+for (const name of await filesIn(runtime)) files[name] = checksum(await readFile(join(runtime, name)));
+await writeJson(join(runtime, "manifest.json"), { format: 1, version: app.version, sourceSha: sha, compatibleFrom, files });
+await verifyRuntime(runtime);
+const packed = JSON.parse(execFileSync("npm", ["pack", destination, "--pack-destination", output, "--json", "--ignore-scripts"], { cwd: root, encoding: "utf8" }));
+requireValue(packed.length === 1 && packed[0].name === cli.name, "No se generó el paquete esperado.", "Expected package was not generated.");
+const artifact = resolve(output, packed[0].filename);
+await writeFile(join(output, "artifact.sha256"), `${checksum(await readFile(artifact))}\n`);
+await writeFile(process.env.GITHUB_OUTPUT, `tarball=${artifact}\n`, { flag: "a" });
