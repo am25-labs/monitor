@@ -30,13 +30,13 @@ Consultá la [guía de la CLI](docs/cli/es.md) para instalar, adoptar una instan
 
 La [guía anterior](docs/setup/es.md) se conserva como referencia técnica para instalaciones existentes. Cada instalación utiliza sus propias cuentas, recursos y credenciales.
 
-Los pushes a `main` ejecutan verificaciones de código; los despliegues se administran con la CLI. El consumo y los límites dependen de tu plan de Cloudflare; la retención de seis meses no implica que toda instalación quepa en el plan gratuito.
+Los pushes a `main` no ejecutan Actions. Las verificaciones se ejecutan manualmente o al publicar un Release; los despliegues se administran con la CLI. El consumo y los límites dependen de tu plan de Cloudflare; la retención de seis meses no implica que toda instalación quepa en el plan gratuito.
 
 El límite de cien monitores no garantiza comprobaciones exactas cada minuto. Consulta cómo [validar la fiabilidad del motor](docs/reliability/es.md) con pruebas de carga y mediciones en producción.
 
 ### Versiones y Releases
 
-Los GitHub Releases se crean manualmente y son independientes de los despliegues por push a `main`. La versión de `package.json`, la etiqueta `X.Y.Z` y el Release deben corresponder al mismo estado del código al publicar una versión. En Ajustes → Acerca de, el diálogo muestra la versión y el SHA corto del commit desplegado, con enlace al Release de la versión instalada. GitHub Actions incorpora ese SHA al compilar la interfaz mediante `VITE_GIT_SHA`; si no se proporciona, como en desarrollo local, se muestra únicamente la versión.
+Los GitHub Releases se crean manualmente y son independientes de los despliegues mediante la CLI. La versión de `package.json`, la etiqueta `X.Y.Z` y el Release deben corresponder al mismo estado del código al publicar una versión. En Ajustes → Acerca de, el diálogo muestra la versión y el SHA corto del commit desplegado, con enlace al Release de la versión instalada. GitHub Actions incorpora ese SHA al compilar la interfaz mediante `VITE_GIT_SHA`; si no se proporciona, como en desarrollo local, se muestra únicamente la versión.
 
 Se usará versionado semántico: `MAJOR.MINOR.PATCH`. Los cambios incompatibles incrementan la versión mayor, las funciones compatibles la menor y las correcciones la revisión. Durante `0.x`, las versiones menores pueden introducir cambios incompatibles, que se indicarán en las notas del Release.
 
@@ -78,13 +78,13 @@ See the [CLI guide](docs/cli/en.md) for installation, adoption, diagnosis and up
 
 The [previous setup guide](docs/setup/en.md) remains as a technical reference for existing installations. Each installation uses its own accounts, resources, and credentials.
 
-Pushes to `main` check source code; deployments are managed with the CLI. Usage and limits depend on your Cloudflare plan; six-month retention does not mean every installation fits within the free plan.
+Pushes to `main` do not trigger Actions. Source checks run manually or when publishing a Release; deployments are managed with the CLI. Usage and limits depend on your Cloudflare plan; six-month retention does not mean every installation fits within the free plan.
 
 The hundred-monitor limit does not guarantee checks exactly every minute. See how to [validate engine reliability](docs/reliability/en.md) with load tests and production measurements.
 
 ### Versions and Releases
 
-GitHub Releases are created manually and are independent of deployments triggered by pushes to `main`. The version in `package.json`, the `X.Y.Z` tag, and the Release must correspond to the same code state when publishing a version. In Settings → About, the dialog displays the version and the deployed commit's short SHA, linked to the installed version’s Release. GitHub Actions embeds this SHA when compiling the interface through `VITE_GIT_SHA`; when it is absent, as in local development, only the version is displayed.
+GitHub Releases are created manually and are independent of deployments through the CLI. The version in `package.json`, the `X.Y.Z` tag, and the Release must correspond to the same code state when publishing a version. In Settings → About, the dialog displays the version and the deployed commit's short SHA, linked to the installed version’s Release. GitHub Actions embeds this SHA when compiling the interface through `VITE_GIT_SHA`; when it is absent, as in local development, only the version is displayed.
 
 Semantic versioning will use `MAJOR.MINOR.PATCH`. Breaking changes increase the major version, compatible features the minor version, and fixes the patch version. During `0.x`, minor versions may introduce breaking changes, which will be stated in the Release notes.
 

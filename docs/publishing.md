@@ -33,7 +33,7 @@ La primera publicación real debe completar la verificación de provenance; esto
 
 ## Publicación frente a despliegue
 
-Publicar el paquete no despliega ninguna instancia. Los pushes a `main` solo ejecutan verificaciones. AM25 y los usuarios adoptan y administran sus instancias mediante la CLI desde sus computadoras. La adopción respalda y despliega sobre los mismos recursos sin variables de GitHub ni secretos de Cloudflare en Actions. Los secretos anteriores pueden permanecer sin uso; no requieren cambios para adoptar.
+Publicar el paquete no despliega ninguna instancia. Los pushes a `main` no ejecutan Actions; las verificaciones se ejecutan manualmente o al publicar un Release. AM25 y los usuarios adoptan y administran sus instancias mediante la CLI desde sus computadoras. La adopción respalda y despliega sobre los mismos recursos sin variables de GitHub ni secretos de Cloudflare en Actions. Los secretos anteriores pueden permanecer sin uso; no requieren cambios para adoptar.
 
 ## English
 
@@ -41,6 +41,6 @@ Publish only through `publish.yml`, triggered by a stable GitHub Release tagged 
 
 Reuse an existing AM25 token with permission to publish `@am25/monitor`, stored as the GitHub Actions secret `NPM_BOOTSTRAP_TOKEN`. No new token or Trusted Publishing setup is required. The token authenticates publishing while GitHub Actions supplies provenance identity. Trusted Publishing for `am25-labs/monitor`, workflow `publish.yml`, is an optional alternative. Every publication requires provenance and a public repository/package.
 
-Pushes to `main` only check source code. Installation, adoption and deployments run locally through the CLI. Adoption backs up and deploys using existing resources, without GitHub variables or Cloudflare secrets in Actions.
+Pushes to `main` do not trigger Actions; source checks run manually or when publishing a Release. Installation, adoption and deployments run locally through the CLI. Adoption backs up and deploys using existing resources, without GitHub variables or Cloudflare secrets in Actions.
 
 The workflow builds, packs, installs and checks the exact tarball without application source, then publishes that artifact and verifies registry integrity and provenance. Declare compatible upgrade sources in `packages/cli/compatibility.json`; new migrations must remain compatible with the running previous release. Real provenance verification completes only after publishing to npm.

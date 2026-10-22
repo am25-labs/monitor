@@ -69,14 +69,14 @@ test("migrations and secrets are completed before deploying", () => {
   assert.match(calls[2], /wrangler deploy/);
   assert.match(calls[2], /--secrets-file \/temporary\/secrets.json/);
 });
-test("source workflow validates main without deploying or requiring Cloudflare secrets", () => {
+test("source workflow runs manually without deploying or requiring Cloudflare secrets", () => {
   const workflow = readFileSync(
     new URL("../.github/workflows/deploy.yml", import.meta.url),
     "utf8"
   );
-  assert.match(workflow, /branches: \[main\]/);
-  assert.doesNotMatch(workflow, /pull_request|workflow_dispatch|develop/);
-  assert.match(workflow, /cancel-in-progress: false/);
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.doesNotMatch(workflow, /pull_request|push:|branches:/);
+  assert.match(workflow, /cancel-in-progress: true/);
   assert.match(workflow, /pnpm check/);
   assert.doesNotMatch(workflow, /pnpm build|pnpm run deploy|secrets\.|vars\.|CLOUDFLARE|MONITOR_CLI_MANAGED/);
 });
