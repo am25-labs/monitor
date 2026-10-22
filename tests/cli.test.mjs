@@ -11,7 +11,7 @@ import { preflight, provision, validateAccess, appOverlaps, zeroTrust } from "..
 import { publishInstallation } from "../packages/cli/src/operations.mjs";
 import { adopt, selectAccessApp, verifyEncryptionKey } from "../packages/cli/src/adoption.mjs";
 import { doctor } from "../packages/cli/src/doctor.mjs";
-import { assertPublishEnvironment } from "../packages/cli/src/publish-guard.mjs";
+import { assertPatchCompatibility, assertPublishEnvironment } from "../packages/cli/src/publish-guard.mjs";
 import { Cancelled } from "../packages/cli/src/messages.mjs";
 import { assertArtifactIntegrity, matchesProvenance, readRegistryJson } from "../scripts/release/provenance.mjs";
 
@@ -213,6 +213,34 @@ test("upgrade compatibility rejects downgrades, undeclared jumps and rewritten m
   assert.throws(() => checkUpgrade(next.manifest, current.manifest));
   assert.throws(() => checkUpgrade(current.manifest, { ...next.manifest, compatibleFrom: [] }));
   assert.throws(() => checkUpgrade(current.manifest, { ...next.manifest, files: { ...next.manifest.files, "migrations/0001_initial.sql": "changed" } }));
+});
+
+test("patch releases cannot omit their immediate predecessor", () => {
+  assert.throws(() => assertPatchCompatibility("0.13.4", ["0.13.2"]), /must support upgrading from 0\.13\.3/);
+  assertPatchCompatibility("0.13.4", ["0.13.3"]);
+  assertPatchCompatibility("0.14.0", []);
+});
+
+test("the prepared release updates published 0.13.3 and 0.13.4 installations", async (t) => {
+  const pkg = await readJson(new URL("../packages/cli/package.json", import.meta.url));
+  const compatibility = await readJson(new URL("../packages/cli/compatibility.json", import.meta.url));
+  assertPatchCompatibility(pkg.version, compatibility.compatibleFrom);
+  for (const version of ["0.13.3", "0.13.4"]) {
+    const context = await installation(t, { ready: true });
+    const previous = await runtime(context.root, version);
+    await stageRuntime(context.store, previous.directory);
+    context.state.deployedVersion = version;
+    context.cf.publish(previous.manifest);
+    await context.store.save(context.state);
+    const next = await runtime(context.root, pkg.version);
+    next.manifest.compatibleFrom = compatibility.compatibleFrom;
+    await writeJson(join(next.directory, "manifest.json"), next.manifest);
+    const release = await stageRuntime(context.store, next.directory);
+    await publishInstallation(deployment({ ...context, release }));
+    assert.equal(context.state.deployedVersion, pkg.version);
+    assert.equal(context.state.phase, "ready");
+    assert.equal(context.state.operation, undefined);
+  }
 });
 
 test("generated runtime configuration preserves engine contract without AM25 installation IDs", async () => {

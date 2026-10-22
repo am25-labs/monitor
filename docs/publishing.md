@@ -5,7 +5,7 @@ La aplicación y CLI son código abierto bajo Apache-2.0. `private: true` en el 
 ## Preparar una versión
 
 1. Actualizá manualmente las versiones de ambos `package.json` para que coincidan. No uses comandos que creen commits o etiquetas automáticamente.
-2. Declarar en `packages/cli/compatibility.json` las versiones desde las que se admite actualizar. Toda migración nueva debe ser compatible con el Worker anterior mientras sigue atendiendo solicitudes. No reescribas migraciones publicadas.
+2. Declarar en `packages/cli/compatibility.json` las versiones desde las que se admite actualizar. Cada patch debe incluir el patch inmediatamente anterior; la Action lo comprueba antes de instalar dependencias o publicar. Toda migración nueva debe ser compatible con el Worker anterior mientras sigue atendiendo solicitudes. No reescribas migraciones publicadas.
 3. Revisá licencias y avisos de terceros al cambiar dependencias y ejecutá las comprobaciones del repositorio.
 4. El propietario crea el commit, la etiqueta estable `X.Y.Z` y el GitHub Release correspondiente. El repositorio debe ser público antes de publicar con provenance. La Action no crea commits, etiquetas ni Releases.
 

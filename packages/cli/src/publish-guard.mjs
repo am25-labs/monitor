@@ -1,6 +1,16 @@
 import { fileURLToPath } from "node:url";
 import { requireValue } from "./messages.mjs";
 import { readJson } from "./store.mjs";
+import { versionParts } from "./runtime.mjs";
+
+export function assertPatchCompatibility(version, compatibleFrom) {
+  const [major, minor, patch] = versionParts(version);
+  if (patch === 0) return;
+  const previous = `${major}.${minor}.${patch - 1}`;
+  requireValue(Array.isArray(compatibleFrom) && compatibleFrom.includes(previous),
+    `El patch ${version} debe permitir actualizar desde ${previous}. Agregá esa versión a compatibleFrom antes de publicar.`,
+    `Patch ${version} must support upgrading from ${previous}. Add that version to compatibleFrom before publishing.`);
+}
 
 export function assertPublishEnvironment(env, version) {
   requireValue(env.GITHUB_ACTIONS === "true" && env.GITHUB_EVENT_NAME === "release" && env.RUNNER_ENVIRONMENT === "github-hosted"
@@ -19,4 +29,6 @@ export function assertPublishEnvironment(env, version) {
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const pkg = await readJson(new URL("../package.json", import.meta.url));
   assertPublishEnvironment(process.env, pkg.version);
+  const compatibility = await readJson(new URL("../compatibility.json", import.meta.url));
+  assertPatchCompatibility(pkg.version, compatibility.compatibleFrom);
 }

@@ -2,7 +2,7 @@ import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
-import { assertPublishEnvironment } from "../../packages/cli/src/publish-guard.mjs";
+import { assertPatchCompatibility, assertPublishEnvironment } from "../../packages/cli/src/publish-guard.mjs";
 import { baseConfig, checksum, filesIn, verifyRuntime } from "../../packages/cli/src/runtime.mjs";
 import { readJson, writeJson } from "../../packages/cli/src/store.mjs";
 import { requireValue } from "../../packages/cli/src/messages.mjs";
@@ -12,6 +12,8 @@ const app = await readJson(join(root, "package.json"));
 const cli = await readJson(join(root, "packages/cli/package.json"));
 assertPublishEnvironment(process.env, app.version);
 requireValue(app.version === cli.version, "Las versiones de app y CLI deben coincidir.", "App and CLI versions must match.");
+const { compatibleFrom } = await readJson(join(root, "packages/cli/compatibility.json"));
+assertPatchCompatibility(app.version, compatibleFrom);
 const sha = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
 requireValue(sha === process.env.GITHUB_SHA, "El checkout no coincide con el Release.", "Checkout does not match the Release.");
 const output = join(root, ".release");
@@ -36,7 +38,6 @@ await writeJson(buildConfig, config);
 execFileSync("pnpm", ["exec", "wrangler", "deploy", "--dry-run", "--config", buildConfig, "--outdir", join(runtime, "worker")], {
   cwd: root, stdio: "inherit", env: { ...process.env, WRANGLER_SEND_METRICS: "false" }
 });
-const { compatibleFrom } = await readJson(join(root, "packages/cli/compatibility.json"));
 const files = {};
 for (const name of await filesIn(runtime)) files[name] = checksum(await readFile(join(runtime, name)));
 await writeJson(join(runtime, "manifest.json"), { format: 1, version: app.version, sourceSha: sha, compatibleFrom, files });
