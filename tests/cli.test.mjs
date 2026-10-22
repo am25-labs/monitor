@@ -92,7 +92,7 @@ class FakeCloudflare {
     if (path.includes("/d1/database/")) return this.databases[0];
     if (path.includes("/queues/")) return this.queues[0];
     if (path.endsWith("/settings")) return this.settings;
-    if (path.endsWith("/schedules")) return [{ cron: "* * * * *" }];
+    if (path.endsWith("/schedules")) return { schedules: [{ cron: "* * * * *" }] };
     if (path.includes("/access/apps/")) return this.apps[0];
     if (path.includes("/identity_providers/")) return this.providers[0];
     throw new Error(`Unexpected get: ${path}`);
@@ -467,6 +467,21 @@ test("doctor makes only read requests and never sends heartbeats or notification
   assert.equal(result, true);
   assert.equal(context.cf.writes.length, before);
   assert.equal(requests.every(({ options }) => options.method === undefined && options.redirect === "manual"), true);
+});
+
+test("doctor reports missing cron or malformed schedule responses without a generic failure", async (t) => {
+  for (const [response, expected] of [[{ schedules: [] }, "The per-minute cron is missing."], [{}, "Cloudflare returned an unrecognized cron response."]]) {
+    const context = await installation(t, { ready: true });
+    const get = context.cf.get.bind(context.cf);
+    context.cf.get = async (path) => path.endsWith("/schedules") ? response : get(path);
+    const messages = [];
+    const result = await doctor({ ...context, ui: { log(_es, en) { messages.push(en); } },
+      fetcher: async (url) => new Response("", { status: url.includes("/public/") || url.includes("/heartbeats/") ? 404 : 401 }) });
+    assert.equal(result, false);
+    assert.ok(messages.some((message) => message.includes(expected)));
+    assert.ok(messages.includes("Automated diagnostics incomplete. Review checks marked with ✗."));
+    assert.ok(!messages.some((message) => message.startsWith("Free:")));
+  }
 });
 
 test("Cloudflare pagination and errors do not expose response bodies or tokens", async () => {

@@ -30,8 +30,9 @@ export async function doctor({ store, state, cf, ui, fetcher = fetch }) {
     requireValue(actual.version === state.deployedVersion && actual.sourceSha === state.sourceSha, "La versión remota no coincide.", "Remote version does not match.");
     const domains = await cf.list(cf.account(state, "/workers/domains"));
     requireValue(domains.some((domain) => domain.hostname === state.hostname && domain.service === state.name && domain.zone_id === state.zoneId), "El Custom Domain no coincide.", "Custom Domain does not match.");
-    const schedules = await cf.get(cf.account(state, `/workers/scripts/${encodeURIComponent(state.name)}/schedules`));
-    requireValue(schedules.some((schedule) => schedule.cron === "* * * * *"), "Falta el cron por minuto.", "The per-minute cron is missing.");
+    const response = await cf.get(cf.account(state, `/workers/scripts/${encodeURIComponent(state.name)}/schedules`));
+    requireValue(Array.isArray(response?.schedules), "Cloudflare devolvió un formato de crons no reconocido.", "Cloudflare returned an unrecognized cron response.");
+    requireValue(response.schedules.some((schedule) => schedule.cron === "* * * * *"), "Falta el cron por minuto.", "The per-minute cron is missing.");
   });
   await check("Migraciones de D1", "D1 migrations", async () => {
     requireValue(Boolean(manifest), "Primero recuperá el runtime local.", "Recover the local runtime first.");
@@ -62,6 +63,8 @@ export async function doctor({ store, state, cf, ui, fetcher = fetch }) {
     });
   }
   ui.log("Pendiente de comprobación humana: iniciar sesión con el propietario y revisar una página de estado real. No se enviaron alertas ni heartbeats de prueba.", "Human verification pending: sign in as the owner and inspect a real status page. No alerts or test heartbeats were sent.");
-  ui.log("Free: las cuotas se comparten con otras aplicaciones. No se ajustaron intervalos, retención ni planes.", "Free: quotas are shared with other applications. Intervals, retention and plans were not changed.");
-  return results.every((result) => result.ok);
+  const valid = results.every((result) => result.ok);
+  if (valid) ui.log("Diagnóstico automático completado correctamente.", "Automated diagnostics completed successfully.");
+  else ui.log("Diagnóstico automático incompleto. Revisá las comprobaciones marcadas con ✗.", "Automated diagnostics incomplete. Review checks marked with ✗.");
+  return valid;
 }
