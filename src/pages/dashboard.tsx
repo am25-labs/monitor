@@ -6,6 +6,7 @@ import { Overview } from "../components/overview";
 import { Metrics } from "../components/metrics";
 import { IncidentHistory } from "../components/incident-history";
 import { ConfirmDialog } from "../components/confirm-dialog";
+import { BrandLogo } from "../components/brand-logo";
 import { CopyId } from "../components/copy-id";
 import { useState } from "react";
 import { Link, NavLink, useNavigate, useParams } from "react-router-dom";
@@ -219,13 +220,7 @@ function DashboardView({
           to="/app/"
           className="flex items-center"
         >
-          <img
-            src={theme === "dark" ? "/am25-monitor-logo-w.svg" : "/am25-monitor-logo-k.svg"}
-            alt="AM25 Monitor"
-            width={3620}
-            height={1080}
-            className="h-12 w-auto"
-          />
+          <BrandLogo />
         </Link>
         <p className="mt-1 text-xs text-muted-foreground">
           {t("Tu infraestructura, en observación")}

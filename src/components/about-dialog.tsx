@@ -1,9 +1,10 @@
 import { Dialog } from "@base-ui/react/dialog";
-import { Activity, BookOpen, FileText, Info, Scale, ShieldCheck, X } from "lucide-react";
+import { BookOpen, FileText, Info, Scale, ShieldCheck, X } from "lucide-react";
 import { useLocale } from "../lib/locale";
 import software from "../lib/third-party-software.json";
 import { product } from "../shared/product";
 import { Badge } from "./ui/badge";
+import { BrandLogo } from "./brand-logo";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
 
@@ -11,10 +12,6 @@ const copyright = "© 2026 AM25";
 const licenseUrl = `${product.repository}/blob/main/LICENSE`;
 const buildSha = import.meta.env.VITE_GIT_SHA;
 const commitSha = typeof buildSha === "string" && /^[a-f\d]{40}$/i.test(buildSha) ? buildSha : null;
-
-function AboutLogo() {
-  return <Activity className="size-28" aria-hidden="true" />;
-}
 
 function SoftwareNotices() {
   const { t } = useLocale();
@@ -47,7 +44,7 @@ export function AboutDialog() {
   return (
     <Card className="w-full text-center">
       <CardHeader className="flex flex-col items-center gap-5">
-        <AboutLogo />
+        <BrandLogo className="w-64" />
         <div className="flex flex-col gap-1">
           <CardTitle><h2 className="text-2xl">{product.name}</h2></CardTitle>
           <CardDescription>
@@ -68,7 +65,7 @@ export function AboutDialog() {
                 <X />
               </Dialog.Close>
               <div className="flex flex-col items-center gap-2 border-b px-6 sm:px-8 pb-6 pt-8 text-center">
-                <AboutLogo />
+                <BrandLogo className="w-64" />
                 <div className="mt-3 flex flex-col gap-2">
                   <Dialog.Title className="text-lg font-medium">{product.name}</Dialog.Title>
                   <Dialog.Description className="text-xs text-muted-foreground">
