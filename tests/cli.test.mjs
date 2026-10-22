@@ -9,7 +9,7 @@ import { baseConfig, checksum, filesIn, privatePaths, verifyRuntime, stageRuntim
 import { Cloudflare, CloudflareError } from "../packages/cli/src/cloudflare.mjs";
 import { preflight, provision, validateAccess, appOverlaps, zeroTrust } from "../packages/cli/src/infrastructure.mjs";
 import { publishInstallation } from "../packages/cli/src/operations.mjs";
-import { adopt, verifyEncryptionKey } from "../packages/cli/src/adoption.mjs";
+import { adopt, selectAccessApp, verifyEncryptionKey } from "../packages/cli/src/adoption.mjs";
 import { doctor } from "../packages/cli/src/doctor.mjs";
 import { assertPublishEnvironment } from "../packages/cli/src/publish-guard.mjs";
 import { Cancelled } from "../packages/cli/src/messages.mjs";
@@ -229,6 +229,17 @@ test("Access overlap catches wildcard and whole-worker applications", () => {
   assert.equal(appOverlaps({ domain: "*.example.com" }, state), true);
   assert.equal(appOverlaps({ destinations: [{ type: "all_workers" }] }, state), true);
   assert.equal(appOverlaps({ domain: "other.example.com/app" }, state), false);
+});
+
+test("adoption identifies Access applications and distinguishes selection failures", () => {
+  const state = { hostname: "monitor.example.com", name: "monitor" };
+  const app = { id: "monitor-access", type: "self_hosted", aud: "audience", domain: `${state.hostname}/app`,
+    destinations: privatePaths.map((path) => ({ type: "public", uri: `${state.hostname}${path}` })) };
+  assert.equal(selectAccessApp([app], state, "audience"), app);
+  assert.throws(() => selectAccessApp([], state, "audience"), /returned 0 Access applications/);
+  assert.throws(() => selectAccessApp([{ ...app, destinations: [{ type: "public", uri: "other.example.com/app" }] }], state, "audience"), /none protect monitor.example.com/);
+  assert.throws(() => selectAccessApp([app, { ...app, id: "other-access" }], state, "audience"), /2 Access applications overlapping/);
+  assert.throws(() => selectAccessApp([app], state, "different"), /monitor-access does not match ACCESS_AUDIENCES/);
 });
 
 test("Access validation rejects public-path protection and broad policies", async (t) => {

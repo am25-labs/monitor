@@ -5,6 +5,21 @@ import { publishInstallation, remoteRelease } from "./operations.mjs";
 import { baseConfig, compareVersions, sameJson, stageRuntime } from "./runtime.mjs";
 import { requireValue } from "./messages.mjs";
 
+export function selectAccessApp(apps, state, audience) {
+  const overlapping = apps.filter((app) => appOverlaps(app, state));
+  requireValue(overlapping.length > 0,
+    `El token devolvió ${apps.length} aplicaciones de Access, pero ninguna protege ${state.hostname}. Revisá la cuenta y el acceso del token a esa aplicación.`,
+    `The token returned ${apps.length} Access applications, but none protect ${state.hostname}. Check the account and token access to that application.`);
+  requireValue(overlapping.length === 1,
+    `Se encontraron ${overlapping.length} aplicaciones de Access superpuestas con ${state.hostname}: ${overlapping.map((app) => app.id).join(", ")}.`,
+    `Found ${overlapping.length} Access applications overlapping ${state.hostname}: ${overlapping.map((app) => app.id).join(", ")}.`);
+  const app = overlapping[0];
+  requireValue(app.aud === audience,
+    `La audiencia de Access de la aplicación ${app.id} no coincide con ACCESS_AUDIENCES del archivo original.`,
+    `Access audience for application ${app.id} does not match ACCESS_AUDIENCES in the original file.`);
+  return app;
+}
+
 export async function verifyPublishedRelease(manifest, fetcher = fetch) {
   const response = await fetcher(`https://registry.npmjs.org/@am25%2fmonitor/${manifest.version}`, { signal: AbortSignal.timeout(15000) });
   requireValue(response.ok, "La versión debe estar publicada en npm antes de adoptar la instalación.", "The version must be published to npm before adopting the installation.");
@@ -74,9 +89,7 @@ export async function adopt({ store, state, cf, ui, source, execute, credentials
   requireValue(Boolean(domain), "El dominio no está conectado al Worker indicado.", "The domain is not connected to this Worker.");
   state.zoneId = domain.zone_id;
   const apps = await cf.list(cf.account(state, "/access/apps"));
-  const overlapping = apps.filter((app) => appOverlaps(app, state));
-  requireValue(overlapping.length === 1 && overlapping[0].aud === config.vars.ACCESS_AUDIENCES, "Se requiere una sola aplicación de Access con la audiencia configurada.", "One Access application matching the configured audience is required.");
-  const app = overlapping[0];
+  const app = selectAccessApp(apps, state, config.vars.ACCESS_AUDIENCES);
   requireValue(app.allowed_idps?.length === 1, "Access debe usar únicamente One-time PIN.", "Access must use only One-time PIN.");
   const queues = await cf.list(cf.account(state, "/queues"));
   const queue = queues.find((item) => item.queue_name === state.queueName);
