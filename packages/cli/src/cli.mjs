@@ -80,7 +80,7 @@ export async function main(args = process.argv.slice(2)) {
       return;
     }
     requireValue(["init", "deploy", "doctor", "update"].includes(options.command), "Comando desconocido. Consultá --help.", "Unknown command. See --help.");
-    requireValue(compareVersions(process.versions.node, "22.14.0") >= 0, "Se requiere Node.js 22.14 o superior.", "Node.js 22.14 or newer is required.");
+    requireValue(process.versions.node === pkg.engines.node, `Se requiere Node.js ${pkg.engines.node}.`, `Node.js ${pkg.engines.node} is required.`);
     if (options.command !== "doctor") {
       const agentVersion = process.env.npm_config_user_agent?.match(/(?:^|\s)pnpm\/(\d+\.\d+\.\d+)(?:\s|$)/)?.[1];
       const pnpmVersion = agentVersion ?? (await run(process.platform === "win32" ? "cmd.exe" : "pnpm", process.platform === "win32" ? ["/d", "/s", "/c", "pnpm --version"] : ["--version"], { capture: true })).trim();

@@ -2,7 +2,7 @@
 
 [Español](es.md) · [Package publishing](../publishing.md#english) · [Free validation](../free-plan.md#english)
 
-Requires Node.js 22.14+, pnpm 10.23+, a Cloudflare account and a domain with an active DNS zone in that account. Choose a dedicated hostname without existing DNS records. No GitHub account, source checkout, agent or local application build is needed.
+Requires Node.js 24.22.1, pnpm 10.23+, a Cloudflare account and a domain with an active DNS zone in that account. Choose a dedicated hostname without existing DNS records. No GitHub account, source checkout, agent or local application build is needed.
 
 ```sh
 mkdir my-monitor
@@ -48,7 +48,7 @@ pnpm dlx @am25/monitor@latest update
 pnpm dlx @am25/monitor@X.Y.Z update
 ```
 
-Only `init` accepts a positional destination. From another location, use `--cwd /path/to/my-monitor`. Supported upgrade sources are declared explicitly in each release; downgrades and incompatible jumps are rejected. Previous migrations must retain their names and contents.
+Only `init` accepts a positional destination. From another location, use `--cwd /path/to/my-monitor`. Updates can skip intermediate releases without a version allowlist; downgrades are rejected. Previous migrations must retain their names and contents.
 
 ## Resume and recover
 

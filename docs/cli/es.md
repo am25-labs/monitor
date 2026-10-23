@@ -2,7 +2,7 @@
 
 [English](en.md) · [Publicación del paquete](../publishing.md) · [Validación de Free](../free-plan.md)
 
-Necesitás Node.js 22.14+, pnpm 10.23+, una cuenta de Cloudflare y un dominio con zona DNS activa en esa cuenta. Elegí un hostname dedicado y sin registros DNS existentes. No necesitás GitHub, clonar el código, un agente ni compilar la aplicación.
+Necesitás Node.js 24.22.1, pnpm 10.23+, una cuenta de Cloudflare y un dominio con zona DNS activa en esa cuenta. Elegí un hostname dedicado y sin registros DNS existentes. No necesitás GitHub, clonar el código, un agente ni compilar la aplicación.
 
 ```sh
 mkdir my-monitor
@@ -48,7 +48,7 @@ pnpm dlx @am25/monitor@latest update
 pnpm dlx @am25/monitor@X.Y.Z update
 ```
 
-Solo `init` recibe un destino posicional. Desde otra ubicación usá `--cwd /ruta/a/my-monitor`. Las actualizaciones compatibles se declaran explícitamente en cada release; no se permiten downgrades ni saltos incompatibles. Las migraciones previas deben conservar su nombre y contenido.
+Solo `init` recibe un destino posicional. Desde otra ubicación usá `--cwd /ruta/a/my-monitor`. Las actualizaciones pueden saltar versiones intermedias sin una lista de versiones permitidas; no se permiten downgrades. Las migraciones previas deben conservar su nombre y contenido.
 
 ## Reanudación y recuperación
 

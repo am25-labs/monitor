@@ -75,7 +75,7 @@ El agente puede ayudar a preparar toda la instalación, pero la selección de pl
 
 Necesitas una cuenta de GitHub con Actions habilitado, una cuenta de Cloudflare con Workers, Durable Objects, D1, Queues y Zero Trust disponibles, y un dominio cuya zona DNS esté activa en la misma cuenta de Cloudflare.
 
-Elige un subdominio dedicado, por ejemplo `monitor.example.com`, que no sirva otra aplicación. No necesitas un VPS para alojar Monitor. Para los pasos locales, instala Git, Node.js 22.14 o superior y la versión de pnpm indicada en `package.json`.
+Elige un subdominio dedicado, por ejemplo `monitor.example.com`, que no sirva otra aplicación. No necesitas un VPS para alojar Monitor. Para los pasos locales, instala Git, Node.js 24.22.1 y la versión de pnpm indicada en `package.json`.
 
 Revisa los límites y el consumo antes de elegir tu plan. A un minuto, 100 monitores generan unas 144,000 comprobaciones diarias y unos 26 millones en seis meses, además de índices y agregados. Consulta los [límites de D1](https://developers.cloudflare.com/d1/platform/limits/), los [precios de Durable Objects](https://developers.cloudflare.com/durable-objects/platform/pricing/) y los [precios de Queues](https://developers.cloudflare.com/queues/platform/pricing/).
 

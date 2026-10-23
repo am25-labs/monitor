@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { mkdtemp, mkdir, readFile, writeFile, rm, stat, symlink } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { argumentsFor, install } from "../packages/cli/src/cli.mjs";
 import { Store, readJson, writeJson } from "../packages/cli/src/store.mjs";
 import { baseConfig, checksum, filesIn, privatePaths, verifyRuntime, stageRuntime, checkUpgrade, configuration } from "../packages/cli/src/runtime.mjs";
@@ -11,7 +13,7 @@ import { preflight, provision, validateAccess, appOverlaps, zeroTrust } from "..
 import { publishInstallation } from "../packages/cli/src/operations.mjs";
 import { adopt, selectAccessApp, verifyEncryptionKey } from "../packages/cli/src/adoption.mjs";
 import { doctor } from "../packages/cli/src/doctor.mjs";
-import { assertPatchCompatibility, assertPublishEnvironment } from "../packages/cli/src/publish-guard.mjs";
+import { assertPublishEnvironment } from "../packages/cli/src/publish-guard.mjs";
 import { Cancelled } from "../packages/cli/src/messages.mjs";
 import { assertArtifactIntegrity, matchesProvenance, readRegistryJson } from "../scripts/release/provenance.mjs";
 
@@ -36,7 +38,7 @@ async function runtime(root, version = "0.12.5", options = {}) {
   await writeJson(join(directory, "config.json"), baseConfig());
   const files = {};
   for (const name of await filesIn(directory)) files[name] = checksum(await readFile(join(directory, name)));
-  const manifest = { format: 1, version, sourceSha: options.sha ?? sha, compatibleFrom: ["0.12.5"], files };
+  const manifest = { format: 1, version, sourceSha: options.sha ?? sha, files };
   await writeJson(join(directory, "manifest.json"), manifest);
   return { directory, manifest };
 }
@@ -206,40 +208,70 @@ test("runtime rejects tampering, extra files, path traversal and symlinks", asyn
   await assert.rejects(verifyRuntime(other.directory));
 });
 
-test("upgrade compatibility rejects downgrades, undeclared jumps and rewritten migrations", async (t) => {
+test("updates allow version jumps while rejecting downgrades and rewritten migrations", async (t) => {
   const root = await fixture(t);
   const current = await runtime(root), next = await runtime(root, "0.12.6", { migration: true });
   checkUpgrade(current.manifest, next.manifest);
   assert.throws(() => checkUpgrade(next.manifest, current.manifest));
-  assert.throws(() => checkUpgrade(current.manifest, { ...next.manifest, compatibleFrom: [] }));
+  checkUpgrade(current.manifest, { ...next.manifest, version: "1.0.0" });
+  checkUpgrade(current.manifest, { ...next.manifest, compatibleFrom: [] });
   assert.throws(() => checkUpgrade(current.manifest, { ...next.manifest, files: { ...next.manifest.files, "migrations/0001_initial.sql": "changed" } }));
 });
 
-test("patch releases cannot omit their immediate predecessor", () => {
-  assert.throws(() => assertPatchCompatibility("0.13.4", ["0.13.2"]), /must support upgrading from 0\.13\.3/);
-  assertPatchCompatibility("0.13.4", ["0.13.3"]);
-  assertPatchCompatibility("0.14.0", []);
+test("legacy runtime compatibility lists do not restrict updates", async (t) => {
+  const root = await fixture(t);
+  const current = await runtime(root);
+  current.manifest.compatibleFrom = ["0.12.0"];
+  await writeJson(join(current.directory, "manifest.json"), current.manifest);
+  await verifyRuntime(current.directory);
+  const next = await runtime(root, "0.13.6");
+  next.manifest.compatibleFrom = [];
+  await writeJson(join(next.directory, "manifest.json"), next.manifest);
+  await verifyRuntime(next.directory);
+  checkUpgrade(current.manifest, next.manifest);
 });
 
-test("the prepared release updates published 0.13.3 and 0.13.4 installations", async (t) => {
+test("the prepared release updates installations without declaring previous versions", async (t) => {
   const pkg = await readJson(new URL("../packages/cli/package.json", import.meta.url));
-  const compatibility = await readJson(new URL("../packages/cli/compatibility.json", import.meta.url));
-  assertPatchCompatibility(pkg.version, compatibility.compatibleFrom);
-  for (const version of ["0.13.3", "0.13.4"]) {
+  for (const version of ["0.12.6", "0.13.3", "0.13.4", "0.13.5"]) {
     const context = await installation(t, { ready: true });
     const previous = await runtime(context.root, version);
+    previous.manifest.compatibleFrom = [];
+    await writeJson(join(previous.directory, "manifest.json"), previous.manifest);
     await stageRuntime(context.store, previous.directory);
     context.state.deployedVersion = version;
     context.cf.publish(previous.manifest);
     await context.store.save(context.state);
     const next = await runtime(context.root, pkg.version);
-    next.manifest.compatibleFrom = compatibility.compatibleFrom;
-    await writeJson(join(next.directory, "manifest.json"), next.manifest);
     const release = await stageRuntime(context.store, next.directory);
     await publishInstallation(deployment({ ...context, release }));
     assert.equal(context.state.deployedVersion, pkg.version);
     assert.equal(context.state.phase, "ready");
     assert.equal(context.state.operation, undefined);
+  }
+});
+
+test("application, CLI and workflows use one exact Node version", async () => {
+  const app = await readJson(new URL("../package.json", import.meta.url));
+  const cli = await readJson(new URL("../packages/cli/package.json", import.meta.url));
+  assert.match(app.engines.node, /^24\.\d+\.\d+$/);
+  assert.equal(cli.engines.node, app.engines.node);
+  for (const name of ["deploy", "publish"]) {
+    const workflow = await readFile(new URL(`../.github/workflows/${name}.yml`, import.meta.url), "utf8");
+    assert.match(workflow, /node-version-file: package\.json/);
+    assert.doesNotMatch(workflow, /node-version:/);
+  }
+});
+
+test("CLI rejects Node versions other than the declared version before accessing an installation", async () => {
+  const cli = new URL("../packages/cli/src/cli.mjs", import.meta.url).href;
+  for (const version of ["22.23.4", "24.22.0", "26.12.1"]) {
+    const script = `Object.defineProperty(process.versions, "node", { value: ${JSON.stringify(version)} });
+      const { main } = await import(${JSON.stringify(cli)});
+      await main(["doctor", "--language", "en"]);`;
+    const result = spawnSync(process.execPath, ["--input-type=module", "--eval", script], { encoding: "utf8" });
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Node\.js 24\.22\.1 is required/);
   }
 });
 
@@ -528,6 +560,17 @@ test("publishing requires official stable release on GitHub-hosted Actions", () 
   assertPublishEnvironment(env, "0.12.5");
   assert.throws(() => assertPublishEnvironment({ ...env, MONITOR_RELEASE_TAG: "0.13.0", GITHUB_REF: "refs/tags/0.13.0" }, "0.12.5"), /Release 0\.13\.0 does not match package version 0\.12\.5/);
   for (const [key, value] of Object.entries({ GITHUB_ACTIONS: "false", GITHUB_EVENT_NAME: "push", GITHUB_REPOSITORY: "other/monitor", RUNNER_ENVIRONMENT: "self-hosted", MONITOR_RELEASE_PRERELEASE: "true", MONITOR_RELEASE_DRAFT: "true", GITHUB_REF: "refs/tags/1.0.0" })) assert.throws(() => assertPublishEnvironment({ ...env, [key]: value }, "0.12.5"));
+});
+
+test("the release guard runs without a version compatibility declaration", async () => {
+  const pkg = await readJson(new URL("../packages/cli/package.json", import.meta.url));
+  const result = spawnSync(process.execPath, [fileURLToPath(new URL("../packages/cli/src/publish-guard.mjs", import.meta.url))], {
+    encoding: "utf8",
+    env: { ...process.env, GITHUB_ACTIONS: "true", GITHUB_EVENT_NAME: "release", RUNNER_ENVIRONMENT: "github-hosted",
+      GITHUB_REPOSITORY: "am25-labs/monitor", GITHUB_REF: `refs/tags/${pkg.version}`, MONITOR_RELEASE_TAG: pkg.version,
+      MONITOR_RELEASE_PRERELEASE: "false", MONITOR_RELEASE_DRAFT: "false", GITHUB_SHA: sha }
+  });
+  assert.equal(result.status, 0, result.stderr);
 });
 
 test("Zero Trust onboarding pauses for the user and rechecks without writes", async () => {

@@ -51,8 +51,7 @@ export async function verifyRuntime(directory) {
   requireValue(await exists(join(directory, "manifest.json")), "No hay un runtime publicado. Instalá una versión oficial de @am25/monitor.", "No published runtime found. Install an official @am25/monitor release.");
   const manifest = await readJson(join(directory, "manifest.json"));
   versionParts(manifest.version);
-  requireValue(manifest.format === 1 && /^[a-f\d]{40}$/.test(manifest.sourceSha ?? "") && Array.isArray(manifest.compatibleFrom) && manifest.files && typeof manifest.files === "object", "Manifiesto de versión inválido.", "Invalid release manifest.");
-  manifest.compatibleFrom.forEach(versionParts);
+  requireValue(manifest.format === 1 && /^[a-f\d]{40}$/.test(manifest.sourceSha ?? "") && manifest.files && typeof manifest.files === "object", "Manifiesto de versión inválido.", "Invalid release manifest.");
   const files = (await filesIn(directory)).filter((name) => name !== "manifest.json");
   requireValue(JSON.stringify(files) === JSON.stringify(Object.keys(manifest.files).sort()), "El contenido de la versión no coincide con su manifiesto.", "Release contents do not match the manifest.");
   for (const name of files) {
@@ -122,7 +121,6 @@ export async function writeConfiguration(store, state, release) {
 
 export function checkUpgrade(current, target) {
   requireValue(compareVersions(target.version, current.version) >= 0, "No se permiten downgrades.", "Downgrades are not supported.");
-  requireValue(target.version === current.version || target.compatibleFrom.includes(current.version), "Este salto de versión no es compatible. Consultá las notas de la versión.", "This upgrade path is unsupported. Read the release notes.");
   for (const [name, hash] of Object.entries(current.files)) {
     if (name.startsWith("migrations/")) requireValue(target.files[name] === hash, "La actualización cambia migraciones existentes y requiere intervención manual.", "The update changes existing migrations and requires manual intervention.");
   }

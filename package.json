@@ -6,7 +6,7 @@
   "type": "module",
   "packageManager": "pnpm@10.23.0",
   "engines": {
-    "node": ">=22.14.0"
+    "node": "24.22.1"
   },
   "scripts": {
     "about:licenses": "node scripts/maintenance/generate-third-party-notices.mjs",
