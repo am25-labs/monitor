@@ -555,6 +555,60 @@ test("Cloudflare pagination and errors do not expose response bodies or tokens",
   await assert.rejects(denied.get("/accounts"), (error) => !error.message.includes(token) && !error.es.includes(token));
 });
 
+test("Cloudflare retries transient reads and respects Retry-After", async () => {
+  for (const status of [408, 429, 500, 502, 503, 504]) {
+    let calls = 0;
+    const delays = [];
+    const cf = new Cloudflare("token", async () => ++calls === 1
+      ? new Response("Service unavailable", { status, headers: { "Retry-After": "2" } })
+      : Response.json({ success: true, result: { id: "account" } }), async (delay) => { delays.push(delay); });
+    assert.deepEqual(await cf.get("/accounts/account"), { id: "account" });
+    assert.equal(calls, 2);
+    assert.deepEqual(delays, [2000]);
+  }
+});
+
+test("Cloudflare retries read connection failures with bounded backoff", async () => {
+  for (const error of [new TypeError("connection failed"), new DOMException("timeout", "TimeoutError"), new DOMException("aborted", "AbortError")]) {
+    let calls = 0;
+    const delays = [];
+    const cf = new Cloudflare("token", async () => {
+      if (++calls < 3) throw error;
+      return Response.json({ success: true, result: [] });
+    }, async (delay) => { delays.push(delay); });
+    assert.deepEqual(await cf.get("/accounts"), []);
+    assert.equal(calls, 3);
+    assert.deepEqual(delays, [500, 1000]);
+  }
+});
+
+test("persistent Cloudflare outages stop after three reads without suggesting permission changes", async () => {
+  let calls = 0;
+  const cf = new Cloudflare("private-token", async () => {
+    calls++;
+    return new Response("private response", { status: 503 });
+  }, async () => {});
+  await assert.rejects(cf.get("/accounts"), (error) => error instanceof CloudflareError && error.status === 503
+    && !error.en.includes("permissions") && !error.es.includes("permisos") && !error.message.includes("private"));
+  assert.equal(calls, 3);
+});
+
+test("Cloudflare does not retry denied reads, long rate limits or writes", async () => {
+  for (const [method, status, headers] of [["GET", 403, {}], ["GET", 429, { "Retry-After": "60" }], ["POST", 503, {}]]) {
+    let calls = 0;
+    const cf = new Cloudflare("token", async () => {
+      calls++;
+      return Response.json({ success: false, errors: [{ code: 10000 }] }, { status, headers });
+    }, async () => { assert.fail("Unexpected retry"); });
+    await assert.rejects(cf.request("/accounts", { method }), CloudflareError);
+    assert.equal(calls, 1);
+  }
+  let calls = 0;
+  const cf = new Cloudflare("token", async () => { calls++; throw new TypeError("connection closed after creation"); }, async () => { assert.fail("Unexpected retry"); });
+  await assert.rejects(cf.post("/accounts/account/queues", { queue_name: "monitor" }), TypeError);
+  assert.equal(calls, 1);
+});
+
 test("publishing requires official stable release on GitHub-hosted Actions", () => {
   const env = { GITHUB_ACTIONS: "true", GITHUB_EVENT_NAME: "release", RUNNER_ENVIRONMENT: "github-hosted", GITHUB_REPOSITORY: "am25-labs/monitor", GITHUB_REF: "refs/tags/0.12.5", MONITOR_RELEASE_TAG: "0.12.5", MONITOR_RELEASE_PRERELEASE: "false", MONITOR_RELEASE_DRAFT: "false", GITHUB_SHA: sha };
   assertPublishEnvironment(env, "0.12.5");

@@ -4,6 +4,8 @@
 
 Necesitás Node.js 24.22.1, pnpm 10.23+, una cuenta de Cloudflare y un dominio con zona DNS activa en esa cuenta. Elegí un hostname dedicado y sin registros DNS existentes. No necesitás GitHub, clonar el código, un agente ni compilar la aplicación.
 
+El requisito de Node corresponde a la terminal donde ejecutás la CLI. Comprobá `node --version`: debe devolver `v24.22.1`. Instalar o actualizar el paquete no cambia Node automáticamente.
+
 ```sh
 mkdir my-monitor
 cd my-monitor
@@ -83,6 +85,8 @@ GitHub ahora valida código y publica paquetes en npm; no despliega tu instancia
 La adopción requiere la configuración estándar de Monitor, una aplicación de Access y One-time PIN. Las personalizaciones requieren conciliación manual, sin reemplazarlas automáticamente.
 
 ## Diagnóstico
+
+Las consultas GET a la API de Cloudflare reintentan errores transitorios hasta dos veces. Un HTTP 503 indica que Cloudflare no pudo completar la solicitud; no implica por sí solo que falten permisos. Si el despliegue ya terminó y solo falla el diagnóstico final, ejecutá `pnpm dlx @am25/monitor@X.Y.Z doctor` con la misma versión para repetir las comprobaciones sin volver a migrar ni desplegar.
 
 `doctor` solo realiza consultas remotas de lectura. Comprueba integridad local, bindings, namespaces, Access, dominio, cron, migraciones, ciclo reciente del motor y respuestas HTTP sin sesión. Un ciclo todavía no observado tras instalar puede requerir esperar unos minutos y repetirlo.
 

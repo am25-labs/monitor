@@ -1,28 +1,58 @@
 import { CliError, requireValue } from "./messages.mjs";
+import { setTimeout } from "node:timers/promises";
+
+function retryDelay(response, attempt) {
+  const value = response?.headers.get("retry-after");
+  if (!value) return 500 * 2 ** attempt;
+  const seconds = Number(value);
+  const delay = Number.isFinite(seconds) ? seconds * 1000 : Date.parse(value) - Date.now();
+  return Number.isFinite(delay) ? Math.max(0, delay) : 500 * 2 ** attempt;
+}
 
 export class CloudflareError extends CliError {
   constructor(status, codes = []) {
-    super(`Cloudflare rechazó la operación (HTTP ${status}; ${codes.join(", ") || "sin código"}). Revisá los permisos y el diagnóstico.`, `Cloudflare rejected the operation (HTTP ${status}; ${codes.join(", ") || "no code"}). Check permissions and diagnostics.`);
+    const detail = status >= 500
+      ? ["Cloudflare no pudo completar la solicitud. Volvé a intentar más tarde.", "Cloudflare could not complete the request. Try again later."]
+      : status === 429
+        ? ["Se alcanzó el límite de solicitudes de Cloudflare. Esperá antes de reintentar.", "Cloudflare's request limit was reached. Wait before retrying."]
+        : ["Revisá los permisos y el diagnóstico.", "Check permissions and diagnostics."];
+    super(`Error de Cloudflare (HTTP ${status}; ${codes.join(", ") || "sin código"}). ${detail[0]}`, `Cloudflare error (HTTP ${status}; ${codes.join(", ") || "no code"}). ${detail[1]}`);
     this.status = status;
     this.codes = codes;
   }
 }
 
 export class Cloudflare {
-  constructor(token, fetcher = fetch) { this.token = token; this.fetcher = fetcher; }
+  constructor(token, fetcher = fetch, pause = setTimeout) { this.token = token; this.fetcher = fetcher; this.pause = pause; }
 
   async request(path, { method = "GET", body, allowMissing = false } = {}) {
     requireValue(path.startsWith("/") && !path.startsWith("//"), "Ruta de API inválida.", "Invalid API path.");
-    const response = await this.fetcher(`https://api.cloudflare.com/client/v4${path}`, {
-      method, headers: { Authorization: `Bearer ${this.token}`, "Content-Type": "application/json" },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(30000)
-    });
-    if (allowMissing && response.status === 404) return null;
-    let data;
-    try { data = await response.json(); }
-    catch { throw new CloudflareError(response.status); }
-    if (!response.ok || data.success === false) throw new CloudflareError(response.status, (data.errors ?? []).map((error) => error.code).filter(Number.isFinite));
-    return data;
+    for (let attempt = 0; ; attempt++) {
+      const canRetry = method === "GET" && attempt < 2;
+      let response;
+      try {
+        response = await this.fetcher(`https://api.cloudflare.com/client/v4${path}`, {
+          method, headers: { Authorization: `Bearer ${this.token}`, "Content-Type": "application/json" },
+          ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(30000)
+        });
+      } catch (error) {
+        if (!canRetry || !(error instanceof TypeError || ["TimeoutError", "AbortError"].includes(error?.name))) throw error;
+        await this.pause(retryDelay(null, attempt));
+        continue;
+      }
+      const delay = retryDelay(response, attempt);
+      if (canRetry && [408, 429, 500, 502, 503, 504].includes(response.status) && delay <= 30000) {
+        await response.body?.cancel();
+        await this.pause(delay);
+        continue;
+      }
+      if (allowMissing && response.status === 404) return null;
+      let data;
+      try { data = await response.json(); }
+      catch { throw new CloudflareError(response.status); }
+      if (!response.ok || data.success === false) throw new CloudflareError(response.status, (data.errors ?? []).map((error) => error.code).filter(Number.isFinite));
+      return data;
+    }
   }
 
   async get(path, options) { return (await this.request(path, options))?.result ?? null; }

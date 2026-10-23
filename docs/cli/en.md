@@ -4,6 +4,8 @@
 
 Requires Node.js 24.22.1, pnpm 10.23+, a Cloudflare account and a domain with an active DNS zone in that account. Choose a dedicated hostname without existing DNS records. No GitHub account, source checkout, agent or local application build is needed.
 
+The Node requirement applies to the terminal running the CLI. Check `node --version`: it must return `v24.22.1`. Installing or updating the package does not change Node automatically.
+
 ```sh
 mkdir my-monitor
 cd my-monitor
@@ -83,6 +85,8 @@ GitHub now checks source and publishes npm packages; it does not deploy your ins
 Standard configuration with one Access application and One-time PIN is required. Customized installations require manual reconciliation rather than silently replacing settings.
 
 ## Diagnosis
+
+GET requests to the Cloudflare API retry transient errors up to twice. HTTP 503 means Cloudflare could not complete the request; it does not by itself indicate missing permissions. If deployment completed and only the final diagnostics fail, run `pnpm dlx @am25/monitor@X.Y.Z doctor` with the same version to repeat checks without migrating or deploying again.
 
 `doctor` makes only read-only remote requests. It checks local integrity, bindings, namespaces, Access, domain, cron, migrations, recent engine cycles and unauthenticated HTTP responses. A cycle not yet observed after installation may require waiting a few minutes and running it again.
 
