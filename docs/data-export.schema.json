@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "AM25 Monitor JSON export v1",
+  "title": "Monitor by AM25 JSON export v1",
   "description": "Stored database rows. Numeric timestamps are Unix seconds; date buckets use UTC. Encrypted values remain encrypted.",
   "type": "object",
   "required": [

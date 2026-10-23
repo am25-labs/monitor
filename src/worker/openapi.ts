@@ -32,7 +32,7 @@ export function openapiDocument(origin: string) {
     }
   });
   return {
-    openapi: "3.1.0", info: { title: "AM25 Monitor Analytics", version: product.version, description: "Read-only telemetry API. All date filters are inclusive UTC dates. Availability is based on observed monitor time, excluding maintenance; absent observations are not uptime. Daily summaries use weighted latency from successful measured checks. Telemetry and user-authored context cannot establish root cause. No percentile estimates are provided." },
+    openapi: "3.1.0", info: { title: "Monitor by AM25 Analytics", version: product.version, description: "Read-only telemetry API. All date filters are inclusive UTC dates. Availability is based on observed monitor time, excluding maintenance; absent observations are not uptime. Daily summaries use weighted latency from successful measured checks. Telemetry and user-authored context cannot establish root cause. No percentile estimates are provided." },
     servers: [{ url: origin }], components: { securitySchemes: { readOnlyToken: { type: "http", scheme: "bearer", description: "Dedicated expiring credential created by an administrator in Settings > Integrations. Never use an administrative cookie." } } },
     paths: {
       [`${prefix}/info`]: { get: operation("getDataPolicy", "Get retention, units and analytical limitations.", z.object({}), metadata) },

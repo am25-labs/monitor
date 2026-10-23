@@ -189,7 +189,7 @@ it("renders event details with local dates, incident duration and escaped monito
   expect(recovered.HtmlBody).toContain("&lt;script&gt;");
   expect(recovered.HtmlBody).not.toContain("#0000f2");
   expect(recovered.HtmlBody).not.toContain("am25-logo.svg");
-  expect(recovered.HtmlBody).toContain("AM25 Monitor");
+  expect(recovered.HtmlBody).toContain("Monitor by AM25");
   expect(recovered.TextBody).toContain("Duración del incidente: 15 min");
   expect(recovered.TextBody).toContain("UTC-6");
   expect(recovered.TextBody).toContain("El servicio no respondió a tiempo");

@@ -1,4 +1,4 @@
-# Previous AM25 Monitor setup
+# Previous Monitor by AM25 setup
 
 [Español](es.md) · [Introduction](../../README.md)
 
@@ -13,7 +13,7 @@ You can follow this guide with your preferred coding agent. We recommend install
 Open the repository in your agent, connect Cloudflare, and copy the following prompt. The agent must ask for your values and check its tools and permissions: some connectors only query documentation or cannot manage Access. Authenticating the plugin does not automatically configure the GitHub pipeline credentials either.
 
 ```text
-Help me install AM25 Monitor in my own account following docs/setup/en.md.
+Help me install Monitor by AM25 in my own account following docs/setup/en.md.
 First read the repository instructions, the entire guide, and the current
 configuration. Do not reuse IDs, domains, or emails from the original installation.
 
@@ -251,7 +251,7 @@ Open **Settings → Notifications**. Enable one or more channels and save your c
 - **Email:** create a server in Postmark, verify the sender or its domain, and copy its **Server API Token**. Configure token, recipient, verified sender, and transactional stream (usually `outbound`). The recipient may differ from the Access email.
 - **Telegram:** create a bot with BotFather, copy its token, and start a conversation with the bot. Obtain your personal chat's numeric ID and configure the token and ID. See the [Telegram tutorial](https://core.telegram.org/bots/tutorial#obtain-your-bot-token).
 
-- **Pushover:** install the app, create an account at [Pushover](https://pushover.net/), and register an application named AM25 Monitor. Copy its **API Token** and your **User Key** into the dashboard. When repetitions are enabled, confirmed outages use emergency priority: by default, every 60 seconds for 1800 seconds (30 minutes), until acknowledged in the app or the service recovers. Pushover limits each alert to 50 retries and a maximum of three hours. Recovery cancels pending repetitions and is sent as a normal notification. On iPhone, authorize critical alerts in Pushover and in iOS Settings; test the sound with your phone locked and your usual nighttime mode enabled. The app offers a 30-day trial and a one-time purchase per platform, without automatic billing when the trial ends. See its [pricing](https://pushover.net/pricing).
+- **Pushover:** install the app, create an account at [Pushover](https://pushover.net/), and register an application named Monitor by AM25. Copy its **API Token** and your **User Key** into the dashboard. When repetitions are enabled, confirmed outages use emergency priority: by default, every 60 seconds for 1800 seconds (30 minutes), until acknowledged in the app or the service recovers. Pushover limits each alert to 50 retries and a maximum of three hours. Recovery cancels pending repetitions and is sent as a normal notification. On iPhone, authorize critical alerts in Pushover and in iOS Settings; test the sound with your phone locked and your usual nighttime mode enabled. The app offers a 30-day trial and a one-time purchase per platform, without automatic billing when the trial ends. See its [pricing](https://pushover.net/pricing).
 - **ntfy:** install the app and subscribe to a topic on [ntfy.sh](https://ntfy.sh/) or your own server hosted outside the monitored infrastructure. Configure the server's HTTPS URL, the same topic, and an access token if authentication is required. Free ntfy.sh topics are not private: use a long random name, such as `monitor-` followed by 32 random characters, and avoid known names. Anyone who knows the topic can read and publish messages. The free public service limits sending to 250 messages per day. Monitor sends urgent priority for outages and normal priority for recovery, without automatic repetitions. iOS critical alerts are still listed as unreleased in the [release notes](https://docs.ntfy.sh/releases/); do not rely on ntfy to bypass silent mode or Do Not Disturb on iPhone.
 
 Alerts are personal and are sent to all enabled channels on incident opening and recovery, without client subscriptions. Each channel maintains its own deliveries and retries: a failure in one does not repeat successful sends in another. Review per-channel failures in the overview; Retry retries the failed deliveries for that event. Tokens, the user key, and the topic are stored encrypted and are not returned to the browser; leaving them blank preserves the existing value.

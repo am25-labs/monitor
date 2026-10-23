@@ -304,7 +304,7 @@ function StatusView({
         <IncidentArchive key={slug} slug={slug} />
       </section>}
       <footer className="mt-auto flex flex-col gap-2 border-t pt-6 text-center text-xs text-muted-foreground">
-        <p>{t("AM25 Monitor · Estado público de los servicios")}</p>
+        <p>{t("Monitor by AM25 · Estado público de los servicios")}</p>
         <p>
           {t(
             "Actualización automática cada 30 segundos · Zona horaria: {zone}", { zone: timeZoneLabel }

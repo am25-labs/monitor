@@ -54,7 +54,7 @@ test("covers every static translation call, including conditional labels", () =>
 });
 
 test("keeps visible text and accessible attributes localized while preserving protocol and brand names", () => {
-  const technical = new Set(["AM25 Monitor", "AM25, S.A.S. de C.V.", "Apache License 2.0", "NOTICE", "POST", "URL", "JSON Pointer", "Host", "Authorization: Bearer TOKEN · Content-Type: application/json"]);
+  const technical = new Set(["Monitor by AM25", "Apache License 2.0", "NOTICE", "POST", "URL", "JSON Pointer", "Host", "Authorization: Bearer TOKEN · Content-Type: application/json"]);
   const untranslated = [];
   for (const file of sources) visit(file, (node) => {
     let text;

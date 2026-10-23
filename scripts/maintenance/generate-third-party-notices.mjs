@@ -56,5 +56,5 @@ const notices = sorted.map((pkg) => [
   `License: ${pkg.license}`,
   ...pkg.notices,
 ].join("\n\n")).join("\n\n------------------------------------------------------------\n\n");
-writeFileSync(resolve(root, "public/assets/third-party-notices.txt"), `AM25 Monitor - Third-party software notices\n\nInstalled direct and transitive dependencies, including development tools.\n\n${notices}\n`);
+writeFileSync(resolve(root, "public/assets/third-party-notices.txt"), `Monitor by AM25 - Third-party software notices\n\nInstalled direct and transitive dependencies, including development tools.\n\n${notices}\n`);
 console.log(`Generated notices for ${sorted.length} packages and ${dependencies.length} direct dependencies`);

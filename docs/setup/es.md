@@ -1,4 +1,4 @@
-# Configuración anterior de AM25 Monitor
+# Configuración anterior de Monitor by AM25
 
 [English](en.md) · [Presentación](../../README.md)
 
@@ -13,7 +13,7 @@ Puedes realizar esta guía con tu agente de programación preferido. Recomendamo
 Abre el repositorio en el agente, conecta Cloudflare y copia el siguiente prompt. El agente debe pedir tus datos y comprobar sus herramientas y permisos: algunos conectores solo consultan documentación o no administran Access. Autenticar el plugin tampoco configura automáticamente las credenciales del pipeline de GitHub.
 
 ```text
-Ayúdame a instalar AM25 Monitor en mi propia cuenta siguiendo docs/setup/es.md.
+Ayúdame a instalar Monitor by AM25 en mi propia cuenta siguiendo docs/setup/es.md.
 Lee primero las instrucciones del repositorio, la guía completa y la configuración
 actual. No reutilices los IDs, dominios ni correos de la instalación original.
 
@@ -251,7 +251,7 @@ Abre **Ajustes → Notificaciones**. Activa uno o varios canales y guarda los ca
 - **Correo:** crea un servidor en Postmark, verifica el remitente o su dominio y copia su **Server API Token**. Configura token, destinatario, remitente verificado y stream transaccional (habitualmente `outbound`). El destinatario puede ser diferente del correo de Access.
 - **Telegram:** crea un bot con BotFather, copia su token e inicia una conversación con el bot. Obtén el ID numérico de tu chat personal y configura token e ID. Consulta el [tutorial de Telegram](https://core.telegram.org/bots/tutorial#obtain-your-bot-token).
 
-- **Pushover:** instala la app, crea tu cuenta en [Pushover](https://pushover.net/) y registra una aplicación con el nombre AM25 Monitor. Copia su **API Token** y tu **User Key** en el dashboard. Si habilitas las repeticiones, las caídas confirmadas usan prioridad de emergencia: por defecto, cada 60 segundos durante 1800 segundos (30 minutos), hasta confirmar en la app o recuperarse el servicio. Pushover limita cada alerta a 50 repeticiones y tres horas como máximo. La recuperación cancela las repeticiones pendientes y se envía como notificación normal. En iPhone, autoriza las alertas críticas en Pushover y en Ajustes de iOS; prueba el sonido con el teléfono bloqueado y en tu modo nocturno habitual. La app ofrece 30 días de prueba y una compra única por plataforma, sin cobro automático al finalizar la prueba. Consulta sus [precios](https://pushover.net/pricing).
+- **Pushover:** instala la app, crea tu cuenta en [Pushover](https://pushover.net/) y registra una aplicación con el nombre Monitor by AM25. Copia su **API Token** y tu **User Key** en el dashboard. Si habilitas las repeticiones, las caídas confirmadas usan prioridad de emergencia: por defecto, cada 60 segundos durante 1800 segundos (30 minutos), hasta confirmar en la app o recuperarse el servicio. Pushover limita cada alerta a 50 repeticiones y tres horas como máximo. La recuperación cancela las repeticiones pendientes y se envía como notificación normal. En iPhone, autoriza las alertas críticas en Pushover y en Ajustes de iOS; prueba el sonido con el teléfono bloqueado y en tu modo nocturno habitual. La app ofrece 30 días de prueba y una compra única por plataforma, sin cobro automático al finalizar la prueba. Consulta sus [precios](https://pushover.net/pricing).
 - **ntfy:** instala la app y suscríbete a un tema en [ntfy.sh](https://ntfy.sh/) o en un servidor propio que viva fuera de la infraestructura vigilada. Configura la URL HTTPS del servidor, el mismo tema y, si requiere autenticación, un token de acceso. En ntfy.sh gratuito los temas no son privados: usa un nombre largo y aleatorio, como `monitor-` seguido de 32 caracteres aleatorios, y evita nombres conocidos. Quien conozca el tema puede leer y publicar mensajes. El servicio público gratuito limita los envíos a 250 mensajes diarios. Monitor envía prioridad urgente para una caída y normal para una recuperación, sin repetición automática. Las alertas críticas de iOS figuran todavía como no publicadas en las [notas de versiones](https://docs.ntfy.sh/releases/); no dependas de ntfy para saltarte silencio o No molestar en iPhone.
 
 Las alertas son personales y se envían a todos los canales activos por apertura y recuperación, sin suscripciones de clientes. Cada canal mantiene sus propias entregas y reintentos: el fallo de uno no repite los envíos exitosos de otro. Revisa los fallos por canal en el overview; Reintentar vuelve a intentar las entregas fallidas de ese evento. Los tokens, la clave de usuario y el tema se guardan cifrados y no se devuelven al navegador; dejarlos vacíos conserva el valor existente.

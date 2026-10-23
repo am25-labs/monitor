@@ -82,7 +82,6 @@ export function AboutDialog() {
                     </CardHeader>
                     <CardContent>
                       <p className="text-sm text-muted-foreground">{copyright}</p>
-                      <p className="mt-3 text-xs text-muted-foreground">AM25, S.A.S. de C.V.</p>
                     </CardContent>
                   </Card>
                   <Card size="sm" className="border shadow-none ring-0">
@@ -99,7 +98,7 @@ export function AboutDialog() {
                 <section className="flex flex-col gap-3" aria-labelledby="legal-notice-title">
                   <h3 id="legal-notice-title" className="flex items-center gap-2 text-sm font-medium"><FileText className="size-4 text-muted-foreground" aria-hidden="true" />{t("Aviso legal")}</h3>
                   <p className="rounded-lg bg-muted/50 p-4 text-xs leading-relaxed text-muted-foreground">
-                    {t("AM25 Monitor se proporciona «tal cual», sin garantías de ningún tipo, expresas o implícitas. Su uso, modificación y distribución están sujetos a las condiciones de")} <a href={licenseUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">Apache License 2.0</a>. {t("Consulta el archivo")} <a href={`${product.repository}/blob/main/NOTICE`} target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">NOTICE</a> {t("para la atribución del proyecto.")}
+                    {t("Monitor by AM25 se proporciona «tal cual», sin garantías de ningún tipo, expresas o implícitas. Su uso, modificación y distribución están sujetos a las condiciones de")} <a href={licenseUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">Apache License 2.0</a>. {t("Consulta el archivo")} <a href={`${product.repository}/blob/main/NOTICE`} target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">NOTICE</a> {t("para la atribución del proyecto.")}
                   </p>
                 </section>
                 <SoftwareNotices />

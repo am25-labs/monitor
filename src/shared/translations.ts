@@ -120,7 +120,7 @@ export const english: Record<string, string> = {
   "Software de código abierto bajo": "Open-source software under",
   "Puedes usar, modificar y distribuir el código conforme a sus condiciones. Las dependencias conservan sus propias licencias.": "You may use, modify and distribute the code under its terms. Dependencies retain their own licenses.",
   "Aviso legal": "Legal notice",
-  "AM25 Monitor se proporciona «tal cual», sin garantías de ningún tipo, expresas o implícitas. Su uso, modificación y distribución están sujetos a las condiciones de": "AM25 Monitor is provided “as is”, without warranties of any kind, express or implied. Its use, modification and distribution are subject to the terms of",
+  "Monitor by AM25 se proporciona «tal cual», sin garantías de ningún tipo, expresas o implícitas. Su uso, modificación y distribución están sujetos a las condiciones de": "Monitor by AM25 is provided “as is”, without warranties of any kind, express or implied. Its use, modification and distribution are subject to the terms of",
   "Consulta el archivo": "See the",
   "para la atribución del proyecto.": "file for project attribution.",
   "Desarrollado por AM25": "Developed by AM25",
@@ -520,8 +520,8 @@ export const english: Record<string, string> = {
   "Sin servicios publicados": "No published services",
   "No hay servicios disponibles para mostrar en esta página.":
     "No services available to display on this page.",
-  "AM25 Monitor · Estado público de los servicios":
-    "AM25 Monitor · Public service status",
+  "Monitor by AM25 · Estado público de los servicios":
+    "Monitor by AM25 · Public service status",
   "Actualización automática cada 30 segundos · Fechas en tu hora local":
     "Automatically refreshed every 30 seconds · Dates in your local time",
   "La disponibilidad corresponde al tiempo observado durante los últimos":

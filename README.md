@@ -1,10 +1,10 @@
-# AM25 Monitor
+# Monitor by AM25
 
 [Español](#español) · [English](#english)
 
 ## Español
 
-AM25 Monitor te permite supervisar tus sitios, APIs y procesos en segundo plano desde Cloudflare, independientemente del servidor que estás vigilando. Incluye un dashboard privado y páginas públicas para comunicar el estado de tus servicios.
+Monitor by AM25 te permite supervisar tus sitios, APIs y procesos en segundo plano desde Cloudflare, independientemente del servidor que estás vigilando. Incluye un dashboard privado y páginas públicas para comunicar el estado de tus servicios.
 
 ### Qué incluye
 
@@ -46,7 +46,7 @@ Publicar un Release estable activa la [publicación del paquete en npm](docs/pub
 
 ### Autoría y licencia
 
-Creado por Alejandro Mártir. Copyright 2026 AM25, S.A.S. DE C.V.
+Creado por Alejandro Mártir. Copyright 2026 AM25
 
 Disponible bajo [Apache License 2.0](LICENSE). Consulta [NOTICE](NOTICE) para la atribución del proyecto. Las dependencias conservan sus propias licencias.
 
@@ -54,7 +54,7 @@ Consulta la [documentación de API y MCP de análisis](docs/analytics.md) para r
 
 ## English
 
-AM25 Monitor lets you monitor websites, APIs, and background processes from Cloudflare, independently of the server you are watching. It includes a private dashboard and public pages to communicate the status of your services.
+Monitor by AM25 lets you monitor websites, APIs, and background processes from Cloudflare, independently of the server you are watching. It includes a private dashboard and public pages to communicate the status of your services.
 
 ### Features
 
@@ -96,7 +96,7 @@ Publishing a stable Release triggers [npm package publishing](docs/publishing.md
 
 ### Author and license
 
-Created by Alejandro Mártir. Copyright 2026 AM25, S.A.S. DE C.V.
+Created by Alejandro Mártir. Copyright 2026 AM25
 
 Available under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE) for project attribution. Dependencies retain their own licenses.
 

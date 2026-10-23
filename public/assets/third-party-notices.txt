@@ -1,4 +1,4 @@
-AM25 Monitor - Third-party software notices
+Monitor by AM25 - Third-party software notices
 
 Installed direct and transitive dependencies, including development tools.
 

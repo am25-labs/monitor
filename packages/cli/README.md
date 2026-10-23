@@ -1,6 +1,6 @@
 # @am25/monitor
 
-Install and maintain [AM25 Monitor](https://github.com/am25-labs/monitor) in your own Cloudflare account. The public package contains the compiled application; no source checkout, GitHub account, or local application build is needed.
+Install and maintain [Monitor by AM25](https://github.com/am25-labs/monitor) in your own Cloudflare account. The public package contains the compiled application; no source checkout, GitHub account, or local application build is needed.
 
 ```sh
 pnpm dlx @am25/monitor init .
