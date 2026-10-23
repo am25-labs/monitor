@@ -1,6 +1,6 @@
 {
   "name": "@am25/monitor",
-  "version": "0.13.6",
+  "version": "0.13.7",
   "description": "Install and maintain Monitor by AM25 on your Cloudflare account",
   "type": "module",
   "bin": { "monitor": "bin/monitor.mjs" },
